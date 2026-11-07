@@ -15,7 +15,11 @@ func _init(h: Hero, skill_id: String) -> void:
 ## Its number from its codex entry's "k" (data/codex/heroes/<hero>.json: the skill's numbers, as a rite's "k" are
 ## its), else the fallback.
 func val(key: String, fallback: float) -> float:
-	var k = Data.skill_def(id).get("k", {})
+	return num(id, key, fallback)
+
+## The same for any skill, where there is no object to ask (its look, on every game).
+static func num(skill_id: String, key: String, fallback: float) -> float:
+	var k = Data.skill_def(skill_id).get("k", {})
 	return float(k.get(key, fallback)) if k is Dictionary else fallback
 
 ## Checks before the mana and the cooldown are spent (shows its own message on false).

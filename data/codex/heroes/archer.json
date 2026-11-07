@@ -50,7 +50,19 @@
 			"cd": 0.0,
 			"use": 1.1,
 			"range": 14.0,
-			"lvl": 3
+			"lvl": 3,
+			"k": {
+				"dmg": 35,
+				"radius": 4,
+				"reach": 14,
+				"chill": 40,
+				"chill_max": 75,
+				"chill_s": 2,
+				"ground_chill_s": 0.6,
+				"rain_s": 1.3,
+				"first": 0.25,
+				"beat": 0.2
+			}
 		},
 		{
 			"id": "snare",
@@ -97,7 +109,11 @@
 			"range": 13.0,
 			"role": "packs up close",
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 55,
+				"arrows": 5
+			}
 		},
 		{
 			"id": "a_glacial",
@@ -112,7 +128,13 @@
 			"range": 16.0,
 			"role": "line chill",
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 110,
+				"chill": 40,
+				"chill_s": 3,
+				"freeze_s": 1.2
+			}
 		},
 		{
 			"id": "a_explosive",
@@ -127,7 +149,15 @@
 			"range": 16.0,
 			"role": "fire burst",
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 60,
+				"blast": 150,
+				"radius": 3.5,
+				"burn": 25,
+				"burn_lvl": 0.8,
+				"burn_s": 3
+			}
 		},
 		{
 			"id": "a_stormshot",
@@ -142,7 +172,13 @@
 			"range": 16.0,
 			"role": "chain lightning",
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 100,
+				"jumps": 4,
+				"chain": 70,
+				"chain_r": 7
+			}
 		},
 		{
 			"id": "a_mark",
@@ -174,7 +210,15 @@
 			"range": 14.0,
 			"role": "area rain",
 			"lvl": 16,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 32,
+				"radius": 4.5,
+				"reach": 14,
+				"strikes": 6,
+				"first": 0.15,
+				"beat": 0.25
+			}
 		}
 	],
 	"rites": [

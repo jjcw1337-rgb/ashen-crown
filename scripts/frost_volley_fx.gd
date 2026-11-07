@@ -1,6 +1,6 @@
 class_name FrostVolleyFx
 extends RefCounted
-## Frost Volley's look (jj's remake, 2026-11-04). Draws only: ArcherFx plays its events and Archer._rain calls `strike`
+## Frost Volley's look (jj's remake, 2026-11-04). Draws only: ArcherFx plays its events and FrostVolleyRainFx calls `strike`
 ## for every arrow that falls, on the archer's own game and on his puppet's alike, so partners see the same storm; the
 ## damage and the chill stay in archer.gd. Its stages:
 ##  - the draw (`draw`, every frame of the shot, from ArcherFx.update): he leans back and aims high (the rig's "sky"
@@ -257,8 +257,8 @@ static func _climb(h: Hero, root: Node3D, from: Vector3, d: Vector3, delay: floa
 		ar.queue_free())
 
 # ---------------------------------------------------------------- the rain
-## One arrow of the rain (Archer._rain, on every game): it drops onto p on a slant from the archer's side, sticks in,
-## and the strike bursts in mist and splinters; some strikes grow a crystal cluster. `v` is the volley (h.volleys).
+## One arrow of the rain (FrostVolleyRainFx, on every game): it drops onto p on a slant from the archer's side, sticks
+## in, and the strike bursts in mist and splinters; some strikes grow a crystal cluster.
 static func strike(h: Hero, p: Vector3) -> void:
 	var st := _volley_at(h, p)
 	if st.is_empty():

@@ -1,5 +1,5 @@
 extends SceneTree
-## The Archer's reference (docs/architecture_cleanup.md, "The Archer, end to end"): every skill cast at still
+## The Archer's reference (his rebuild into skill objects, docs/content/skills.md): every skill cast at still
 ## training dummies with the dice taken out (no crits, a fixed damage roll), and what each one did to each dummy:
 ## the damage, the longest burn, stun and chill. The rebuild must reproduce it, so moving code can't change play
 ## unnoticed. The wolf is kept away (its bites aren't recorded); Spirit Beast records its buff and mark.

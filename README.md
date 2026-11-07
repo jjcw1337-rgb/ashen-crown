@@ -67,8 +67,7 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
   `staging` build Windows, Mac and Linux and upload them to itch.io and Steam's staging branch. `main`
   changes only when an admin asks.
 - **How the code is organized and its rules:** [AGENTS.md](AGENTS.md) (for people and AI agents alike),
-  [docs/architecture_cleanup.md](docs/architecture_cleanup.md) (the reorganization in progress), and one doc per
-  part of the game in [docs/](docs/).
+  and one doc per part of the game in [docs/](docs/).
 
 ### Project layout
 

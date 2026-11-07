@@ -10,7 +10,8 @@ extends RefCounted
 ##     later detonates: everything on it stunned and hurt, lightning chaining on into the nearest others;
 ##   Spirit Beast: a spectral beast (the lion's body, ghostly) that hunts with him for 30 s, and the
 ##     class's 12 s battle buff (+40% damage).
-## Everything in flight or lying in wait lives on the hero (arrows, volleys, sigils in h.snares, beasts), updated
+## His skills that are objects (Hero.kit, skills/) keep their own state: arrows in flight, the rains. What is still
+## here lives on the hero (sigils in h.snares, beasts), updated
 ## by `update` and cleared by `clear`. What is seen is raised by fx events (Hero.fx -> ArcherFx), so a
 ## partner's copy of him (Hero.puppet) shoots, rains, sets traps and runs his wolf too; only his own game
 ## deals the damage (Enemy.take_damage routes to the host in co-op).
@@ -19,7 +20,6 @@ extends RefCounted
 const RANGE := 13.0
 const ARROW_SPEED := 34.0
 const FLIGHT := RANGE + 5.0     # how far an arrow flies before it falls
-const VOLLEY_R := 4.0
 ## Thunderstep: how far back he vaults, how long the flip takes, the sigil's reach, how long it charges, how far its
 ## lightning leaps on
 const VAULT_DIST := 6.5
@@ -179,6 +179,8 @@ static func _make(h: Hero, id: String) -> Skill:
 		"a_explosive": return BlastArrow.new(h, id)
 		"a_glacial": return GlacialShard.new(h, id)
 		"a_stormshot": return StormShot.new(h, id)
+		"volley": return FrostVolley.new(h, id)
+		"a_barrage": return ArrowStorm.new(h, id)
 	return null
 
 # ---------------------------------------------------------------- the bow
@@ -214,21 +216,13 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 		s.cast(aim)
 		return
 	match id:
-		"volley":
-			var to := (aim - h.global_position) * Vector3(1, 0, 1)
-			h.atk_aim = h.global_position + to.limit_length(14.0)
-			h._start_attack("bow", "volley")
 		"snare":
 			_vault(h, aim)
 		"beast":
 			h.atk_aim = aim
 			h._start_attack("cast", "beast")
 			h.atk_dur = 0.6
-		# a run's skills (Data.RUN_SKILLS): the storm on his bow's draw, the mark a quick cast
-		"a_barrage":
-			var to2 := (aim - h.global_position) * Vector3(1, 0, 1)
-			h.atk_aim = h.global_position + to2.limit_length(14.0)
-			h._start_attack("bow", "a_barrage")
+		# a run's skill (Data.RUN_SKILLS): the mark, a quick cast
 		"a_mark":
 			h.atk_aim = aim
 			h._start_attack("cast", "a_mark")
@@ -266,26 +260,17 @@ static func impact(h: Hero) -> bool:
 		s.impact()
 		return true
 	match h.atk_skill:
-		"volley":
-			_volley(h, h.atk_aim)
 		"snare":
 			pass        # (Thunderstep acts at the cast: the vault and the sigil)
 		"beast":
 			_command_beast(h, h.atk_aim)
-		"a_barrage":
-			var g: Vector3 = h.atk_aim
-			g.y = h.game.world.height_at(g.x, g.z)
-			h.fx("a_barrage", "impact", {"p": g, "r": BARRAGE_R})
 		"a_mark":
 			_hunters_mark(h, h.atk_aim)
 		_:
 			return false
 	return true
 
-## Arrow Storm's reach, its strikes and their share of the weapon's blow; Hunter's Mark's time and what it adds.
-const BARRAGE_R := 4.5
-const BARRAGE_TICKS := 6
-const BARRAGE_PCT := 0.32
+## Hunter's Mark's time and what it adds.
 const MARK_SECS := 8.0
 const MARK_MORE := 0.35
 
@@ -369,60 +354,6 @@ static func _arrow_mesh(kind: String, bare := false) -> Node3D:
 	if kind == "fire":
 		Fx.aura(root, FIRE, 18, 0.5, 0.09, 0.35, 0.8, 0.06, 30.0, Vector3(0, 0, -0.3))
 	return root
-
-# ---------------------------------------------------------------- Volley
-static func _volley(h: Hero, at: Vector3) -> void:
-	var g := Vector3(at.x, h.game.world.height_at(at.x, at.z), at.z)
-	var r := VOLLEY_R * (1.0 + h.talent("volley_size") / 100.0)
-	h.fx("volley", "impact", {"p": g, "r": r})    # the flight up, the rain (h.volleys) on every game
-
-## Arrows falling on the volley's ground: a hit on everything in reach every 0.2 s, arrows sticking in.
-static func _rain(h: Hero, v: Dictionary) -> void:
-	var pos: Vector3 = v["pos"]
-	var r: float = v["r"]
-	for k in 6:
-		var a := randf() * TAU
-		var d := sqrt(randf()) * r
-		var p := pos + Vector3(cos(a) * d, 0, sin(a) * d)
-		p.y = h.game.world.height_at(p.x, p.z)
-		# the glacier arrow dropping onto it, its strike, the crystals (FrostVolleyFx: seen on every game)
-		FrostVolleyFx.strike(h, p)
-	if h.puppet:
-		return
-	# Frost Volley: each hit chills (slower), Rime deepens it; Shatter: the chilled take more
-	var slow := 0.4 * (1.0 + h.talent("chill_pct") / 100.0)
-	for e in h.game.enemies_near(pos, r):
-		if not e.dead:
-			h._hit_enemy(e, 0.35 * shatter(h, e), 0.0, "volley")
-			e.chill(minf(slow, 0.75), 2.0)
-
-## The frozen ground the volley leaves (jj): everything standing in the frost or crossing it is slowed (the volley's
-## chill, Rime deepening it), from when the frost has spread until it has thawed, the slowed ground shrinking from the
-## edges in as it thaws (FrostVolleyFx's ground: full until the shatter, then thawing over THAW).
-static func frost_radius(v: Dictionary) -> float:
-	var age: float = float(v.get("age", 0.0))
-	var r: float = v["r"]
-	if age < FrostVolleyFx.STORM_AT + 0.15:
-		return 0.0
-	if age <= FrostVolleyFx.SHATTER_AT:
-		return r
-	var k := smoothstep(0.0, 1.0, (age - FrostVolleyFx.SHATTER_AT) / FrostVolleyFx.THAW)
-	return r * clampf((1.0 - k) * 1.2, 0.0, 1.0)
-
-static func _frost_ground(h: Hero, v: Dictionary, delta: float) -> void:
-	if h.puppet:
-		return
-	v["slow_tick"] = float(v.get("slow_tick", 0.0)) - delta
-	if float(v["slow_tick"]) > 0.0:
-		return
-	v["slow_tick"] = 0.25
-	var fr := frost_radius(v)
-	if fr < 0.3:
-		return
-	var slow := minf(0.4 * (1.0 + h.talent("chill_pct") / 100.0), 0.75)
-	for e in h.game.enemies_near(v["pos"], fr):
-		if not e.dead:
-			e.chill(slow, 0.6)     # a moment past the edge: leaving it, he's still slow for a step or two
 
 # ---------------------------------------------------------------- Thunderstep
 ## The cast: he turns to the pointer and backflips away from it (as far as the ground lets him), driving a thunderstone
@@ -554,32 +485,11 @@ static func update(h: Hero, delta: float) -> void:
 	keep_companions(h, delta)
 	if h.has_meta("vault"):
 		_update_vault(h, delta)
-	# his arrow skills' arrows (ArrowSkill), on his own game only: a partner's copy of him only shows them
+	# his skills that are objects (Hero.kit): arrows in flight, the rains; on his own game only, since a partner's
+	# copy of him only shows them
 	if not h.puppet:
 		for sk in h.kit.values():
 			sk.update(delta)
-	for v in h.volleys.duplicate():
-		if v.has("plain"):
-			# Arrow Storm: plain arrows, no frost
-			v["t"] -= delta
-			v["tick"] -= delta
-			if v["tick"] <= 0.0 and int(v["left"]) > 0:
-				v["tick"] = 0.25
-				v["left"] = int(v["left"]) - 1
-				if not h.puppet:
-					_barrage_tick(h, v)
-			if v["t"] <= 0.0:
-				h.volleys.erase(v)
-			continue
-		v["t"] -= delta
-		v["tick"] -= delta
-		v["age"] = float(v.get("age", 0.0)) + delta
-		if v["tick"] <= 0.0 and v["t"] > -0.05:
-			v["tick"] = 0.2
-			_rain(h, v)
-		_frost_ground(h, v, delta)
-		if v["t"] <= 0.0 and float(v["age"]) >= FrostVolleyFx.SHATTER_AT + FrostVolleyFx.THAW:
-			h.volleys.erase(v)
 	# Thunderstep's sigils charging (a partner's detonates on his word: the "spring" event)
 	if not h.puppet:
 		for s in h.snares.duplicate():
@@ -587,19 +497,13 @@ static func update(h: Hero, delta: float) -> void:
 			if float(s["t"]) <= 0.0:
 				_detonate(h, s)
 
-## Arrow Storm's strikes (every 0.25 s for 1.5 s), on his own game.
-static func _barrage_tick(h: Hero, v: Dictionary) -> void:
-	for e in h.game.enemies_near(v["pos"], float(v["r"])):
-		if not e.dead:
-			h._hit_enemy(e, BARRAGE_PCT, 0.05, "a_barrage")
-
 static func clear(h: Hero) -> void:
 	for sk in h.kit.values():
 		sk.clear()
 	h.kit.clear()
 	ArcherArrowFx.clear(h)
 	ArrowFx.end_draw(h)
-	h.volleys.clear()
+	FrostVolleyRainFx.clear(h)
 	FrostVolleyFx.clear(h)
 	h.snares.clear()
 	if h.has_meta("vault"):

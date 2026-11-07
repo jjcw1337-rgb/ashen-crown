@@ -1,77 +1,46 @@
 # Skills
 
-A skill is content: Fire Arrow belongs to the Archer. It runs on the skill system, which every skill shares. This doc
-covers both halves: what every skill gets, and what you write. The Archer is the example throughout. It is being
-rebuilt as the template ([the plan](../architecture_cleanup.md)), and this doc changes with it.
+A skill belongs to its hero (Fire Arrow is the Archer's) and runs on the skill system every skill shares.
 
-## What every skill gets: the skill system
+## How a skill runs
 
 ```mermaid
 flowchart TD
-  key["Key press<br/>Game._unhandled_input → _use_bind"] --> use["Hero._use_skill<br/>lock, cooldown and mana checks"]
-  use --> can["ClassSkills.can_cast → Archer.can_cast"]
-  can --> spend["mana spent, cooldown started<br/>(the codex's mana and cd)"]
-  spend --> cast["ClassSkills.cast → Archer.cast<br/>usually h._start_attack(style, id)"]
-  cast --> timing["SkillSpec.apply_timing<br/>(the codex's use)"]
-  timing --> cue["h.fx(id, 'cast')"]
-  cast -. "the attack's impact frame" .-> impact["ClassSkills.impact → Archer.impact<br/>the damage lands"]
-  cast -. "every frame" .-> update["ClassSkills.update → Archer.update<br/>arrows in flight, lingering state"]
+  key["Key press (game.gd)"] --> use["Hero._use_skill<br/>unlocked? cooldown? mana?"]
+  use --> cast["ClassSkills.cast → the hero's script<br/>usually starts an attack animation"]
+  cast -. "the animation's impact frame" .-> impact["ClassSkills.impact<br/>the damage lands"]
+  cast -. "every frame" .-> update["ClassSkills.update<br/>things in flight or on the ground"]
 ```
 
-- **Binding and casting.** `game.gd` maps keys to slots (left and right mouse, Q E R, F G V). `Hero._use_skill` finds
-  the skill, checks it is unlocked, off cooldown and affordable, asks the class (`can_cast`), spends the mana, starts
-  the cooldown, and calls the class's `cast`.
-- **The class script interface** (`scripts/class_skills.gd`). Every hero's skills script has the same static
-  functions: `can_cast`, `cast`, `impact` (the attack's impact frame), `update` (every frame), `rooted`, `clear`,
-  `died` and `sound`. `ClassSkills.of` routes a skill to its class's script by the skill's `cls`.
-- **`SkillSpec`** (`scripts/skill_spec.gd`) is the data-driven part. It reads a skill's optional fields (`use`, `hit`,
-  `dmg`, `area`, `dot`, `pvp`…) and gives timing, targets and strikes. The Demon, the shared skills and the dragons
-  use most of it. The Archer uses only its timing.
-- **Damage, statuses and rite hooks** come from [combat](../systems/combat.md). A skill calls
-  `h._hit_enemy(enemy, mult, knock, skill_id)` and never computes armour or crit itself.
-- **Drawing** comes from [effects](../systems/effects.md): a skill calls `h.fx(skill_id, event, data)`, and its
-  effects handler draws that on every player's screen.
+- `scripts/class_skills.gd` routes each call to the hero's skills script, which has the same functions for every hero
+  (`can_cast`, `cast`, `impact`, `update`, `rooted`, `clear`, `died`, `sound`).
+- Mana, cooldown and timing come from the codex. `SkillSpec` (`scripts/skill_spec.gd`) can also take a skill's
+  timing, area and damage from its data.
+- Damage goes through `Hero._hit_enemy` ([combat](../systems/combat.md)). What is seen goes through
+  `h.fx(skill, event, data)` ([effects](../systems/effects.md)).
 
-## What you write for a skill
+## How the Archer's skills are built
 
-| Piece | Where | The Archer today |
-|---|---|---|
-| Name, text, mana, cooldown, range, power, timing, and its own numbers (`k`, read with `val`) | its entry in `data/codex/heroes/<hero>.json` ([data](../systems/data.md)) | ✓ name, text, mana, cooldown, range and timing. Fire Arrow's numbers are in its `k`; the other skills' still use `val`'s defaults in their code until each gets its `k`. |
-| The class wiring (key, aim, tags) | `Data.SKILLS` | ✓ |
-| The rules: a `Skill` object (`game/systems/skills/skill.gd`) with `cast`, `impact`, `update` | `skills/<skill>/<skill>.gd` | his arrow skills: `skills/shot`, `fire_arrow`, `scatter_shot`, `blast_arrow`, `glacial_shard`, `storm_shot`, on `shared/arrow_skill.gd` and the shared `Missile` flight (`game/systems/skills/missile.gd`). The rest are still in `archer.gd`. |
-| The look: its fx events' handlers | `skills/<skill>/<skill>_fx.gd` | the arrows in flight: `shared/arrow_flight_fx.gd` (each game flies its own from the "loose" event, with the same `Missile` step); the rest in `archer_fx.gd`, `skills/thunderstep/thunderstep_fx.gd`, and the shared `scripts/arrow_fx.gd`, `frost_volley_fx.gd`, `arc_fx.gd` |
-| Its own models and textures | `skills/<skill>/` | `skills/frost_volley/rain/`, `skills/thunderstep/` |
-| What its skills share | `shared/` (one hero) or `game/systems/` (several heroes) | the three shared fx scripts above, still in `scripts/` |
-| Icon | `assets/textures/skills/` | ✓ |
-| Sound | `tools/audio/spec.py` → `assets/audio/sfx/` | ✓ |
-| Its test | `tests/` (each skill's gameplay) | `tests/archer_test.gd` |
-
-A skill folder's scripts are reached by their `class_name`, called from the hero's skills script and fx handler.
-There is no folder discovery.
+The Archer is the example to copy. Most other heroes still keep every skill in one script.
+- **One folder per skill:** `game/heroes/archer/skills/fire_arrow/fire_arrow.gd` is the rules, a `Skill` object
+  (`game/systems/skills/skill.gd`) holding its own state and reading its numbers with `val("dmg", 130)`.
+  `archer.gd` keeps a table of which object handles which skill id.
+- **Shared shapes** in `game/systems/skills/`: `Missile` (a projectile's flight and hits) and `GroundZone` (ground
+  that strikes at a beat). They are plain data, with no nodes, so a server could run them.
+- **The look keeps its own copy.** The rules send one event (an arrow's "loose"), and every game's look flies its own
+  arrow from it with the same `Missile` step (`shared/arrow_flight_fx.gd`). The look never makes game state.
+- Thunderstep, Spirit Beast and Hunter's Mark are still in `archer.gd`.
 
 ## Designing a skill
 
-- **Damage skills have no cooldown;** mana limits them. A cooldown is for utility, and a skill with one carries a
-  utility tag: `movement`, `warcry`, `buff`, `cc`, `trap`, `summon`, `command`, `ultimate` or `sustain`.
-  `tools/skill_spec_test.gd` checks this, along with every data field's type and range.
+- **Damage skills have no cooldown;** mana limits them. A skill with a cooldown carries a utility tag (`movement`,
+  `cc`, `buff`, `summon`…). `tools/skill_spec_test.gd` checks this and every data field.
 - **Every skill has an answer** (its counterplay), and no button carries more than one hard crowd control.
-- **The wind-up is readable.** `hit` is when it lands, as a fraction of `use`: about 0.45 for a quick blow, 0.75 for
-  a heavy one. `scripts/skill_spec.gd`'s header lists every field.
+- **The wind-up is readable:** a heavy blow lands later in its animation than a quick one.
 
-## The rules for a skill
+## Changing a skill
 
-1. **Rules never draw.** Everything visible is an fx event, and the handler only draws ([effects](../systems/effects.md)).
-2. **Numbers players can see come from the codex.** The tooltip and the game must not disagree.
-3. **Damage goes through `_hit_enemy`, and crowd control on players through `PvpStatus`** ([combat](../systems/combat.md)).
-4. **State lives on the hero or the skill's own object,** and `clear` and `died` end it.
-5. **Its test covers its gameplay**, and `tools/coop_fx_test.gd` checks that a partner sees it and that a replay
-   hurts nothing.
-6. **Its look meets the quality bar** in [effects](../systems/effects.md), checked from the game camera.
-
-## Improving a skill
-
-- **Numbers or text:** edit the codex (the editor, or the JSON). If the number is still a constant in code, move it
-  into the codex first.
-- **The look:** change its `_fx.gd`, then re-record the warm-up data (`tools/skill_warm_capture.gd`) and check the
-  cost with `tools/skill_perf.sh <class> <skill>`.
-- **The rules:** change its rules, run its test, and run a multiplayer test if what it sends changed.
+- **Numbers or text:** the codex ([data](../systems/data.md)).
+- **The look:** its effects script. Check it from the game camera, and its cost with
+  `tools/skill_perf.sh <class> <skill>`.
+- **The rules:** its script, then its hero's tests, and a multiplayer test if what it sends changed.

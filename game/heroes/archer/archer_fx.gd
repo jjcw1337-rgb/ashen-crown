@@ -2,12 +2,12 @@ class_name ArcherFx
 extends RefCounted
 ## Visual effects for the archer's skills (SkillFx events; the gameplay is in archer.gd and skills/). His arrows
 ## are drawn and flown by ArcherArrowFx on every game, and hurt nothing: the hits are the skills' own (ArrowSkill).
-## Volleys and Thunderstep's sigils are still raised here on his own game and on his puppet on every partner's
-## (Hero.volleys, snares), and Archer.update moves them on both: a puppet's volley rains without hitting, its sigils
-## wait for the "spring" event instead of detonating themselves.
+## Frost Volley's rain and Arrow Storm are drawn by their own looks (skills/), in step with the rules' beat.
+## Thunderstep's sigils are still raised here on his own game and on his puppet on every partner's (Hero.snares), and
+## Archer.update moves them on both: a puppet's sigils wait for the "spring" event instead of detonating themselves.
 ##  the attack / Fire Arrow: "loose" {p: from, d: direction, k: "war"|"fire", x: it pierces}
-##  Frost Volley: "cast" (the glacier arrow drawn, aimed high), "impact" {p: the ground, r: radius}: the flight up and
-##    the storm (FrostVolleyFx); the rain's strikes come from Archer._rain on both games
+##  Frost Volley: "cast" (the glacier arrow drawn, aimed high), "impact" {p: the ground, r: radius}: the flight up,
+##    the storm and the rain's strikes (FrostVolleyRainFx, FrostVolleyFx)
 ##  Thunderstep: "vault" {p: the sigil, q: where he lands}, "spring" {p, r, t: the foes struck, n: how many of them
 ##    were on the sigil, x: it strikes again} (ThunderstepFx)
 ##  Spirit Beast: "impact" {p: the point, t: [the foe] when it was sent at one, x: called home} (the command's
@@ -29,21 +29,12 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			# the arrow of its kind, flown on every game (ArcherArrowFx); the hits are the skill's own (ArrowSkill)
 			ArcherArrowFx.loosed(h, ev)
 		["volley", "impact"]:
-			var g: Vector3 = ev["p"]
-			var r: float = float(ev.get("r", Archer.VOLLEY_R))
-			h.volleys.append({"pos": g, "t": 1.3, "tick": 0.25, "r": r})
-			# the flight going up out of the bow, then the storm over the mark (FrostVolleyFx)
-			FrostVolleyFx.release(h, g, r)
+			# the flight going up out of the bow, the storm over the mark, and its rain (FrostVolleyRainFx)
+			FrostVolleyRainFx.start(h, ev)
 		["snare", "vault"], ["snare", "spring"]:
 			ThunderstepFx.play(h, ev)
 		["a_barrage", "impact"]:
-			# Arrow Storm: arrows climb out of the bow, then fall in a storm on the mark (Archer.update strikes)
-			var g2: Vector3 = ev["p"]
-			var r2: float = float(ev.get("r", Archer.BARRAGE_R))
-			var ticks: int = Archer.BARRAGE_TICKS + int(h.talent("barrage_ticks"))
-			h.volleys.append({"pos": g2, "t": 0.1 + ticks * 0.25, "tick": 0.15, "r": r2, "plain": true, "left": ticks})
-			_rain_fx(h, root, g2, r2)
-			SkillFx.snd(h, "arrow_rain", -2.0, 0.9)
+			ArrowStormFx.play(h, ev)
 		["a_mark", "impact"]:
 			var foes2: Array = ev.get("t", [])
 			var at2: Vector3 = ev["p"]
@@ -88,38 +79,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			return false
 	return true
 
-## Arrow Storm's look: the Meshy war arrows falling out of the sky over the mark in a staggered storm, each sticking
-## in with a puff of dust, over 1.5 seconds (every peer).
-static func _rain_fx(h: Hero, root: Node3D, g: Vector3, r: float) -> void:
-	var w = h.game.world
-	# the mark first: a claw-raked ring where the storm will fall, then the arrows (a war arrow 1.5 times its size,
-	# each trailing a pale streak, striking in with a burst of dust and chips)
-	hunter_mark(root, g, r, Color(0.95, 0.86, 0.6), 1.9)
-	Fx.ring(root, g, r, Color(0.95, 0.85, 0.55), 1.7, 0.12)
-	for i in 34:
-		var a := randf() * TAU
-		var d := sqrt(randf()) * r
-		var at := g + Vector3(cos(a) * d, 0.0, sin(a) * d)
-		at.y = w.height_at(at.x, at.z)
-		var n := Archer._arrow_mesh("war")
-		root.add_child(n)
-		n.scale = Vector3.ONE * 1.5
-		Fx.aura(n, Color(0.95, 0.9, 0.75), 6, 0.05, 0.05, 0.25, 0.0, 0.03)
-		var from := at + Vector3(randf_range(-1.5, 1.5), 13.0, randf_range(-1.5, 1.5))
-		n.global_position = from
-		n.look_at(at, Vector3.RIGHT)
-		n.visible = false
-		var tw := n.create_tween()
-		tw.tween_interval(0.15 + float(i) / 34.0 * 1.35)
-		tw.tween_callback(func(): n.visible = true)
-		tw.tween_property(n, "global_position", at + (from - at).normalized() * 0.35, 0.22)
-		tw.tween_callback(func():
-			Fx.burst(root, at + Vector3(0, 0.15, 0), Color(0.55, 0.47, 0.36), 10, 2.4, 0.1, 0.45, false, -6.0)
-			Fx.sparks(root, at + Vector3(0, 0.2, 0), Color(1.0, 0.92, 0.7)))
-		tw.tween_interval(1.2)
-		tw.tween_callback(n.queue_free)
-
-## Arrows, volleys and sigils move in Archer.update (the puppet's too). Here: the fire gathering on the nocked
+## Arrows and rains have their own looks; sigils move in Archer.update (the puppet's too). Here: the fire gathering on the nocked
 ## arrow through the draw of a Fire Arrow shot (from the attack's progress, so the puppet shows it too).
 # ---------------------------------------------------------------- the hunter's own marks (visual overhaul)
 ## The hunter's mark on the ground (a command to his wolf): three claw rakes torn across a pale ring,
@@ -202,6 +162,7 @@ static func update(h: Hero, _delta: float) -> void:
 		FrostVolleyFx.end_draw(h)
 		h.fxs.erase("draw_volley")
 	ArcherArrowFx.update(h, _delta)
+	FrostVolleyRainFx.update(h, _delta)
 	FrostVolleyFx.update(h, _delta)
 	ThunderstepFx.update(h, _delta)
 

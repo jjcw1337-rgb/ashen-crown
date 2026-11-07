@@ -1,62 +1,39 @@
-# Making assets: Meshy → Blender → Godot
+# Assets: Meshy → Blender → Godot
 
-**Goal:** everything new that is seen in the game is a real made asset (Meshy art, a Blender-prepared model, a
-simulated effect, a recorded sound), judged in the game's own renderer, and cheap to draw. Placeholder primitives,
-painted-on flames and recoloured generic bursts are not finished work. This page is the route; the detailed
-recipes it links are the source of truth.
+Everything new that players see is a real made asset (a Meshy model, a simulated effect, a recorded sound), judged
+in the game's own renderer from the game camera. Placeholder shapes and recoloured generic bursts aren't finished.
 
 ## The route
 
-1. **Concept (Meshy 2D, ~6 credits a take).** `meshy.py draw "<prompt>" -o <out>` or `meshy.py edit <ref.png>
-   "<change>" --ref <more.png>`. For anything an admin will choose between (art, sound, music), make **three takes**
-   and let them pick (jj's rule). Character sheets: full body, symmetrical A-pose, plain grey background, even light.
-2. **Model (Meshy image-to-3D ~30 credits; text-to-3D ~10).** Text-to-3D is a coin toss beyond simple objects: use
-   concept → image-to-3D for anything with a shape that matters. Look at the four turnaround renders before going on.
-3. **Prepare in Blender (headless, local).** Pick the script for the kind of thing, and keep the editable `.blend` outside the
-   project (never committed); export the `.glb` next to what uses it (a hero's `body/`, a skill's folder; `assets/models/` for
-   whatever hasn't moved into `game/`).
-   - Props: `tools/blender/prep_prop.py` (size, axis, triangles, texture size); repeated or LOD-worthy pieces
-     re-baked onto clean UVs with `tools/blender/camp/rebake_prop.py` (Meshy's own UVs leave the importer no LODs).
-   - Characters and heroes: Meshy auto-rig + library clips, then a `prep_<id>_mocap.py` (copy Doug's), following
-     [heroes](../content/heroes.md) step by step (gates at every step).
-   - Monsters: `tools/blender/act1/prep_monster.py` then `rig_monster.py` (+ `layout_to_gd.py`); four-legged:
-     `act1/rig_quadruped.py` on the lion's skeleton; NPCs: `tools/blender/prep_npc.py`.
-   - Check a prepared model beside a man-sized post: `tools/blender/prop_sheet.py` (prints sizes too).
-4. **Effects.** Fire, smoke, fog, liquid and ice are simulations (Mantaflow/FLIP in Blender, rendered to flipbooks,
-   packed by `tools/fx_flipbook.py` / `tools/fx_smokebook.py` / `tools/flipbook_pack.py`), and broken things are
-   real fractured pieces (`tools/blender/fx/fracture_rock.py`). The bar is in [effects](../systems/effects.md); each class
-   has its own visual language; effects are events.
-5. **2D art in the UI.** Skill, talent, item and gem icons are Meshy-painted 3x3 grids cut by
-   `tools/skill_icons.py` / `tools/talent_icons.py` (one grid ≈ 6 credits; palette per class); ground paintings and
-   decals by `game/heroes/plague/build/ground_decal.py`; tiling textures by `tools/blender/battlegrounds/make_tile_textures.py`.
-6. **Sound.** ElevenLabs through `tools/audio/` (spec → candidates → score → a human picks → `build_sfx.py`); never
-   synthesized.
-7. **Import and look.** `godot --headless --editor --quit-after 2000`, then screenshots or frame clips in the game
-   renderer from the game camera (each feature has a `*_shots.gd` / `*_clip.gd` tool; Forward+ with
-   `--rendering-driver vulkan` when the look depends on it). Look at every frame you claim is good. Judge candidates
-   in the game, not in model sheets.
+```mermaid
+flowchart LR
+  c["Concept<br/>Meshy 2D, ~6 cr a take"] --> m["Model<br/>Meshy 3D, ~10–30 cr"]
+  m --> r["Rig and clips<br/>Meshy (characters only)"]
+  r --> b["Prepare<br/>Blender scripts, headless"]
+  m --> b
+  b --> g[".glb next to what uses it<br/>Godot imports it"]
+```
 
-## Performance rules for anything new (see [loading](../systems/loading.md), [measuring](../systems/measuring.md))
+1. **Concept** with `tools/meshy/meshy.py draw` or `edit`. For anything an admin chooses between, make three takes.
+2. **Model:** image-to-3D from the concept for anything whose shape matters; text-to-3D only for simple props.
+3. **Prepare in Blender** with the script for the kind of thing: props `tools/blender/prep_prop.py`, heroes a
+   `build/prep_*_mocap.py`, monsters `tools/blender/act1/prep_monster.py`. Check it beside a man-sized post with
+   `tools/blender/prop_sheet.py`. The `.blend` stays outside the repo.
+4. **Export** the `.glb` next to what uses it (a hero's `body/`, a skill's folder). Godot imports it on the next open.
+5. **Effects** are simulations (Blender fire, smoke and liquid rendered to flipbooks) and real fractured pieces
+   ([effects](../systems/effects.md)).
+6. **Icons** are Meshy-painted grids cut by `tools/skill_icons.py` and `tools/talent_icons.py`.
+7. **Sound** is ElevenLabs through `tools/audio/` (a human picks the takes), never synthesized.
 
-- **Budgets:** props ≤ 10k triangles with 1k textures (pieces repeated many times ~12k or less); monsters ~20k
-  (bosses 30k, 2k textures); heroes 50–60k. New textures import as lossy WebP q0.9 (the project default), with mipmaps for anything seen in 3D; UI and
-  cut-outs import lossless.
-- **Load once:** models and textures used during play through `ResCache`; one cached `Shader` per effect kind, never
-  one per cast or spawn.
-- **Warm it:** re-record `SkillWarmData` (`tools/skill_warm_capture.gd`) after a skill's effects change; add new
-  mid-zone monster kinds to `MonsterWarm.kinds`; re-record a zone's preload list (`--preload-record`,
-  `tools/zone_preload_gen.py`) when it gains models.
-- **Draw cheaply:** repeated things through `World.mm_chunked` / `Props.multimesh` (never one map-wide MultiMesh);
-  static props cast shadows from depth-only twins (`Props.shadow_twins`, foliage `Flora.shadow_twin`); effect lights
-  with shadows only through `Fx.effect_shadow`; tall props keep the see-through near the hero (`Props.see_through`).
-- **Prove it:** `bash tools/skill_perf.sh <class> <skill>` for every new or redone skill; the KPI suite before and
-  after anything that changes a zone (`--kpi`, slower = not shipped); dedicated servers never need pixels or mesh
-  surfaces ([multiplayer](../systems/multiplayer.md)).
+## Keep it cheap
+
+- Budgets: props about 10k triangles with 1k textures, monsters about 20k, heroes 50–60k.
+- Load models during play through `ResCache` ([loading](../systems/loading.md)), and check a new skill's cost with
+  `tools/skill_perf.sh <class> <skill>`.
 
 ## Spending
 
-- Meshy and ElevenLabs credits: either admin's request covers existing credits. Subscriptions, upgrades and top-ups
-  need an explicit spending request.
-- Record each paid job's id, and resume a pending job instead of paying for it twice.
-- A downloaded model (Sketchfab, Poly Haven) needs its URL, author, licence and attribution recorded beside it before
-  it goes in the game.
+- Either admin's request covers existing Meshy and ElevenLabs credits. Subscriptions, upgrades and top-ups need an
+  explicit spending request.
+- Record each paid job's id, and resume a pending job instead of paying twice.
+- A downloaded model needs its source, author and licence recorded beside it.
