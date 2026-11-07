@@ -1040,6 +1040,26 @@ func cl_dealt(at: Vector3, amount: float, crit: bool) -> void:
 	if not loading and game.world != null and amount > 0.0:
 		Fx.number(game.world.fx_root, at + Vector3(0, 2.2, 0), str(int(amount)) + ("!" if crit else ""), Color(1.0, 0.85, 0.4), crit)
 
+## Server: what a player's own blows did to them here (life leeched, a rite's buff, a cooldown back, Hunger), for
+## their game, which keeps their life, cooldowns and run (Hero.gain_life, RunTalents._tell_owner).
+func tell_self(h: Hero, d: Dictionary) -> void:
+	if server and active and int(h.peer_id) > 0 and multiplayer.get_peers().has(int(h.peer_id)):
+		rpc_id(int(h.peer_id), "cl_self", d)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_self(d: Dictionary) -> void:
+	var h = game.hero
+	if loading or h == null or h.dead:
+		return
+	h.gain_life(float(d.get("life", 0.0)))
+	if d.has("cd"):
+		h.cds[str(d["cd"])] = 0.0
+	if h.run != null:
+		if d.get("buff") is Array and (d["buff"] as Array).size() == 3:
+			RunTalents.buff(h, str(d["buff"][0]), d["buff"][1] if d["buff"][1] is Dictionary else {}, float(d["buff"][2]))
+		if d.get("hunger") is Array and (d["hunger"] as Array).size() == 2:
+			h.run.hunger = minf(float(d["hunger"][1]), h.run.hunger + float(d["hunger"][0]))
+
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
 	if server and game.bg != null:

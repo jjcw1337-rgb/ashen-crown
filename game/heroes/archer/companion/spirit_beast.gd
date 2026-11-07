@@ -15,9 +15,11 @@ extends Node3D
 ## a while. Monsters it bites turn on it (`Enemy.taunt`); it can be killed and rises again beside him
 ## (`SpiritBeast.keep`). Commands: `command(kind, ...)`: "attack" (a foe; with a pounce), "hold"
 ## (a place), "follow"/"return". The archer's Spirit Beast skill issues them (archer.gd). Every tuning
-## number is in CFG. A partner's copy of the archer (Hero.puppet) runs one too, on the partner's game, so it
-## is seen there (its commands come as fx events, ArcherFx): it hunts and bites the same, but hurts nothing
-## and nothing hunts it; its position isn't streamed (it follows the same man and the same monsters).
+## number is in CFG. Every game that has him runs his wolf (its commands come as fx events, ArcherFx), but only
+## one decides it (`_deals`): his own game, or in a match on our server, the server's copy of him (ServerRules):
+## there it bites, and monsters hunt it and can kill it, which every game hears ("beast" "fade"). Everywhere else
+## it hunts and bites the same, but hurts nothing and nothing hunts it; its position isn't streamed (it follows
+## the same man and the same monsters).
 
 const CFG := {
 	"follow_dist": 2.3,     # how far from him it likes to be
@@ -108,15 +110,16 @@ func setup(m: Hero, g: Node, s: int) -> void:
 	add_child(rig)
 	if not wolf:
 		ghostly(rig)
-	# a faint spirit about it: a soft green light and a few motes drifting off its coat
-	var l := OmniLight3D.new()
-	l.light_color = Archer.HUNTER
-	l.light_energy = 0.45 if wolf else 0.8
-	l.omni_range = 3.0
-	l.position = Vector3(0, 1.0, 0)
-	add_child(l)
-	var trail := Fx.aura(self, Archer.HUNTER, 10 if wolf else 20, 0.3, 0.06, 0.9, 0.3, 0.45, 60.0, Vector3(0, 0.6, 0))
-	trail.name = "trail"
+	# a faint spirit about it: a soft green light and a few motes drifting off its coat (nobody sees a server's)
+	if _seen():
+		var l := OmniLight3D.new()
+		l.light_color = Archer.HUNTER
+		l.light_energy = 0.45 if wolf else 0.8
+		l.omni_range = 3.0
+		l.position = Vector3(0, 1.0, 0)
+		add_child(l)
+		var trail := Fx.aura(self, Archer.HUNTER, 10 if wolf else 20, 0.3, 0.06, 0.9, 0.3, 0.45, 60.0, Vector3(0, 0.6, 0))
+		trail.name = "trail"
 	max_life = float(CFG["life"]) + float(CFG["life_per_level"]) * master.level
 	life = max_life
 	world_ref = game.world
@@ -131,8 +134,19 @@ static func ghostly(r: Node3D) -> void:
 		(mi as MeshInstance3D).material_overlay = ghost
 		(mi as MeshInstance3D).transparency = 0.25
 
+## Its bites land and it can be hurt on this game: his own, or the match server's copy of him when his skills run
+## there (ServerRules). Anywhere else it's only seen.
+func _deals() -> bool:
+	if ServerRules.on(master):
+		return master.game.net.server
+	return not master.puppet
+
+## Drawn on this game (a match server draws nothing).
+func _seen() -> bool:
+	return not Enemy.server_nopose
+
 func dismiss() -> void:
-	if game and game.world:
+	if game and game.world and _seen():
 		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.7, 0), Archer.HUNTER, 26, 3.0, 0.14, 0.8, true, 1.5)
 	queue_free()
 
@@ -161,11 +175,11 @@ func command(kind: String, foe = null, at := Vector3.ZERO) -> void:
 
 # ---------------------------------------------------------------- being hit, dying
 func take_hit(dmg: float, from: Vector3, _kind: String = "melee", _element: String = "phys") -> void:
-	if dead or master.puppet:
+	if dead or not _deals():
 		return
 	life -= dmg * float(CFG["armor"])
 	hit = 1.0
-	if game and game.world:
+	if game and game.world and _seen():
 		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.8, 0), Archer.HUNTER, 8, 2.5, 0.07, 0.3, true, -3.0)
 	# whatever hit it becomes worth biting back, if it isn't busy with his command
 	var e = _enemy_near(from, 2.5)
@@ -180,9 +194,11 @@ func die() -> void:
 	dead = true
 	master.beasts.erase(self)
 	master.beast_down_t = float(CFG["respawn"])
-	if game and game.world:
+	if game and game.world and _seen():
 		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.7, 0), Archer.HUNTER, 40, 4.0, 0.16, 1.1, true, 2.0)
 		Fx.flash(game.world.fx_root, global_position + Vector3(0, 1, 0), Archer.HUNTER, 3.0, 0.6, 5.0)
+	if master.puppet and game.net.server:
+		master.fx("beast", "fade", {"n": slot})      # (every game's copy of it falls too: ArcherFx)
 	if not master.puppet:
 		game.ui.message("Your Spirit Beast fades. It will return.", Color(0.6, 0.9, 0.6))
 	queue_free()
@@ -244,14 +260,14 @@ func _tick_timers(delta: float) -> void:
 			unreachable.erase(k)
 
 func _valid(e) -> bool:
-	return e != null and is_instance_valid(e) and e is Enemy and not e.dead
+	return e != null and is_instance_valid(e) and e is Enemy and not e.dead and not ServerRules.friend(master, e)
 
 func _enemy_near(p: Vector3, r: float):
 	var best = null
 	var bd := r
 	for e in game.enemies_near(p, r):
 		var d: float = e.global_position.distance_to(p)
-		if not e.dead and d < bd:
+		if _valid(e) and d < bd:
 			bd = d
 			best = e
 	return best
@@ -290,7 +306,7 @@ func _think() -> void:
 	var best = null
 	var bs := -1e9
 	for e in game.enemies_near(mp, float(CFG["detect"]) + 3.0):
-		if e.dead or unreachable.has(e.get_instance_id()):
+		if not _valid(e) or unreachable.has(e.get_instance_id()):
 			continue
 		var awake: bool = e.aggro or e.global_position.distance_to(mp) < 6.0
 		if not awake and not (master.mark_t > 0.0 and e == master.mark):
@@ -515,17 +531,19 @@ func _strike(mult: float) -> void:
 	var fwd := Vector3(-sin(heading), 0, -cos(heading))
 	if to.length() > float(CFG["bite_range"]) + target.radius + radius + 0.4 or (to.length() > 0.3 and fwd.dot(to.normalized()) < 0.3):
 		return
-	if master.puppet:
-		# a partner's beast: the bite is seen, its master's own game deals it
+	if not _deals():
+		# a copy: the bite is seen, the game that decides his wolf deals it
 		Fx.burst(game.world.fx_root, target.global_position + Vector3(0, target.height, 0), Archer.HUNTER, 12, 3.0, 0.08, 0.35, true, -3.0)
 		return
 	var avg: float = (master.dmg_min + master.dmg_max) * 0.5
 	var d := (avg * 0.5 + master.level * 3.0 + 5.0) * master.dmg_mult("beast") * mult
 	if master.run != null:
 		d *= (1.0 + master.talent("wolf_dmg") / 100.0) * RunTalents.hit_mult(master, target, "beast")
-	target.take_damage(d, 0.0, global_position, 0.5 if mult > 1.2 else 0.2, false)
+	var dealt: float = target.take_damage(d, 0.0, global_position, 0.5 if mult > 1.2 else 0.2, false)
+	if master.puppet and game.net.server:
+		game.net.tell_dealt(master, target.global_position, dealt, false)      # (the number on his screen)
 	if master.talent("wolf_heal") > 0.0:
-		master.life = minf(master.max_life, master.life + master.max_life * master.talent("wolf_heal") / 100.0)
+		master.gain_life(master.max_life * master.talent("wolf_heal") / 100.0)
 	if mult > 1.2 and target.has_method("stun"):
 		target.stun(0.6)
 	# Ember Fangs (Flame): its bites set them alight; Winter Howl (Frost): its pounce chills all round where it lands
@@ -533,13 +551,15 @@ func _strike(mult: float) -> void:
 		target.ignite(d * master.talent("wolf_burn") / 100.0, 3.0)
 	if mult > 1.2 and master.talent("wolf_howl") > 0.0:
 		for e in game.enemies_near(global_position, 3.5):
-			if not e.dead:
+			if _valid(e):
 				e.chill(0.25 + 0.15 * master.talent("wolf_howl"), 2.5)
-		Fx.ring(game.world.fx_root, global_position, 3.5, Color(0.6, 0.85, 1.0), 0.45)
+		if _seen():
+			Fx.ring(game.world.fx_root, global_position, 3.5, Color(0.6, 0.85, 1.0), 0.45)
 	# it turns on the beast
 	target.taunt = self
 	target.taunt_t = 4.0
-	Fx.burst(game.world.fx_root, target.global_position + Vector3(0, target.height, 0), Archer.HUNTER, 12, 3.0, 0.08, 0.35, true, -3.0)
+	if _seen():
+		Fx.burst(game.world.fx_root, target.global_position + Vector3(0, target.height, 0), Archer.HUNTER, 12, 3.0, 0.08, 0.35, true, -3.0)
 
 # ---------------------------------------------------------------- moving
 ## Toward p at pace: straight when it can see the way, along a path round things when it can't (the path
@@ -604,6 +624,8 @@ func _move(delta: float, want: Vector3) -> void:
 	rig.rotation.y = heading
 
 func _pose() -> void:
+	if not _seen():
+		return
 	var st := {"time": anim_time, "phase": phase, "move": move_amt, "hit": hit,
 		"atk": (atk_t / atk_dur) if atk_t >= 0.0 else -1.0,
 		"style": "feral_lunge" if atk_kind == "pounce" else "feral_swipe"}
@@ -654,6 +676,8 @@ static func keep(h: Hero, delta: float) -> void:
 	b.setup(h, h.game, k)
 	b.global_position = pos
 	h.beasts.append(b)
+	if not b._seen():
+		return
 	# it comes out of the mist: spirit-light rising off where it stands, a breath of pale mist round it
 	var root: Node3D = h.game.world.fx_root
 	InfernalFx.particles(root, pos + Vector3(0, 0.3, 0), {"amount": 24, "life": 1.2, "explosive": 0.8, "shape": "sphere",

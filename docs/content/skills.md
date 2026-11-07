@@ -35,8 +35,9 @@ The Archer is the example to copy. Most other heroes still keep every skill in o
   `update` and `hit` are the rules, and they only ever run where the hits are decided; whatever the rules show
   (a sigil blowing) the server sends to every game. A hero's class joins `ServerRules.CLASSES` once its skills work
   this way.
-- Every one of his skills has its folder now. His wolf (`companion/spirit_beast.gd`) is a summon with its own brain,
-  and each game runs its own copy; it isn't split into rules and look yet.
+- Every one of his skills has its folder now. His wolf (`companion/spirit_beast.gd`) is a summon with its own brain:
+  every game runs a copy so it's seen, and only the one where his hits are decided bites and can be hurt
+  (`SpiritBeast._deals`).
 
 ## Designing a skill
 

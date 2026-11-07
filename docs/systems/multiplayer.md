@@ -52,7 +52,7 @@ sequenceDiagram
 
 The lobby service never runs the game: it starts one process per match and hands out tickets. The match server
 learns who a player is only from a ticket. The server keeps a copy of each player's build that their game sends it
-(`ServerRules.send_build`), but the player's game still makes the picks, so the server doesn't own the build yet.
+(`ServerRules.client_tick` → `Net.send_build`), but the player's game still makes the picks, so the server doesn't own the build yet.
 
 ## Rules
 

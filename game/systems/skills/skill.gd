@@ -44,9 +44,10 @@ func made(_kind: String, _data: Dictionary) -> void:
 func server_ok(_kind: String, _data: Dictionary) -> bool:
 	return true
 
-## A foe its rules may strike: alive, and not its own player's stand-in (the server keeps one for every player).
+## A foe its rules may strike: alive, and not a stand-in for its own player or their side (the server keeps one for
+## every player: ServerRules.friend).
 func foe(e) -> bool:
-	return not e.dead and not (int(e.get("pvp_pid")) > 0 and int(e.pvp_pid) == hero.peer_id)
+	return not e.dead and not ServerRules.friend(hero, e)
 
 ## Checks before the mana and the cooldown are spent (shows its own message on false).
 func can_cast(_aim: Vector3) -> bool:
