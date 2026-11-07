@@ -61,7 +61,7 @@ func _run() -> void:
 	var camps: Array = CA.all(g.world).duplicate()
 	var start: Vector3 = h.global_position
 	camps.sort_custom(func(x, y): return int(x["tier"]) * 1000 + Vector2(x["pos"].x - start.x, x["pos"].z - start.z).length() < int(y["tier"]) * 1000 + Vector2(y["pos"].x - start.x, y["pos"].z - start.z).length())
-	var brain = load("res://scripts/bot_brain.gd").new()
+	var brain = load("res://game/maps/arena/bot_brain.gd").new()
 	var falls := 0
 	var t_total := 0.0
 	for c in camps:
