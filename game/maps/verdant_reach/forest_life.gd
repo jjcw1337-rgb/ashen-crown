@@ -209,8 +209,8 @@ static func _mushrooms(w: World, rng: RandomNumberGenerator, k: float) -> void:
 		else:
 			var s := rng.randf_range(0.28, 0.5)
 			brown.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s), Vector3(p.x, y - BgForest.FUNGUS_SINK * s, p.y)))
-	_meshy_mm(w, "res://assets/models/bg/mushrooms.glb", blue, 0.0)
-	_meshy_mm(w, "res://assets/models/bg/fungus.glb", brown, 0.0)
+	_meshy_mm(w, "res://game/maps/verdant_reach/props/mushrooms.glb", blue, 0.0)
+	_meshy_mm(w, "res://game/maps/verdant_reach/props/fungus.glb", brown, 0.0)
 
 ## A Meshy model's first mesh instanced over `xforms` (World.mm_chunked, no shadows), its material given a glow.
 static func _meshy_mm(w: World, path: String, xforms: Array, glow: float) -> void:
@@ -435,7 +435,7 @@ static func _shrines(w: World, rng: RandomNumberGenerator, node: ForestLife) -> 
 		w.props_root.add_child(l)
 	if not rock.is_empty():
 		w.mm_chunked(rock[0], Props.seat(stones, rock[3], false), true, 32.0, 90.0, rock[1])
-	_meshy_mm(w, "res://assets/models/bg/mushrooms.glb", ring, 0.22)
+	_meshy_mm(w, "res://game/maps/verdant_reach/props/mushrooms.glb", ring, 0.22)
 
 ## The crystal's own painting, its runes and cracks lit (the waypoint's crystal glows the same way).
 static func _glow_crystal(mi: MeshInstance3D) -> void:

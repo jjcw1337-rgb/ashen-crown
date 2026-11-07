@@ -1,7 +1,7 @@
 extends SceneTree
 ## Battlegrounds (battlegrounds.gd), the Verdant Reach, two processes on this machine:
-##   godot --headless --path . -s tools/bg_test.gd -- --server --port 24611 --raid-fast server
-##   godot --headless --path . -s tools/bg_test.gd -- client 24611 [addr <host>] [cloud <nakama url> <server key>]
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_test.gd -- --server --port 24611 --raid-fast server
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_test.gd -- client 24611 [addr <host>] [cloud <nakama url> <server key>]
 ## The client makes a real character (in a scratch character folder) and enters the forest with a fresh run character
 ## of its class (RunBuild, level 0: the multiplayer overhaul; the saved character is never touched), kills a monster,
 ## loots a chest, picks up what fits and swaps a piece of gear through the host (the old piece left on the ground),
@@ -78,14 +78,14 @@ func _server() -> void:
 	check(mons.call() >= 10, "%d monsters in the forest" % mons.call())
 	var e0 = g.world.enemies_root.get_child(0)
 	# (the Verdant Reach's camps are tuned by tier, Camps.MON_LEVEL: a tier III monster tougher than a tier I one)
-	var CA2 = load("res://scripts/camps.gd")
+	var CA2 = load("res://game/maps/verdant_reach/camps.gd")
 	var t1: Array = CA2.all(g.world).filter(func(c): return int(c["tier"]) == 1)
 	var t3: Array = CA2.all(g.world).filter(func(c): return int(c["tier"]) == 3)
 	var lv := func(c): return g.world.enemies_root.get_children().filter(func(e): return e is Enemy and e.pack_id == int(c["pack"])).map(func(e): return e.level).max()
 	check(not t1.is_empty() and not t3.is_empty() and int(lv.call(t3[0])) > int(lv.call(t1[0])), "deeper camps are tougher (tier I level %d, tier III %d)" % [int(lv.call(t1[0])), int(lv.call(t3[0]))])
 	check(g.world.enemies_root.get_children().any(func(e): return e.kind == "ice_troll") and g.world.enemies_root.get_children().any(func(e): return e.kind == "hermit"), "Hrimgar and Mossbeard in their halls")
 	# the Verdant Reach (BgForest): four portals at its edges, sixteen camps whose chests are sealed, no gates
-	var camps: Array = load("res://scripts/camps.gd").all(g.world)
+	var camps: Array = load("res://game/maps/verdant_reach/camps.gd").all(g.world)
 	check(Battlegrounds.portal_list(g.world).size() == 4, "four candidate portals at the forest's edges")
 	check(camps.size() >= 12 and camps.all(func(c): return g.chest_sealed(c["chest_node"])), "%d camps, every chest sealed while its camp stands" % camps.size())
 	check(camps.filter(func(c): return int(c["tier"]) == 4).size() == 2, "two boss camps")

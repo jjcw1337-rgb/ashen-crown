@@ -17,7 +17,7 @@ How a match gets here: the lobby service starts a match server with `--match-con
 loads the mode's script from this folder and the zone; players join with their lobby ticket.
 
 Still borrowed from outside, to go when their homes exist:
-- `arena_match.gd` extends `Battlegrounds` (`scripts/battlegrounds.gd`) for the server's PvP checks (`pvp_pair`,
+- `arena_match.gd` extends `Battlegrounds` (`game/maps/verdant_reach/battlegrounds.gd`) for the server's PvP checks (`pvp_pair`,
   statuses, breakable things). Those move to `systems/` with the damage and effect system
   (docs/architecture_cleanup.md, step 3).
 - The Arena's state on the client (`Game.arena_mode`, `arena_state`, `Net.cl_arena_state`/`cl_arena_reset`, its HUD in

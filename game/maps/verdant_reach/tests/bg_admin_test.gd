@@ -1,8 +1,8 @@
 extends SceneTree
 ## The admin role on the Battlegrounds server (Blaine's progression overhaul: "enforce authorization on the server"):
 ## "Go to level 20" gear (items marked "boost") is for admins only. Two processes:
-##   godot --headless --path . -s tools/bg_admin_test.gd -- --server --port 24661 server
-##   godot --headless --path . -s tools/bg_admin_test.gd -- client 24661
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_admin_test.gd -- --server --port 24661 server
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_admin_test.gd -- client 24661
 ## The client goes in with a character in boosted gear and is turned away ("boosted"); then its per-PC id is put on
 ## the server's admin list (user://bg_server/admins.json, the stand-in for Nakama's role without Nakama) and it goes
 ## in and stays. Then it uses the admin's raid controls (Start the raid, Open portals, Restart round: the raid ends on

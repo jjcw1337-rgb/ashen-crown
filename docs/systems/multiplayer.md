@@ -77,5 +77,5 @@ the server doesn't own a player's build yet.
 ## Deploying and testing
 
 - Deploys are by hand: `deploy/staging/README.md` has the commands, logs and setup. Announce restarts in Discord.
-- Pair tests start a server and players: `tools/bg_test.gd`, `tools/bg_pvp_test.gd` ([builds](../pipeline/builds.md)).
+- Pair tests start a server and players: `game/maps/verdant_reach/tests/bg_test.gd`, `game/maps/verdant_reach/tests/bg_pvp_test.gd` ([builds](../pipeline/builds.md)).
   The lobby service has `python3 -m unittest discover -s deploy/lobbies`.

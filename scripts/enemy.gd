@@ -899,7 +899,7 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 		# a thing that grows rather than walks (the hermit's mushrooms): a Meshy prop, pulsing (pose_rig)
 		var pr := Node3D.new()
 		pr.set_meta("static_prop", true)
-		var pp := "res://assets/models/bg/%s.glb" % str(d["prop"])
+		var pp := "res://game/maps/verdant_reach/props/%s.glb" % str(d["prop"])
 		var m: Node3D = (load(pp) as PackedScene).instantiate() if ResourceLoader.exists(pp) else null
 		if m == null:
 			m = Models.crawler(look)

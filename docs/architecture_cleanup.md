@@ -120,7 +120,7 @@ Touch points to coordinate:
 - **Claude-1: the world side.**
   - Tasks: the cuts (the old crypt, Act II, Act I's story, the co-op server; archiving sailing and the Last Flame;
     see "Cutting an old system") and the loading overhaul.
-  - Owns: `world.gd`, `forest_camp.gd`, `bg_forest.gd`, `camps.gd`, `battlegrounds.gd`, `res_cache.gd`, the
+  - Owns: `world.gd`, `forest_camp.gd`, `game/maps/**`, `res_cache.gd`, the
     preload and warm-up lists, every zone builder, and the files of everything being cut.
 - **Claude-2: the hero side.**
   - Tasks: every hero into its folder, the per-skill split (the Archer first, as the template), the shared effects
@@ -137,7 +137,8 @@ Touch points to coordinate:
 
 - Claude-2: the Archer, end to end (`game/heroes/archer/**`, `game/systems/**`, plus the Archer's places in `hero.gd`,
   `class_skills.gd`, `skill_fx.gd` and `run_talents.gd`).
-- Claude-1: the Verdant Reach into `game/maps/verdant_reach/` (`bg_forest.gd`, `camps.gd`, `forest_life.gd`, its props).
+- Claude-1: the monsters into `game/monsters/<name>/` (the Verdant Reach's first; King Grubb as a boss any camp can
+  use), then the remaining cuts (Act II, the moor and fort, sailing and the Last Flame to `archive/`).
 
 ## Cutting an old system
 
@@ -185,19 +186,18 @@ Do one old system per push.
 ### What the live game still borrows
 
 Known borrowings (2026-11-06; check again with `git grep` before each cut):
-- **The Verdant Reach** (`bg_forest.gd`) uses models from:
+- **The Verdant Reach** (`game/maps/verdant_reach/`) uses models from:
   - Act II: `models/roman/` arch, broken, column, drum (its ruins);
   - Grubb's fort: `models/fort/tower`;
   - the Sloths' lairs: `models/lairs/ice_rock`, plus the frost floor texture `SlothLair._ground_tex("cold")`;
   - the camp: `models/camp/` tent and runestone;
   - the waypoint: `models/waypoint/` banner and crystal_rune;
-  - `models/bg/` mushrooms, fungus, brambles, ice_crystals, frozen_pillar (made for the old crypt's floors).
 
   These move to `game/maps/verdant_reach/props/`.
 - **Monsters:** the forest camps use Act I monsters (zombies, the three Fallen, the Feral, the bear, the goblin
   guard).
   - All of them are built on `Goblin.imported_rig` (`goblin.gd`, King Grubb's file). It goes to `game/systems/bodies/`.
-  - The Poison Mushroom's body is `models/bg/fungus` (`Enemy`, its `"prop"`).
+  - The Poison Mushroom's body is the forest's `props/fungus` (`Enemy`, its `"prop"`).
 - **The archer's wolf** runs on `lion.gd` (the Act II arena lion's skeleton and pose).
 - **Every camp chest** is built by `World._chest` (`world.gd`).
 - **`World.crypt_shell`** and its pillar, bones and sconce (`ArenaProps`) are used by the Last Flame (`vigil.gd`) and
@@ -220,5 +220,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [x] The old crypt Battlegrounds cut (its map, floors below, antechamber gates, bells, stash daises and the stash's
   slow); its models in `archive/hollow_crypt/`. The old raid page, server screen, raids on the clock and the
   waypoint's walk down go too: the lobby browser is the only way in (2026-11-06).
+- [x] Maps: the Verdant Reach is `game/maps/verdant_reach/` (its builder, camps, life, the Battlegrounds' rules,
+  the bosses' brains, props, tests; 2026-11-06).
 - [x] Maps: the Arena is `game/maps/arena/` (the template for every map: its map, props, modes, tests, README;
   2026-11-06).

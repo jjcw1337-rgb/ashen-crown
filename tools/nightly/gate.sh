@@ -27,34 +27,35 @@ check() {  # name, log, finished-in-time
   fi
 }
 
-for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test run_build_test camp_test survivor_test; do
+for t in playtest coop_fx_test title_test char_test ui_click_test grass_test intro_skip_test controls_test telemetry_test screen_test skill_spec_test stamina_test run_build_test survivor_test; do
   "$G" --headless --path . -s tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
-for f in game/heroes/archer/tests/archer_test.gd game/heroes/plague/tests/plague_test.gd tools/warlock_hex_test.gd; do
+for f in game/heroes/archer/tests/archer_test.gd game/heroes/plague/tests/plague_test.gd tools/warlock_hex_test.gd game/maps/verdant_reach/tests/camp_test.gd; do
   t=$(basename "$f" .gd)
   "$G" --headless --path . --fixed-fps 60 -s "$f" > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 # the camp's people and the island (they reach the Sfx autoload: run late)
-for t in camp_life_test vendor_test guard_test codex_test codex_book_test camp_reach_test; do
-  "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/$t.gd > "$OUT/gate_$t.log" 2>&1 & p=$!
+for f in tools/camp_life_test.gd tools/vendor_test.gd tools/guard_test.gd tools/codex_test.gd tools/codex_book_test.gd game/maps/verdant_reach/tests/camp_reach_test.gd; do
+  t=$(basename "$f" .gd)
+  "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://$f > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 
 # the Battlegrounds pair
-"$G" --headless --path . -s tools/bg_test.gd -- --server --port 24631 --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
+"$G" --headless --path . -s game/maps/verdant_reach/tests/bg_test.gd -- --server --port 24631 --raid-fast server > "$OUT/gate_bg_server.log" 2>&1 & s=$!
 sleep 6
-"$G" --headless --path . -s tools/bg_test.gd -- client 24631 > "$OUT/gate_bg_client.log" 2>&1 & c=$!
+"$G" --headless --path . -s game/maps/verdant_reach/tests/bg_test.gd -- client 24631 > "$OUT/gate_bg_client.log" 2>&1 & c=$!
 waitfor $c 420; rc=$?; waitfor $s 200
 check bg_test_server "$OUT/gate_bg_server.log" 0
 check bg_test_client "$OUT/gate_bg_client.log" $rc
 
 # Battlegrounds PvP: a server and two players
-"$G" --headless --path . -s tools/bg_pvp_test.gd -- --server --port 24641 --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
+"$G" --headless --path . -s game/maps/verdant_reach/tests/bg_pvp_test.gd -- --server --port 24641 --raid-fast server > "$OUT/gate_pvp_server.log" 2>&1 & s=$!
 sleep 6
-"$G" --headless --path . -s tools/bg_pvp_test.gd -- a 24641 > "$OUT/gate_pvp_a.log" 2>&1 & a=$!
-"$G" --headless --path . -s tools/bg_pvp_test.gd -- b 24641 > "$OUT/gate_pvp_b.log" 2>&1 & b=$!
+"$G" --headless --path . -s game/maps/verdant_reach/tests/bg_pvp_test.gd -- a 24641 > "$OUT/gate_pvp_a.log" 2>&1 & a=$!
+"$G" --headless --path . -s game/maps/verdant_reach/tests/bg_pvp_test.gd -- b 24641 > "$OUT/gate_pvp_b.log" 2>&1 & b=$!
 waitfor $s 300; rc=$?; waitfor $a 30; waitfor $b 30
 check pvp_server "$OUT/gate_pvp_server.log" $rc
 check pvp_attacker "$OUT/gate_pvp_a.log" 0

@@ -14,7 +14,7 @@ extends Node
 ## skill, swing, arrow and burn that can hit a monster can hit a player; its take_damage sends Net.sv_pvp_hit, the
 ## server scales it (PVP_MULT) and deals it to that player. A death drops what they carried where they fell
 ## (Net.sv_bg_died).
-## Tests: tools/bg_test.gd (server + client), tools/bg_pvp_test.gd (server + two players); `--raid-fast` runs the round
+## Tests: game/maps/verdant_reach/tests/bg_test.gd (server + client), game/maps/verdant_reach/tests/bg_pvp_test.gd (server + two players); `--raid-fast` runs the round
 ## eight times faster.
 
 const ZONE := "bg"
