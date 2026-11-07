@@ -294,7 +294,7 @@ func _run() -> void:
 		h.cds[k] = 0.0
 	check(h.use_skill("wrath", home), "Wrath of the Pit cast")
 	check(sk(h, "wrath").holding(), "the Crucible holds him")
-	await wait(0.4)
+	await wait(0.5)      # (past the least a recast needs: its "min" 0.35 s at his pace, 0.42 s)
 	g.test_immortal = false
 	h.life = h.max_life
 	var lb: float = h.life
