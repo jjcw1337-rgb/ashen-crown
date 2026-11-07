@@ -6,8 +6,8 @@ const CELL := 1.0
 const MARGIN := 30.0
 
 var act := 0
-var oak_forest := false     # Act I moor: oak groves and an oak forest beyond the edges
-var living_grass := false   # the living 3D grass (Grass): Act I in its colours, A2 and A3 in the zone's (A3's ash chars it)
+var oak_forest := false     # Act I's old forest (the camp, the Verdant Reach): its grass, leaf litter and birds
+var living_grass := false   # the living 3D grass (Grass) in the zone's own colours where oak_forest is off
 var kind := "town"
 var level := 1
 var rng := RandomNumberGenerator.new()
@@ -23,7 +23,7 @@ var astar: AStarGrid2D
 var hnoise := FastNoiseLite.new()
 var hill_noise := FastNoiseLite.new()
 var flat_floor := false
-## Extra ground shaping for a zone (Fort: the ditch and rampart): f(x, z) -> metres added to the height.
+## Extra ground shaping for a zone (the Verdant Reach's ridges and stream): f(x, z) -> metres added to the height.
 var ground_fn := Callable()
 ## The camp as an island adrift in space (ForestCamp.ISLAND, camp_island.gd): nothing grows or stands past its edge,
 ## a jagged circle round island_c of radius island_r (0 = no island).
@@ -49,30 +49,18 @@ func island_clip(x: float, z: float, y: float) -> Vector3:
 		return Vector3(x, y, z)
 	var q := island_c + d.normalized() * e
 	return Vector3(q.x, y - 0.25, q.y)
-## Act I: the lair is King Grubb's goblin fort (fort.gd) and the moor's road ends at its trail.
-var fort := false
-## Which run (Game.difficulty) this zone is for: A2 (1) has its own wild zone (via.gd) and lair (aurelia.gd).
-var run := 0
 var dirt_blobs: Array = []     # [Vector2 pos, radius, strength]
 var cobble_blobs: Array = []
 var dirt_lines: Array = []     # [Vector2 a, Vector2 b, width]
 var cobble_lines: Array = []   # [Vector2 a, Vector2 b, width] (paved roads)
-## Side trails off the moor's road (to landmarks); path_dist counts them too.
+## Trails through the zone (the Verdant Reach's paths); path_dist counts them too.
 var trails: Array = []         # PackedVector2Array each
 var obstacles: Array = []      # [Vector2 pos, radius]
 var spawns := {}
-## Places that burn in A3: [position, size]. Recorded while building; only used for looks.
-var burn_points: Array = []
 var enemy_spawns: Array = []
-## Act I: the Hollow Sloths' lairs (sloth_lair.gd), picked before the trees so they stay clear
-var sloth_lairs: Array = []
 var tree_pts := PackedVector2Array()   # trunk positions (x, z) of the zone's trees, for the undergrowth (Grass)
 var _tree_grid := {}                   # Vector2i (4 m cell) -> trees in it
 var _grass_dry := FastNoiseLite.new()
-var boss_spawn := {}
-## Hidden enemies that appear when a hero comes near (Via's bandit ambush; Game._check_ambushes):
-## [{pos: Vector3, radius, spawns: [spawn entries], done, land: Vector3}]
-var ambushes: Array = []
 var interactables: Array = []
 var exits: Array = []          # [{pos: Vector3, radius, to: String, label}]
 var props_root: Node3D
@@ -81,7 +69,6 @@ var items_root: Node3D
 var fx_root: Node3D
 var stone_xf: Array = []
 var rock_xf := {}               # variant -> Array of transforms
-var kerb_xf: Array = []         # the Meshy kerbstones along the old roads (World.kerb)
 var theme := {}
 ## Tools can stage their own zone: kind -> Callable(world) built instead of the game's (game/heroes/archer/tools/fire_range.gd's test range).
 static var custom_zones := {}
@@ -612,8 +599,8 @@ func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", flo
 ## Grass, wildflowers and ferns use their own random numbers so a denser graphics setting
 ## never shifts anything gameplay-related (co-op players can use different settings).
 func _scatter_grass(count: int, colors: Dictionary, height: float, outside := true) -> void:
-	# The living 3D grass (grass.gd): species and biomes, wind and touch; Act I in its own colours, A2 and A3 in the
-	# zone's (they were the old blade clumps: 15 M triangles on the Imperial Road; A3's ash chars it in the shader)
+	# The living 3D grass (grass.gd): species and biomes, wind and touch; Act I's forest in its own colours, any other
+	# zone in its own
 	if oak_forest or living_grass:
 		var a := bounds.grow(MARGIN * 0.6 if outside else 0.0)
 		_grass_dry.seed = int(bounds.size.x * 31.0) + count
@@ -639,8 +626,6 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 		if n2.get_noise_2d(x, z) < -0.35 and rng.randf() < 0.7:
 			continue
 		if bounds.grow(-1.2).has_point(Vector2(x, z)) and is_blocked(x, z):
-			continue
-		if _in_lair(x, z, 0.8):
 			continue
 		var y := height_at(x, z)
 		var s := rng.randf_range(0.7, 1.35) * (1.0 - dm * 0.6)
@@ -699,7 +684,7 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 			mmi.add_to_group("grass")
 
 ## Grass (grass.gd) asks the zone three things about a spot. How much grass can grow (0 bare .. 1 full):
-## none on the road, under solid things or in a Sloth's clearing, thinning toward the edges of paths.
+## none on the road or under solid things, thinning toward the edges of paths.
 func grass_ground(x: float, z: float) -> float:
 	if island_r > 0.0 and off_island(x, z, 0.6):
 		return 0.0
@@ -708,19 +693,13 @@ func grass_ground(x: float, z: float) -> float:
 		return 0.0
 	if bounds.grow(-1.2).has_point(Vector2(x, z)) and is_blocked(x, z):
 		return 0.0
-	if _in_lair(x, z, 0.8):
-		return 0.0
-	var g := clampf(1.0 - dm * 1.6, 0.0, 1.0)
-	if _in_lair(x, z, 1.1):
-		g *= 0.4
-	return g
+	return clampf(1.0 - dm * 1.6, 0.0, 1.0)
 
 func grass_height(x: float, z: float) -> float:
 	return height_at(x, z)
 
 ## Biome weights (Grass.BIOMES): meadow by default, sparse verges along paths, undergrowth among the
-## trees, dry patches drifting across the moor and round the Sloths' clearings, the fort's trodden ground
-## and the camp's.
+## trees, dry patches drifting across the ground, and the camp's trodden ground.
 func grass_biome(x: float, z: float) -> Dictionary:
 	if _tree_grid.is_empty() and tree_pts.size() > 0:
 		for p in tree_pts:
@@ -735,122 +714,8 @@ func grass_biome(x: float, z: float) -> Dictionary:
 			trees += int(_tree_grid.get(Vector2i(cx + i, cz + j), 0))
 	var wood := clampf((trees - 0.5) / 3.0, 0.0, 1.0)
 	var dry := smoothstep(0.2, 0.55, _grass_dry.get_noise_2d(x, z)) * 0.7
-	for l in sloth_lairs:
-		var d := Vector2(x, z).distance_to(Vector2(l.x, l.z))
-		dry = maxf(dry, 1.0 - smoothstep(SlothLair.CLEAR, SlothLair.CLEAR * 2.2, d))
-	if fort:
-		dry = maxf(dry, 0.35)
-	if run == 1:
-		dry = maxf(dry, 0.45)      # A2's summer: the meadows sun-dried
-	var trod := 0.6 if kind == "town" else (0.3 if fort else 0.0)
+	var trod := 0.6 if kind == "town" else 0.0
 	return {"meadow": maxf(0.1, 1.0 - verge * 0.8 - wood * 0.75 - dry * 0.7 - trod * 0.6), "verge": verge, "woodland": wood, "dry": dry, "trampled": trod}
-
-## Act I: packs of Ferals (feral.gd) clinging to oak trunks in the forest, well off the road: three
-## packs of three or four, each Feral on its own oak, waiting head-down for someone to wander close.
-## Their own seed, so the rest of the moor doesn't change around them.
-func _feral_packs(groups: Dictionary, pid: int) -> void:
-	var oaks := []
-	for key in ["oak0", "oak1", "oak2"]:
-		for t in groups.get(key, []):
-			var o: Vector3 = (t as Transform3D).origin
-			var d := path_dist(o.x, o.z)
-			if bounds.grow(-3.0).has_point(Vector2(o.x, o.z)) and d > 11.0 and d < 34.0 and Vector2(o.x, o.z).distance_to(Vector2(0, -6)) > 30.0:
-				oaks.append(t)
-	var r := RandomNumberGenerator.new()
-	r.seed = int(bounds.size.y * 1000.0) + 4242
-	var centres := []
-	for tries in 200:
-		if centres.size() >= 3 or oaks.is_empty():
-			break
-		var c: Transform3D = oaks[r.randi() % oaks.size()]
-		if centres.any(func(q: Vector3) -> bool: return q.distance_to(c.origin) < 35.0):
-			continue
-		centres.append(c.origin)
-		var n := r.randi_range(3, 4)
-		var near := oaks.filter(func(t: Transform3D) -> bool: return t.origin.distance_to(c.origin) < 14.0)
-		near.shuffle()
-		# a big oak can hold two of them
-		while near.size() < n:
-			near.append(near[r.randi() % near.size()])
-		for t in near.slice(0, n):
-			var o: Vector3 = (t as Transform3D).origin
-			# on a random side of the trunk
-			var a := r.randf() * TAU
-			var out := Vector3(cos(a), 0, sin(a))
-			var trunk := 0.45 * (t as Transform3D).basis.get_scale().x
-			enemy_spawns.append({"kind": "feral", "pos": o + out * trunk, "count": 1, "champ": false, "pack": 500 + pid + centres.size(),
-				"level": level + 1, "perch": [o.x, o.z]})
-
-## Act I: the Forsaken Bears (bear.gd), each a lone wanderer 20-40 m off the road, well apart, clear of the
-## camp's gate (the start) and the fort's end of the moor. Their own seed, so nothing else moves.
-func _bear_dens(count: int, lair: Vector2) -> void:
-	var r := RandomNumberGenerator.new()
-	r.seed = int(bounds.size.y * 1000.0) + 9311
-	var placed := []
-	var start: Vector3 = Vector3(0, 0, -6)
-	for tries in 600:
-		if placed.size() >= count:
-			break
-		var x := r.randf_range(bounds.position.x + 6.0, bounds.end.x - 6.0)
-		var z := r.randf_range(bounds.position.y + 6.0, bounds.end.y - 6.0)
-		var d := path_dist(x, z)
-		if d < 20.0 or d > 40.0 or is_blocked(x, z) or is_near_obstacle(Vector3(x, 0, z), 2.0):
-			continue
-		var p := Vector3(x, 0, z)
-		if p.distance_to(start) < 45.0 or Vector2(x, z).distance_to(lair) < 40.0:
-			continue
-		if placed.any(func(q: Vector3) -> bool: return q.distance_to(p) < 60.0):
-			continue
-		placed.append(p)
-		enemy_spawns.append({"kind": "bear", "pos": p, "count": 1, "champ": false, "pack": 900 + placed.size(), "level": level + 2})
-
-## Act I: the three Hollow Sloths (sloth.gd: fire, ice, lightning), each in its own lair (sloth_lair.gd),
-## a clearing far off the road dressed for its element, where it lives and wanders.
-func _sloths() -> void:
-	var kinds := ["sloth_fire", "sloth_ice", "sloth_storm"]
-	for i in sloth_lairs.size():
-		var p: Vector3 = sloth_lairs[i]
-		SlothLair.make(self, p, Data.ENEMIES[kinds[i]]["element"])
-		enemy_spawns.append({"kind": kinds[i], "pos": p, "count": 1, "champ": false, "pack": 800 + i, "level": level + 2, "lair": true})
-
-## Inside a Hollow Sloth's clearing (no trees there; k shrinks it, so the grass thins in at its edge).
-func _in_lair(x: float, z: float, k := 1.0) -> bool:
-	for l in sloth_lairs:
-		if Vector2(x, z).distance_to(Vector2(l.x, l.z)) < SlothLair.CLEAR * k:
-			return true
-	return false
-
-## Act I: a few rare Sunstar Blooms off the road, in among the trees. Picking one gives +50% experience
-## for 5 minutes (Game.use_inter). Their own seed, so the rest of the moor doesn't change around them.
-func _rare_flowers(count: int) -> void:
-	var r := RandomNumberGenerator.new()
-	r.seed = int(bounds.size.y * 1000.0) + 7717
-	var placed := []
-	var tries := 400
-	while placed.size() < count and tries > 0:
-		tries -= 1
-		var x := r.randf_range(bounds.position.x + 4.0, bounds.end.x - 4.0)
-		var z := r.randf_range(bounds.position.y + 4.0, bounds.end.y - 4.0)
-		var d := path_dist(x, z)
-		if d < 14.0 or d > 34.0 or is_blocked(x, z) or is_near_obstacle(Vector3(x, 0, z), 1.2):
-			continue
-		var p := Vector3(x, 0, z)
-		if p.distance_to(spawns.get("start", Vector3.ZERO)) < 25.0 or placed.any(func(q: Vector3) -> bool: return q.distance_to(p) < 40.0):
-			continue
-		placed.append(p)
-		var g := Node3D.new()
-		var card := MeshInstance3D.new()
-		card.mesh = Flora.flower_card()
-		card.name = "bloom"
-		g.add_child(card)
-		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.78, 0.35)
-		l.light_energy = 1.5
-		l.omni_range = 4.5
-		l.position = Vector3(0, 0.7, 0)
-		l.name = "light"
-		g.add_child(l)
-		_inter("flower", "Sunstar Bloom", p, 1.2, g)
 
 ## Ferns gather in the shade along the forest edges and between trees.
 func _scatter_ferns(count: int) -> void:
@@ -869,7 +734,7 @@ func _scatter_ferns(count: int) -> void:
 		var inside := bounds.grow(-1.5).has_point(Vector2(x, z))
 		if inside and (is_blocked(x, z) or rng.randf() < 0.6):
 			continue
-		if _in_lair(x, z, 0.85) or off_island(x, z, 1.0):
+		if off_island(x, z, 1.0):
 			continue
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35)), Vector3(x, height_at(x, z) - 0.03, z)))
 	var parts := [[], []]
@@ -892,22 +757,6 @@ func _flush_stones(mat: Material) -> void:
 			mm_chunked(Props.rock_mesh(v, 0.38), rock_xf[v], true, 32.0, 0.0, Props.stone())
 		else:
 			mm_chunked(b[0], Props.seat(rock_xf[v], b[3]), true, 32.0, 0.0, b[1])
-	if not kerb_xf.is_empty():
-		var k := Props.meshy_rock("kerb")
-		mm_chunked(k[0], Props.seat(kerb_xf, k[3], false), true, 32.0, 0.0, k[1])
-
-## A kerbstone beside an old road (the moor's kingsroad, the Imperial Road), at kp, turned to yaw, kh/kl its height and
-## length factors: the Meshy kerb laid along the road (`kerb_xf`), or without it the procedural rock squashed into one
-## (`rock_xf` variant v, `kw` wide: the old look). The callers draw v, yaw, kh and kl from the zone's rng in the same
-## order as before, so nothing after them moves.
-func kerb(v: int, kp: Vector2, yaw: float, kh: float, kl: float, kw: float) -> void:
-	var y := height_at(kp.x, kp.y) + 0.02
-	if not Props.meshy_rock("kerb").is_empty():
-		kerb_xf.append(Transform3D(Basis(Vector3.UP, yaw) * Basis.from_scale(Vector3(1.0, kh / 0.32, kl)), Vector3(kp.x, y, kp.y)))
-		return
-	if not rock_xf.has(v):
-		rock_xf[v] = []
-	rock_xf[v].append(Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3(kw, kh, kl)), Vector3(kp.x, y, kp.y)))
 
 func _rock(p: Vector3, s: float, collide := true) -> void:
 	var v := rng.randi_range(0, 7)
@@ -976,24 +825,7 @@ func _inter(kind_s: String, label_s: String, p: Vector3, radius: float, model: N
 	interactables.append(it)
 	return it
 
-func _npc(label_s: String, look: Dictionary, p: Vector3, role: String, yaw := 0.0) -> Inter:
-	var rig := Models.humanoid(look)
-	var it := _inter("vendor", label_s, p, 1.4, null, {"role": role, "offset": rng.randf() * 9.0})
-	it.set_meta("look", look)
-	it.add_child(rig)
-	rig.rotation.y = yaw
-	it.rig = rig
-	add_circle(p, 0.45)
-	return it
-
 # ---------------------------------------------------------------- zone builders
-## This act's names, boss and foes for this zone's run (Data.act_info).
-func act_info() -> Dictionary:
-	return Data.act_info(act, run)
-
-func act_name(key: String) -> String:
-	return str(act_info()[key])
-
 func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	act = act_i
 	kind = kind_s
@@ -1010,240 +842,17 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	match kind:
 		Battlegrounds.ZONE: Battlegrounds.build(self)
 		Sandbox.ZONE, "arena": ArenaMap.build(self)
-		"town": _build_town()
-		"wild": Via.build(self) if run == 1 else _build_wild()
-		"lair":
-			if run == 1:
-				Aurelia.build(self)
-			elif fort:
-				Fort.build(self)
-			else:
-				_build_lair()
+		"town": ForestCamp.build(self)
 	# the Meshy pieces that keep their glb's own material dither away round the hero too, like every code-built prop
 	Props.see_through(self)
 	Props.shadow_twins(self)
 
+## Act I's green ground and grass (the archer's fire range, the grass and flora tools).
 const MOOR_TERRAIN := {
 	"col_a": Color(0.15, 0.2, 0.08), "col_b": Color(0.21, 0.23, 0.11), "col_accent": Color(0.28, 0.3, 0.13),
 	"col_path": Color(0.25, 0.21, 0.16), "col_cliff": Color(0.3, 0.3, 0.28), "wet": 0.3,
 }
 const MOOR_GRASS := {"base_col": Color(0.12, 0.16, 0.06), "tip_col": Color(0.27, 0.32, 0.13), "dry_col": Color(0.36, 0.35, 0.18), "wind": 1.0}
-## The moor's trails (road styles 1 and 3): lighter, sandier packed earth so a narrow path reads.
-var MOOR_TRAIL: Dictionary = MOOR_TERRAIN.merged({"col_path": Color(0.4, 0.34, 0.25)}, true)
-## The kingsroad: its flagstones a shade darker than the camp's, so they sit in the moor.
-var MOOR_ROAD: Dictionary = MOOR_TERRAIN.merged({"cob_shade": 0.72}, true)
-
-func _build_town() -> void:
-	if oak_forest and act == 0 and ForestCamp.ok():
-		ForestCamp.build(self)      # Act I: the camp in the old forest
-		return
-	bounds = Rect2(-38, -42, 76, 80)
-	theme = {"name": "town"}
-	var V: Dictionary = Data.VENDORS[act]
-	# --- worn ground
-	dirt_blobs = [
-		[Vector2(0, 0), 9.0, 1.0], [Vector2(-14, -11), 7.5, 1.0], [Vector2(13, -11), 7.5, 1.0],
-		[Vector2(17, 7), 6.0, 0.95], [Vector2(-17, 9), 6.0, 0.95], [Vector2(-8, 6), 4.5, 0.9],
-		[Vector2(0, -25), 5.0, 0.9], [Vector2(-25, -1), 4.0, 0.8], [Vector2(24, -21), 4.0, 0.8],
-		[Vector2(6, 16), 3.5, 0.7], [Vector2(-5, 22), 3.0, 0.6],
-	]
-	dirt_lines = [
-		[Vector2(0, 0), Vector2(0, -40), 3.0], [Vector2(0, 0), Vector2(-14, -11), 2.6], [Vector2(0, 0), Vector2(13, -11), 2.6],
-		[Vector2(0, 0), Vector2(17, 7), 2.4], [Vector2(0, 0), Vector2(-17, 9), 2.4], [Vector2(0, 0), Vector2(4, 30), 2.2],
-	]
-	cobble_blobs = [
-		[Vector2(1, -2), 4.5, 0.85], [Vector2(-1, -27), 3.0, 0.8], [Vector2(-12, -9), 2.2, 0.6],
-		[Vector2(14, -8), 2.0, 0.55], [Vector2(0.5, -36), 2.6, 0.9],
-	]
-	var wy := -36.0
-	var wx := 33.0
-	# --- dry stone wall around camp with a north gate and a broken gap
-	_wall(Vector3(-wx, 0, wy), Vector3(-3.5, 0, wy), 1.2)
-	_wall(Vector3(3.5, 0, wy), Vector3(wx, 0, wy), 1.2)
-	_wall(Vector3(-wx, 0, wy), Vector3(-wx, 0, -4), 1.1)
-	_wall(Vector3(-wx, 0, 2), Vector3(-wx, 0, 30), 1.1)
-	_wall(Vector3(wx, 0, wy), Vector3(wx, 0, 30), 1.1)
-	_wall(Vector3(-wx, 0, 30), Vector3(-6, 0, 33), 0.9)
-	_wall(Vector3(8, 0, 33), Vector3(wx, 0, 30), 0.9)
-	# gate posts
-	for gx in [-4.2, 4.2]:
-		var post := Models.N(null, "gatepost")
-		Models.seg(post, Vector3.ZERO, Vector3(0, 3.4, 0), 0.22, 0.18, Props.wood_dark(), 8)
-		_place(post, Vector3(gx, 0, wy))
-		add_circle(Vector3(gx, 0, wy), 0.3)
-	var lintel := Models.N(null, "lintel")
-	Models.seg(lintel, Vector3(-4.6, 3.2, 0), Vector3(4.6, 3.3, 0), 0.16, 0.16, Props.wood_dark(), 8)
-	_place(lintel, Vector3(0, 0, wy))
-	lintel.position.y = height_at(0, wy)
-	solid(Props.tripod_torch(props_root, Vector3(-5.5, height_at(-5.5, wy + 2.0), wy + 2.0)))
-	solid(Props.tripod_torch(props_root, Vector3(5.5, height_at(5.5, wy + 2.0), wy + 2.0)))
-	exits.append({"pos": Vector3(0, 0, wy - 3.0), "radius": 3.5, "to": "wild", "label": act_name("wild")})
-
-	# --- centre: campfire, stash, waypoint
-	var cf := solid(Props.campfire(props_root, Vector3(0, height_at(0, 0), 0)))
-	var chest := Props.stash_chest(null, Vector3.ZERO, -15.0)
-	_inter("stash", "Stash", Vector3(3.6, 0, 2.6), 1.6, chest)
-	solid(chest)
-	add_waypoint("town", Vector3(-8, 0, 6))
-	# log seats around fire
-	for i in 3:
-		var a := TAU * i / 3.0 + 0.4
-		var lg := Props.footprint(Models.N(null, "seat"), Vector2(0.25, 0.8))
-		Models.P(lg, Geo.cyl(0.22, 0.24, 1.6, 10), Props.wood(), Vector3(0, 0.2, 0), Vector3(90, 0, 0))
-		_place(lg, Vector3(cos(a) * 3.2, 0, sin(a) * 3.2))
-		lg.rotation.y = -a
-		solid(lg)
-
-	# --- alchemist's camp (reference: hide tent, pottery, tripod torches)
-	var ac := Vector2(-14, -12)
-	solid(Props.hide_tent(props_root, Vector3(ac.x, height_at(ac.x, ac.y - 1.5), ac.y - 1.5), 6.0, 3.6, 4.0, 2.6))
-	burn_points.append([Vector3(ac.x + 1.0, height_at(ac.x, ac.y - 1.5) + 1.6, ac.y - 1.5), 1.4])
-	for tp in [Vector2(-6.0, 1.5), Vector2(6.5, 0.5), Vector2(-1.5, 6.0)]:
-		var tpp := Vector3(ac.x + tp.x, 0, ac.y + tp.y)
-		solid(Props.tripod_torch(props_root, Vector3(tpp.x, height_at(tpp.x, tpp.z), tpp.z), tp.x < 0 and tp.y < 3.0))
-	var pot_spots := [
-		Vector2(-3.6, -0.6), Vector2(-3.1, 0.1), Vector2(-4.2, 0.4), Vector2(-3.5, 1.0), Vector2(-4.6, -0.3), Vector2(-2.6, 0.9),
-		Vector2(3.0, -1.6), Vector2(3.6, -1.0), Vector2(4.3, -1.7), Vector2(3.4, -0.2), Vector2(4.8, -0.6), Vector2(2.6, -0.7), Vector2(5.2, -1.4),
-		Vector2(1.4, 1.2), Vector2(-1.0, 1.6),
-	]
-	var pi := 0
-	for ps in pot_spots:
-		var pp := Vector3(ac.x + ps.x, 0, ac.y + ps.y)
-		Props.pot(props_root, Vector3(pp.x, height_at(pp.x, pp.z), pp.z), pi, rng.randf_range(0.75, 1.25))
-		pi += 1
-	add_box(Vector3(ac.x - 3.6, 0, ac.y + 0.2), Vector2(1.2, 1.0), 0.0)
-	add_box(Vector3(ac.x + 3.8, 0, ac.y - 1.0), Vector2(1.6, 0.9), 0.0)
-	var cpos := Vector3(ac.x + 4.6, 0, ac.y + 1.4)
-	solid(Props.cauldron(props_root, Vector3(cpos.x, height_at(cpos.x, cpos.z), cpos.z), Color(0.35, 0.9, 0.25)))
-	# bowls of herbs / red berries, skull on a stake
-	for i in 3:
-		var bp := Vector3(ac.x + 2.2 + i * 0.6, 0, ac.y + 0.4 + (i % 2) * 0.4)
-		var bowl := Props.pot(props_root, Vector3(bp.x, height_at(bp.x, bp.z), bp.z), 2, 0.9)
-		var fill := Mats.world(Color(0.55, 0.08, 0.06) if i != 1 else Color(0.3, 0.42, 0.14), Color(0.35, 0.05, 0.04), 0.7, 6.0, 0.0, Props.MOSS, false)
-		Models.P(bowl, Geo.sph(0.22, 10, 0.5), fill, Vector3(0, 0.06, 0), Vector3.ZERO, Vector3(1.0, 0.35, 1.0))
-	var stake := Models.N(null, "stake")
-	Models.seg(stake, Vector3.ZERO, Vector3(0, 1.5, 0), 0.04, 0.03, Props.wood_dark(), 6)
-	Models.P(stake, Geo.sph(0.12, 10), Mats.world(Color(0.8, 0.76, 0.66), Color(0.6, 0.55, 0.45), 0.7, 3.0, 0.0, Props.MOSS, false), Vector3(0, 1.58, 0), Vector3.ZERO, Vector3(0.9, 1.0, 1.1))
-	_place(stake, Vector3(ac.x + 0.8, 0, ac.y + 0.5))
-	var lumber := Models.N(null, "lumber")
-	for i in 4:
-		Models.P(lumber, Geo.box(0.12, 0.08, 1.4), Props.wood(), Vector3(i * 0.05, 0.05 + i * 0.07, i * 0.1), Vector3(0, i * 9, 0))
-	_place(lumber, Vector3(ac.x + 2.5, 0, ac.y - 3.6))
-	var alch_look := {"skin": Color(0.72, 0.56, 0.46), "cloth": Color(0.32, 0.12, 0.42), "cloth2": Color(0.14, 0.05, 0.18), "head": "hood", "eyes": Color(0.8, 0.7, 1.0), "robe": true, "height": 0.98, "bulk": 0.9}
-	alch_look.erase("eyes")
-	_npc(V["alch"], alch_look, Vector3(ac.x - 1.2, 0, ac.y + 3.2), "alch", 0.4)
-
-	# --- blacksmith's forge
-	var fc := Vector3(14, 0, -12.5)
-	Props.forge(props_root, Vector3(fc.x, height_at(fc.x, fc.z), fc.z), 0.0)
-	burn_points.append([Vector3(fc.x - 1.2, height_at(fc.x, fc.z) + 2.4, fc.z - 0.6), 1.2])
-	add_box(Vector3(fc.x, 0, fc.z - 1.5), Vector2(2.3, 0.6), 0.0)
-	add_box(Vector3(fc.x - 1.0, 0, fc.z - 1.2), Vector2(0.9, 0.7), 0.0)
-	add_circle(fc + Vector3(0.6, 0, 0.1), 0.45)
-	add_circle(fc + Vector3(1.6, 0, -0.9), 0.4)
-	add_circle(fc + Vector3(1.7, 0, 1.0), 0.45)
-	add_box(fc + Vector3(-1.4, 0, 1.3), Vector2(0.9, 0.2), 0.0)
-	for x in [-2.2, 2.2]:
-		for z in [-1.6, 1.6]:
-			add_circle(fc + Vector3(x, 0, z), 0.2)
-	_npc(V["smith"], {"skin": Color(0.7, 0.5, 0.4), "cloth": Color(0.25, 0.2, 0.17), "cloth2": Color(0.32, 0.22, 0.14), "head": "human", "hair": Color(0.1, 0.08, 0.06), "beard": Color(0.12, 0.09, 0.07), "bulk": 1.25, "belly": true}, fc + Vector3(-0.2, 0, 1.6), "smith", 0.2)
-	solid(Props.barrel(props_root, Vector3(fc.x + 3.2, height_at(fc.x + 3.2, fc.z + 2.0), fc.z + 2.0)))
-	solid(Props.log_pile(props_root, Vector3(fc.x - 3.8, height_at(fc.x - 3.8, fc.z), fc.z)))
-
-	# --- armorer's stall (east, facing the fire)
-	var arm_c := Vector3(18.5, 0, 7)
-	Props.armory(props_root, Vector3(arm_c.x, height_at(arm_c.x, arm_c.z), arm_c.z), -90.0)
-	burn_points.append([Vector3(arm_c.x + 0.8, height_at(arm_c.x, arm_c.z) + 2.2, arm_c.z + 1.0), 1.1])
-	add_box(arm_c + Vector3(0.6, 0, 0), Vector2(1.8, 2.1), PI * 0.5)
-	add_circle(arm_c + Vector3(-1.5, 0, -2.7), 0.35)
-	_npc(V["armor"], {"skin": Color(0.82, 0.66, 0.54), "cloth": Color(0.3, 0.32, 0.36), "cloth2": Color(0.22, 0.16, 0.12), "armor": Color(0.55, 0.56, 0.58), "head": "human", "hair": Color(0.75, 0.6, 0.35), "height": 0.97}, arm_c + Vector3(-2.2, 0, 0.0), "armor", -PI * 0.5)
-
-	# --- gambler's tent (south-west)
-	var gc := Vector3(-17, 0, 10)
-	Props.gamble_tent(props_root, Vector3(gc.x, height_at(gc.x, gc.z), gc.z))
-	burn_points.append([Vector3(gc.x - 0.8, height_at(gc.x, gc.z) + 2.0, gc.z - 0.8), 1.3])
-	add_circle(gc + Vector3(0, 0, -0.6), 2.3)
-	add_circle(gc + Vector3(0, 0, 1.2), 0.75)
-	_npc(V["gamble"], {"skin": Color(0.68, 0.5, 0.38), "cloth": Color(0.45, 0.32, 0.08), "cloth2": Color(0.25, 0.08, 0.06), "head": "human", "hair": Color(0.05, 0.05, 0.05), "beard": Color(0.05, 0.05, 0.05), "cape": Color(0.3, 0.06, 0.08)}, gc + Vector3(1.1, 0, 2.0), "gamble", 0.6)
-
-	# --- captain near the gate
-	_npc(V["elder"], {"skin": Color(0.76, 0.58, 0.46), "cloth": Color(0.25, 0.18, 0.14), "armor": Color(0.5, 0.48, 0.45), "head": "human", "hair": Color(0.4, 0.38, 0.36), "beard": Color(0.45, 0.42, 0.4), "cape": Color(0.35, 0.06, 0.05), "spikes": false}, Vector3(3.5, 0, -27), "elder", 0.0)
-
-	# --- tents, carts, crates, barrels, banners around the camp
-	var tents := [[Vector2(-26, -4), 80.0], [Vector2(25, -22), -120.0], [Vector2(-5, -18), 15.0], [Vector2(26, 20), -150.0], [Vector2(-25, 22), 140.0]]
-	for tdef in tents:
-		var tp2: Vector2 = tdef[0]
-		solid(Props.hide_tent(props_root, Vector3(tp2.x, height_at(tp2.x, tp2.y), tp2.y), tdef[1], rng.randf_range(2.6, 3.2), rng.randf_range(3.0, 3.6), rng.randf_range(2.0, 2.4)))
-		burn_points.append([Vector3(tp2.x, height_at(tp2.x, tp2.y) + 1.4, tp2.y), 1.25])
-	var clutter := [
-		["crate", Vector2(-7.5, -16)], ["crate", Vector2(-8.3, -15.2)], ["barrel", Vector2(-3, -16.5)], ["barrel", Vector2(-2.4, -15.8)],
-		["crate", Vector2(22, -18)], ["barrel", Vector2(22.6, -19)], ["logs", Vector2(-27, 3)], ["crate", Vector2(10, 18)],
-		["barrel", Vector2(-10, 20)], ["crate", Vector2(28, 3)], ["logs", Vector2(9, -24)], ["barrel", Vector2(-21, -12)],
-	]
-	for c in clutter:
-		var cp: Vector2 = c[1]
-		var p3 := Vector3(cp.x, height_at(cp.x, cp.y), cp.y)
-		match c[0]:
-			"crate": solid(Props.crate(props_root, p3, rng.randf_range(0.85, 1.15)))
-			"barrel": solid(Props.barrel(props_root, p3))
-			"logs": solid(Props.log_pile(props_root, p3))
-	for bp2 in [Vector2(-5, -33), Vector2(5, -33), Vector2(-9, 2), Vector2(9, -3)]:
-		solid(Props.banner(props_root, Vector3(bp2.x, height_at(bp2.x, bp2.y), bp2.y), Color(0.42, 0.06, 0.05), Color(0.6, 0.5, 0.25)))
-	for tp3 in [Vector2(-6, -6), Vector2(7, -5), Vector2(5, 9), Vector2(-4, -22), Vector2(4, -20), Vector2(11, 3), Vector2(-11, 13)]:
-		solid(Props.tripod_torch(props_root, Vector3(tp3.x, height_at(tp3.x, tp3.y), tp3.y)))
-
-	# --- rocks, boulders and trees
-	for i in 45:
-		var p := Vector3(rng.randf_range(-31, 31), 0, rng.randf_range(-34, 30))
-		if dirt_at(p.x, p.z) > 0.3 or is_near_obstacle(p, 2.0):
-			continue
-		_rock(p, rng.randf_range(0.25, 0.7), false)
-	for p4 in [Vector3(-22, 0, 16), Vector3(27, 0, -6), Vector3(14, 0, 22), Vector3(-28, 0, -26), Vector3(20, 0, -30), Vector3(-12, 0, 27)]:
-		_rock(p4, rng.randf_range(1.0, 1.6))
-	var dt_mesh := Flora.dead_tree(5)
-	var oak_meshes_town := [Flora.oak_model(1), Flora.oak_model(2), Flora.oak_model(3)]
-	var pine_meshes := [Flora.pine(1), Flora.pine(2), Flora.pine(3)]
-	var inner_trees := [[], [], []]
-	var ti := 0
-	for p5 in [Vector3(-29, 0, -15), Vector3(29, 0, 12), Vector3(-20, 0, 27), Vector3(10, 0, 27)]:
-		inner_trees[ti % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.9, 1.15)), Vector3(p5.x, height_at(p5.x, p5.z), p5.z)))
-		add_circle(p5, 0.65)
-		ti += 1
-	for k in 3:
-		if not inner_trees[k].is_empty():
-			Props.multimesh(props_root, oak_meshes_town[k], inner_trees[k])
-	Props.multimesh(props_root, dt_mesh, [Transform3D(Basis(Vector3.UP, 1.0), Vector3(22, height_at(22, 13), 13)), Transform3D(Basis(Vector3.UP, 2.0), Vector3(-30, height_at(-30, 10), 10))])
-	add_circle(Vector3(22, 0, 13), 0.35)
-	add_circle(Vector3(-30, 0, 10), 0.35)
-	# forest beyond the walls
-	var pines := [[], [], []]
-	for i in 260:
-		var x := rng.randf_range(bounds.position.x - MARGIN + 4, bounds.end.x + MARGIN - 4)
-		var z := rng.randf_range(bounds.position.y - MARGIN + 4, bounds.end.y + 6)
-		if bounds.grow(-1.5).has_point(Vector2(x, z)):
-			continue
-		if absf(x) < 6 and z < bounds.position.y + 2:
-			continue
-		pines[i % 3].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.4)), Vector3(x, height_at(x, z) - 0.2, z)))
-	for k in 3:
-		mm_chunked(pine_meshes[k], pines[k], true, 32.0, 90.0)
-	for i in 70:
-		var x := rng.randf_range(bounds.position.x - 20, bounds.end.x + 20)
-		var z := rng.randf_range(bounds.position.y - 20, bounds.end.y + 10)
-		if bounds.grow(-1.0).has_point(Vector2(x, z)):
-			continue
-		_rock(Vector3(x, 0, z), rng.randf_range(0.8, 2.6), false)
-
-	_rasterize()
-	_flush_stones(Props.stone())
-	_build_terrain(MOOR_TERRAIN)
-	_scatter_grass(60000, MOOR_GRASS, 0.3)
-	_scatter_ferns(120)
-	spawns["start"] = Vector3(0, 0, 6)
-	spawns["from_wild"] = Vector3(0, 0, wy + 4.0)
-	spawns["portal"] = Vector3(4, 0, 9)
-	spawns["alch"] = Vector3(-12.5, 0, -6.5)
-	spawns["forge"] = Vector3(13, 0, -7)
 
 func is_near_obstacle(p: Vector3, r: float) -> bool:
 	for o in obstacles:
@@ -1256,140 +865,16 @@ func is_near_obstacle(p: Vector3, r: float) -> bool:
 				return true
 	return false
 
-# ---------------------------------------------------------------- wilderness: Cairnfell Moor
-var path_poly := PackedVector2Array()
-
+# ---------------------------------------------------------------- paths
+## How far (x, z) is from the nearest trail (1e9 with none).
 func path_dist(x: float, z: float) -> float:
 	var best := 1e9
 	var p := Vector2(x, z)
-	for i in path_poly.size() - 1:
-		var cp := Geometry2D.get_closest_point_to_segment(p, path_poly[i], path_poly[i + 1])
-		best = minf(best, p.distance_to(cp))
 	for tr in trails:
 		var poly: PackedVector2Array = tr
 		for i in poly.size() - 1:
 			best = minf(best, p.distance_to(Geometry2D.get_closest_point_to_segment(p, poly[i], poly[i + 1])))
 	return best
-
-## Which road the moor gets: 2, the old paved kingsroad (broken flagstones, kerbs and milestones), is
-## the game's. The others stay for comparison with `--road N`: 0 the old broad dirt road, 1 a winding
-## wagon trail (two ruts, grass between), 3 a narrow trail with side paths to the landmarks and cairns.
-func road_style() -> int:
-	var args := OS.get_cmdline_user_args()
-	var i := args.find("--road")
-	return int(args[i + 1]) if i >= 0 and i + 1 < args.size() else 2
-
-## A spline that wanders: a sideways kink between each pair of control points.
-func _meander(ctrl: Array, amount: float) -> PackedVector2Array:
-	var pts := [ctrl[0]]
-	for i in ctrl.size() - 1:
-		var a: Vector2 = ctrl[i]
-		var b: Vector2 = ctrl[i + 1]
-		var side := (b - a).orthogonal().normalized()
-		if i > 0 and i < ctrl.size() - 2:
-			pts.append((a + b) * 0.5 + side * rng.randf_range(0.5, 1.0) * amount * (1.0 if i % 2 == 0 else -1.0))
-		pts.append(b)
-	for i in pts.size():
-		var q: Vector2 = pts[i]
-		pts[i] = Vector2(clampf(q.x, -32, 32), q.y)
-	return _spline(pts, 6)
-
-func _lay_road(style: int) -> void:
-	match style:
-		1:
-			# two wheel ruts with grass between, a worn shoulder only at the bends
-			for i in path_poly.size() - 1:
-				var a: Vector2 = path_poly[i]
-				var b: Vector2 = path_poly[i + 1]
-				var n := (b - a).orthogonal().normalized()
-				for s in [-1.1, 1.1]:
-					dirt_lines.append([a + n * s, b + n * s, 0.95])
-			_edge_stones(path_poly, 2.3, 0.35)
-		2:
-			# flagstones down the middle, packed dirt shoulders, kerbs, a milestone now and then
-			for i in path_poly.size() - 1:
-				dirt_lines.append([path_poly[i], path_poly[i + 1], 4.2])
-				cobble_lines.append([path_poly[i], path_poly[i + 1], 3.3])
-			var dist := 0.0
-			var next_mile := 12.0
-			for i in path_poly.size() - 1:
-				var a: Vector2 = path_poly[i]
-				var b: Vector2 = path_poly[i + 1]
-				var seg := a.distance_to(b)
-				var dir := (b - a) / maxf(seg, 0.001)
-				var n := dir.orthogonal()
-				var u := 0.0
-				while u < seg:
-					var c := a + dir * u
-					for s in [-1.0, 1.0]:
-						if rng.randf() < 0.55:
-							var kp: Vector2 = c + n * s * 2.95
-							var v := rng.randi_range(0, 7)
-							var yaw := atan2(dir.x, dir.y) + rng.randf_range(-0.15, 0.15)
-							var kh := rng.randf_range(0.25, 0.4)
-							kerb(v, kp, yaw, kh, rng.randf_range(0.8, 1.1), 0.5)
-					u += 1.1
-				dist += seg
-				if dist > next_mile and i > 2 and i < path_poly.size() - 4:
-					next_mile += rng.randf_range(22, 30)
-					var mp := a + n * (3.8 if i % 2 == 0 else -3.8)
-					var ms := Models.N(null, "milestone")
-					Models.P(ms, Geo.box(0.5, 1.1, 0.35), Props.stone_clean(), Vector3(0, 0.5, 0))
-					Models.P(ms, Geo.cyl(0.25, 0.25, 0.35, 10), Props.stone_clean(), Vector3(0, 1.05, 0), Vector3(90, 0, 0))
-					Models.P(ms, Geo.box(0.06, 0.28, 0.02), Mats.glow(Color(0.9, 0.55, 0.2), 0.8), Vector3(0, 0.7, 0.18))
-					_place(ms, Vector3(mp.x, 0, mp.y))
-					ms.rotation = Vector3(rng.randf_range(-0.1, 0.1), atan2(dir.x, dir.y), rng.randf_range(-0.12, 0.12))
-					add_circle(Vector3(mp.x, 0, mp.y), 0.4)
-		3:
-			for i in path_poly.size() - 1:
-				dirt_lines.append([path_poly[i], path_poly[i + 1], 2.6])
-			_edge_stones(path_poly, 1.9, 0.4)
-		_:
-			for i in path_poly.size() - 1:
-				dirt_lines.append([path_poly[i], path_poly[i + 1], 4.2])
-
-## Small stones half sunk along both edges of a trail, so it reads against the grass.
-func _edge_stones(poly: PackedVector2Array, half: float, chance: float) -> void:
-	for i in poly.size() - 1:
-		var a: Vector2 = poly[i]
-		var b: Vector2 = poly[i + 1]
-		var seg := a.distance_to(b)
-		var dir := (b - a) / maxf(seg, 0.001)
-		var u := 0.0
-		while u < seg:
-			for s: float in [-1.0, 1.0]:
-				if rng.randf() < chance:
-					var sp: Vector2 = a + dir * u + dir.orthogonal() * s * (half + rng.randf_range(-0.25, 0.35))
-					_rock(Vector3(sp.x, 0, sp.y), rng.randf_range(0.22, 0.42), false)
-			u += 1.3
-
-## Style 3: a footpath from the road out to a landmark, with a cairn where it forks off.
-func _side_trail(to: Vector2) -> void:
-	var best := 0
-	for i in path_poly.size():
-		if path_poly[i].distance_to(to) < path_poly[best].distance_to(to):
-			best = i
-	var from: Vector2 = path_poly[best]
-	if from.distance_to(to) < 4.0:
-		return
-	var mid := (from + to) * 0.5 + (to - from).orthogonal().normalized() * rng.randf_range(-2.5, 2.5)
-	var poly := _spline([from, mid, to], 6)
-	trails.append(poly)
-	for i in poly.size() - 1:
-		dirt_lines.append([poly[i], poly[i + 1], 1.7])
-	_edge_stones(poly, 1.3, 0.3)
-	# a cairn beside the fork
-	var off := (to - from).normalized()
-	var cp := from + off * 3.2 + off.orthogonal() * 1.8
-	var g := Models.N(null, "cairn")
-	var sm := Props.stone()
-	var y := 0.0
-	for k in 4:
-		var r := 0.42 - k * 0.08
-		Models.P(g, Props.rock_mesh(rng.randi_range(0, 7), 0.2), sm, Vector3(rng.randf_range(-0.04, 0.04), y + r * 0.5, 0), Vector3(0, rng.randf() * 360.0, 0), Vector3(r * 2.0, r * 1.1, r * 1.8))
-		y += r * 0.95
-	_place(g, Vector3(cp.x, 0, cp.y))
-	add_circle(Vector3(cp.x, 0, cp.y), 0.45)
 
 func _spline(ctrl: Array, steps: int) -> PackedVector2Array:
 	var out := PackedVector2Array()
@@ -1406,48 +891,12 @@ func _spline(ctrl: Array, steps: int) -> PackedVector2Array:
 	out.append(ctrl[ctrl.size() - 1])
 	return out
 
-func _gravestone(p: Vector3, cross_ := false) -> void:
-	var g := Models.N(null, "grave")
-	var sm := Props.stone()
-	if cross_:
-		Models.P(g, Geo.box(0.16, 1.1, 0.14), sm, Vector3(0, 0.55, 0))
-		Models.P(g, Geo.box(0.6, 0.14, 0.14), sm, Vector3(0, 0.78, 0))
-	else:
-		Models.P(g, Geo.box(0.55, 0.8, 0.16), sm, Vector3(0, 0.4, 0))
-		Models.P(g, Geo.cyl(0.275, 0.275, 0.16, 10), sm, Vector3(0, 0.8, 0), Vector3(90, 0, 0))
-	Models.P(g, Geo.box(0.7, 0.06, 1.5), Mats.world(Color(0.2, 0.17, 0.12), Color(0.15, 0.12, 0.08), 1.0, 2.0, 0.4, Props.MOSS), Vector3(0, 0.03, 0.8))
-	_place(g, p)
-	g.rotation = Vector3(rng.randf_range(-0.12, 0.12), rng.randf_range(-0.3, 0.3), rng.randf_range(-0.15, 0.15))
-	add_circle(p, 0.35)
-
 func _standing_stone(p: Vector3, h: float) -> void:
 	var g := Models.N(null, "menhir")
 	Models.P(g, Props.rock_mesh(rng.randi_range(0, 7), 0.25), Props.stone(), Vector3(0, h * 0.42, 0), Vector3.ZERO, Vector3(0.9, h, 0.6))
 	_place(g, p)
 	g.rotation = Vector3(rng.randf_range(-0.08, 0.08), rng.randf() * TAU, rng.randf_range(-0.08, 0.08))
 	add_circle(p, 0.5)
-
-func _shrine(p: Vector3, kind_s: String) -> void:
-	var cols := {"healing": Color(1.0, 0.25, 0.2), "fury": Color(1.0, 0.6, 0.1), "armor": Color(0.4, 0.6, 1.0), "experience": Color(0.7, 0.4, 1.0)}
-	var col: Color = cols[kind_s]
-	var g := Node3D.new()
-	var sm := Props.stone_clean()
-	Models.P(g, Geo.cyl(0.9, 1.1, 0.3, 8), sm, Vector3(0, 0.15, 0))
-	Models.P(g, Geo.cyl(0.35, 0.45, 1.2, 8), sm, Vector3(0, 0.9, 0))
-	Models.P(g, Geo.lathe([Vector2(0.0, 0.0), Vector2(0.55, 0.05), Vector2(0.6, 0.18), Vector2(0.45, 0.22), Vector2(0.0, 0.15)], 12, "shrinebowl"), sm, Vector3(0, 1.5, 0))
-	var orb := Models.P(g, Geo.sph(0.28, 14), Mats.glow(col, 3.0))
-	orb.position = Vector3(0, 2.1, 0)
-	orb.name = "orb"
-	Models.P(g, Geo.sph(0.45, 14), Mats.glow(col, 0.8, 0.0, 1.0), Vector3(0, 2.1, 0))
-	var l := OmniLight3D.new()
-	l.light_color = col
-	l.light_energy = 1.4
-	l.omni_range = 6.0
-	l.position = Vector3(0, 2.1, 0)
-	l.name = "light"
-	g.add_child(l)
-	_inter("shrine", kind_s.capitalize() + " Shrine", p, 1.8, g, {"type": kind_s})
-	add_circle(p, 0.9)
 
 func _chest(p: Vector3) -> Inter:
 	var yaw := rng.randf_range(-40, 40)
@@ -1457,610 +906,6 @@ func _chest(p: Vector3) -> Inter:
 	solid(c)
 	return t
 
-func _crypt_entrance(p: Vector3) -> void:
-	var g := Models.N(null, "crypt")
-	var sm := Props.stone()
-	var sc := Props.stone_clean()
-	Models.P(g, Geo.box(9.0, 0.5, 7.0), sc, Vector3(0, 0.25, -1.0))
-	Models.P(g, Geo.box(7.0, 4.2, 4.5), sm, Vector3(0, 2.6, -2.2))
-	Models.P(g, Geo.prism(8.0, 1.8, 5.2), sm, Vector3(0, 5.6, -2.2))
-	Models.P(g, Geo.box(2.4, 3.0, 0.3), Mats.world(Color(0.01, 0.01, 0.01), Color(0.0, 0.0, 0.0), 1.0, 1.0, 0.0, Props.MOSS, false), Vector3(0, 2.0, 0.08))
-	for i in 5:
-		Models.P(g, Geo.box(3.2, 0.2, 0.6), sc, Vector3(0, 0.5 - i * 0.1, 0.4 + i * 0.6))
-	for x in [-2.6, 2.6]:
-		Models.P(g, Geo.cyl(0.4, 0.45, 4.6, 10), sc, Vector3(x, 2.8, 0.6))
-		Models.P(g, Geo.box(1.1, 0.35, 1.1), sc, Vector3(x, 5.1, 0.6))
-		Models.P(g, Geo.box(1.1, 0.35, 1.1), sc, Vector3(x, 0.65, 0.6))
-	var rune := Mats.glow(Color(1.0, 0.15, 0.08), 2.5)
-	for i in 5:
-		Models.P(g, Geo.box(0.12, 0.35, 0.05), rune, Vector3(-0.9 + i * 0.45, 3.85, 0.1))
-	_place(g, p)
-	for x in [-4.0, 4.0]:
-		var br := Models.N(null, "brazier")
-		Models.P(br, Geo.cyl(0.08, 0.15, 1.0, 8), Props.iron(), Vector3(0, 0.5, 0))
-		Models.P(br, Geo.lathe([Vector2(0.05, 0.0), Vector2(0.35, 0.1), Vector2(0.4, 0.3), Vector2(0.0, 0.2)], 12, "brazier"), Props.iron(), Vector3(0, 1.0, 0))
-		_place(br, p + Vector3(x, 0, 2.2))
-		Props.fire(br, Vector3(0, 1.3, 0), 1.0, Color(1.0, 0.45, 0.15), true, true, true, "brazier")
-		add_circle(p + Vector3(x, 0, 2.2), 0.5)
-	add_box(p + Vector3(0, 0, -2.0), Vector2(4.6, 3.0), 0.0)
-	exits.append({"pos": p + Vector3(0, 0, 1.2), "radius": 1.6, "to": "lair", "label": act_name("lair")})
-
-func _build_wild() -> void:
-	bounds = Rect2(-42, -214, 84, 216)
-	theme = {"name": "wild"}
-	var ctrl := [Vector2(0, 2), Vector2(0, -14)]
-	var x := 0.0
-	for i in 8:
-		x = clampf(x + rng.randf_range(-18, 18), -26, 26)
-		ctrl.append(Vector2(x, -36 - i * 21))
-	ctrl.append(Vector2(clampf(x * 0.5, -15, 15), -202))
-	var style := road_style()
-	path_poly = _meander(ctrl, 7.0) if style == 1 or style == 3 else _spline(ctrl, 6)
-	_lay_road(style)
-	for i in range(2, ctrl.size() - 1, 2):
-		dirt_blobs.append([ctrl[i] + Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)), rng.randf_range(6, 9), 0.85])
-	var end_p: Vector2 = ctrl[ctrl.size() - 1]
-	dirt_blobs.append([end_p + Vector2(0, 3), 9.0, 1.0])
-	cobble_blobs.append([end_p + Vector2(0, 4), 5.0, 0.9])
-	exits.append({"pos": Vector3(0, 0, 0.5), "radius": 2.6, "to": "town", "label": act_name("town")})
-	if fort:
-		Fort.trail_end(self, Vector3(end_p.x, 0, end_p.y - 4.0))
-	else:
-		_crypt_entrance(Vector3(end_p.x, 0, end_p.y - 4.0))
-
-	# landmarks
-	var c3: Vector2 = ctrl[3]
-	var circle_c := Vector2(clampf(c3.x + (12 if c3.x < 0 else -12), -34, 34), c3.y)
-	cobble_blobs.append([circle_c, 4.0, 0.7])
-	dirt_blobs.append([circle_c, 7.0, 0.7])
-	for i in 8:
-		var a := TAU * i / 8.0
-		_standing_stone(Vector3(circle_c.x + cos(a) * 5.5, 0, circle_c.y + sin(a) * 5.5), rng.randf_range(2.2, 3.4))
-	var c5: Vector2 = ctrl[5]
-	var gy := Vector2(clampf(c5.x + (11 if c5.x < 0 else -11), -32, 32), c5.y + 4)
-	for i in 14:
-		var gp := gy + Vector2((i % 5) * 2.2 - 4.4 + rng.randf_range(-0.3, 0.3), (i / 5) * 2.8 + rng.randf_range(-0.3, 0.3))
-		_gravestone(Vector3(gp.x, 0, gp.y), rng.randf() < 0.25)
-	dirt_blobs.append([gy + Vector2(0, 2.5), 6.0, 0.5])
-	var wpp: Vector2 = ctrl[4] + Vector2(6 if ctrl[4].x < 10 else -6, 0)
-	add_waypoint("wild", Vector3(wpp.x, 0, wpp.y), true)
-	var kinds := ["healing", "fury", "armor", "experience"]
-	kinds.shuffle()
-	var shrine_ps := []
-	for i in 2:
-		var cc: Vector2 = ctrl[2 + i * 4]
-		var sp := Vector2(clampf(cc.x + (7 if i == 0 else -7), -34, 34), cc.y - 3)
-		_shrine(Vector3(sp.x, 0, sp.y), kinds[i])
-		shrine_ps.append(sp + Vector2(0, 1.6))
-	for i in 4:
-		var cc2: Vector2 = path_poly[int(path_poly.size() * (0.2 + i * 0.2))]
-		var chp := Vector2(clampf(cc2.x + rng.randf_range(-9, 9), -36, 36), cc2.y + rng.randf_range(-4, 4))
-		if path_dist(chp.x, chp.y) > 3.0:
-			_chest(Vector3(chp.x, 0, chp.y))
-	# ruined walls
-	for i in 7:
-		var cc3: Vector2 = path_poly[rng.randi_range(8, path_poly.size() - 10)]
-		var off := Vector2(rng.randf_range(8, 14) * (1 if rng.randf() < 0.5 else -1), 0)
-		var a3 := cc3 + off
-		var b3 := a3 + Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)).normalized() * rng.randf_range(4, 8)
-		if bounds.grow(-3).has_point(a3) and bounds.grow(-3).has_point(b3):
-			_wall(Vector3(a3.x, 0, a3.y), Vector3(b3.x, 0, b3.y), rng.randf_range(0.6, 1.4))
-	# broken cart and camp remains
-	var c2: Vector2 = ctrl[2]
-	var cart := Props.footprint(Models.N(null, "cart"), Vector2(0.85, 1.35))
-	Models.P(cart, Geo.box(1.6, 0.12, 2.6), Props.wood(), Vector3(0, 0.6, 0), Vector3(0, 0, 8))
-	Models.P(cart, Geo.box(0.1, 0.5, 2.6), Props.wood(), Vector3(0.78, 0.85, 0), Vector3(0, 0, 8))
-	Models.P(cart, Geo.cyl(0.55, 0.55, 0.1, 14), Props.wood_dark(), Vector3(-0.9, 0.4, 0.8), Vector3(0, 0, 90))
-	Models.P(cart, Geo.cyl(0.55, 0.55, 0.1, 14), Props.wood_dark(), Vector3(0.6, 0.05, -1.4), Vector3(90, 30, 0))
-	solid(_place(cart, Vector3(c2.x + 4.5, 0, c2.y + 2)))
-	if style == 3:
-		for lm in [circle_c, gy + Vector2(0, 2.5), wpp] + shrine_ps:
-			_side_trail(lm)
-
-	if oak_forest:
-		sloth_lairs = SlothLair.pick(self)
-		# bare earth under each lair (its decal paints the element over it)
-		for l in sloth_lairs:
-			dirt_blobs.append([Vector2(l.x, l.z), SlothLair.CLEAR * 0.9, 0.9])
-	# vegetation
-	var dt_meshes := [Flora.dead_tree(11), Flora.dead_tree(23), Flora.dead_tree(37)]
-	var pine_meshes := [Flora.pine(4), Flora.pine(5), Flora.pine(6)]
-	var oak_meshes := [Flora.oak_model(1), Flora.oak_model(2), Flora.oak_model(3)]
-	var bush_mesh := Flora.bush(3)
-	var groups := {}
-	for i in 1700:
-		var px := rng.randf_range(bounds.position.x - MARGIN + 3, bounds.end.x + MARGIN - 3)
-		var pz := rng.randf_range(bounds.position.y - MARGIN + 3, bounds.end.y + 4)
-		var inside := bounds.grow(-1.5).has_point(Vector2(px, pz))
-		var pd := path_dist(px, pz) if inside else 99.0
-		if inside and (pd < (6.5 if style == 0 or style == 2 else 3.6) or is_near_obstacle(Vector3(px, 0, pz), 2.5)):
-			continue
-		if inside and rng.randf() < 0.3:
-			continue
-		if _in_lair(px, pz):
-			continue
-		var r := rng.randf()
-		var key := ""
-		# Act I is an old oak forest: mostly oaks, some pines, the odd dead tree; other acts as before
-		var cut := [0.3, 0.38, 0.7] if oak_forest else [0.38, 0.6, 0.7]
-		if oak_forest:
-			if r < 0.4:
-				key = "oak%d" % (i % 3)
-			elif r < 0.66:
-				key = "pine%d" % (i % 3)
-			elif r < 0.72:
-				key = "dead%d" % (i % 3)
-			else:
-				key = "bush"
-		elif r < cut[0]:
-			key = "pine%d" % (i % 3)
-		elif r < cut[1]:
-			key = "dead%d" % (i % 3)
-		elif r < cut[2]:
-			key = "oak%d" % (i % 3)
-		else:
-			key = "bush"
-		if not groups.has(key):
-			groups[key] = []
-		var s := rng.randf_range(0.8, 1.35)
-		groups[key].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s), Vector3(px, height_at(px, pz) - 0.15, pz)))
-		if inside and key != "bush":
-			add_circle(Vector3(px, 0, pz), 0.45 if key.begins_with("dead") else (0.7 * s if key.begins_with("oak") else 0.55))
-	# Act I: groves of three to five oaks a little off the road, with bushes at their feet
-	if oak_forest:
-		for gi in 26:
-			var t := rng.randf_range(0.04, 0.97)
-			var c0: Vector2 = path_poly[int((path_poly.size() - 1) * t)]
-			var side := -1.0 if rng.randf() < 0.5 else 1.0
-			var cg := c0 + Vector2(side * rng.randf_range(10.0, 17.0), rng.randf_range(-4.0, 4.0))
-			for ti in rng.randi_range(3, 5):
-				var a := rng.randf() * TAU
-				var pg := cg + Vector2(cos(a), sin(a)) * rng.randf_range(0.0, 5.5)
-				if not bounds.grow(-1.5).has_point(pg) or path_dist(pg.x, pg.y) < 7.0 or is_near_obstacle(Vector3(pg.x, 0, pg.y), 3.2) or _in_lair(pg.x, pg.y):
-					continue
-				var key2 := "oak%d" % rng.randi_range(0, 2)
-				if not groups.has(key2):
-					groups[key2] = []
-				var s2 := rng.randf_range(0.9, 1.3)
-				groups[key2].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * s2), Vector3(pg.x, height_at(pg.x, pg.y) - 0.1, pg.y)))
-				add_circle(Vector3(pg.x, 0, pg.y), 0.7 * s2)
-				if rng.randf() < 0.6:
-					var pb := pg + Vector2(rng.randf_range(-2.5, 2.5), rng.randf_range(-2.5, 2.5))
-					if path_dist(pb.x, pb.y) > 5.0:
-						if not groups.has("bush"):
-							groups["bush"] = []
-						groups["bush"].append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.8, 1.2)), Vector3(pb.x, height_at(pb.x, pb.y) - 0.15, pb.y)))
-	# Act I: a few of the trees can be felled (Harvest); they come out of the groups and get their own nodes
-	var harvest_specs: Array = []
-	if oak_forest and act == 0:
-		var hm := {}
-		for k3 in 3:
-			hm["oak%d" % k3] = oak_meshes[k3]
-			hm["pine%d" % k3] = pine_meshes[k3]
-			hm["dead%d" % k3] = dt_meshes[k3]
-		harvest_specs = Harvest.pick(self, groups, hm)
-	# a share of the trees near the road burn in A3
-	for key in groups.keys():
-		if key.begins_with("pine") or key.begins_with("dead"):
-			var arr: Array = groups[key]
-			for ti in range(0, arr.size(), 7):
-				var o: Vector3 = (arr[ti] as Transform3D).origin
-				if bounds.grow(4.0).has_point(Vector2(o.x, o.z)):
-					burn_points.append([o + Vector3(0, 2.6 if key.begins_with("pine") else 1.6, 0), 1.5 if key.begins_with("pine") else 1.0])
-	for key in groups.keys():
-		if key != "bush":
-			for t in groups[key]:
-				var o: Vector3 = (t as Transform3D).origin
-				tree_pts.append(Vector2(o.x, o.z))
-	for key in groups.keys():
-		var mesh: Mesh
-		if key.begins_with("pine"):
-			mesh = pine_meshes[int(key.substr(4))]
-		elif key.begins_with("dead"):
-			mesh = dt_meshes[int(key.substr(4))]
-		elif key.begins_with("oak"):
-			mesh = oak_meshes[int(key.substr(3))]
-		else:
-			mesh = bush_mesh
-		# the Act I forest has many big oaks: past ~90 m they're off any screen anyway
-		mm_chunked(mesh, groups[key], true, 32.0, 90.0 if (oak_forest and key.begins_with("oak")) else 0.0)
-	for i in 160:
-		var px := rng.randf_range(bounds.position.x + 1, bounds.end.x - 1)
-		var pz := rng.randf_range(bounds.position.y + 1, bounds.end.y - 3)
-		var pd := path_dist(px, pz)
-		if pd < 2.0:
-			continue
-		var big := rng.randf() < 0.22 and pd > 5.0
-		_rock(Vector3(px, 0, pz), rng.randf_range(1.0, 2.0) if big else rng.randf_range(0.25, 0.6), big)
-	for i in 80:
-		var px := rng.randf_range(bounds.position.x - 22, bounds.end.x + 22)
-		var pz := rng.randf_range(bounds.position.y - 22, bounds.end.y)
-		if bounds.grow(-1.0).has_point(Vector2(px, pz)):
-			continue
-		_rock(Vector3(px, 0, pz), rng.randf_range(1.0, 3.0), false)
-
-	_rasterize()
-	_flush_stones(Props.stone())
-	_build_terrain(MOOR_ROAD if road_style() == 2 else MOOR_TERRAIN if road_style() == 0 else MOOR_TRAIL)
-	_scatter_grass(94000, MOOR_GRASS, 0.32)
-	_scatter_ferns(700)
-	if oak_forest:
-		_rare_flowers(3)
-
-	# monster packs along the path
-	var foes: Array = act_info()["foes"]
-	var pid := 0
-	var champ_done := false
-	var t := 0.12
-	while t < 0.95:
-		var idx := int(path_poly.size() * t)
-		var c: Vector2 = path_poly[idx]
-		var side := rng.randf_range(-11, 11)
-		var pc := Vector3(clampf(c.x + side, bounds.position.x + 3, bounds.end.x - 3), 0, c.y + rng.randf_range(-3, 3))
-		if not is_blocked(pc.x, pc.z):
-			var k: String = foes[rng.randi() % foes.size()]
-			var n := rng.randi_range(3, 6) if k != "skel_archer" else rng.randi_range(2, 4)
-			var champ := (rng.randf() < 0.12) or (not champ_done and t > 0.5)
-			if champ:
-				champ_done = true
-				n = rng.randi_range(3, 4)
-			enemy_spawns.append({"kind": k, "pos": pc, "count": n, "champ": champ, "pack": pid, "level": level + int(t * 3.0)})
-			pid += 1
-		t += rng.randf_range(0.045, 0.07)
-	if oak_forest:
-		_feral_packs(groups, pid)
-		_bear_dens(2, end_p)
-		_sloths()
-	spawns["start"] = Vector3(0, 0, -6)
-	for k in [["road", 0.22], ["road2", 0.5]]:
-		var rp: Vector2 = path_poly[int(path_poly.size() * k[1])]
-		spawns[k[0]] = Vector3(rp.x, 0, rp.y)
-	spawns["from_town"] = Vector3(0, 0, -6)
-	spawns["from_lair"] = Vector3(end_p.x, 0, end_p.y + 4.5)
-	Harvest.build(self, harvest_specs)
-
-# ---------------------------------------------------------------- dungeon: the crypt and Grubb's Hoard
+## Floors with walls round them (the Arena's hall).
 var floor_rects: Array = []
-## Goblin tunnels in the boss vault: where King Grubb's Gold Grabbers climb out (hoard.gd).
-var hoard_holes: Array = []
 
-func is_floor(x: float, z: float) -> bool:
-	for r in floor_rects:
-		if (r as Rect2).has_point(Vector2(x, z)):
-			return true
-	return false
-
-const CRYPT_TERRAIN := {
-	"col_a": Color(0.08, 0.075, 0.07), "col_b": Color(0.1, 0.09, 0.08), "col_accent": Color(0.12, 0.13, 0.08),
-	"col_path": Color(0.42, 0.4, 0.37), "col_cliff": Color(0.12, 0.11, 0.1), "tiles": 1.0, "wet": 0.5,
-}
-
-func _build_lair() -> void:
-	flat_floor = true
-	theme = {"name": "lair"}
-	var rooms: Array = []
-	var cur := Rect2(-7, -14, 14, 14)
-	rooms.append(cur)
-	floor_rects.append(cur)
-	for i in 5:
-		var boss_room := i == 4
-		var w := 28.0 if boss_room else rng.randf_range(13, 19)
-		var h := 28.0 if boss_room else rng.randf_range(13, 18)
-		var cc := cur.get_center()
-		var nx := clampf(cc.x + rng.randf_range(-16, 16), -30, 30)
-		if boss_room:
-			nx = cc.x * 0.5
-		var gap := rng.randf_range(7, 11)
-		var nr := Rect2(nx - w * 0.5, cur.position.y - gap - h, w, h)
-		# corridor: down from cur, then across, then into the new room
-		var midz := cur.position.y - gap * 0.5
-		floor_rects.append(Rect2(cc.x - 2.0, midz - 2.0, 4.0, cur.position.y - midz + 2.5))
-		floor_rects.append(Rect2(minf(cc.x, nx) - 2.0, midz - 2.0, absf(nx - cc.x) + 4.0, 4.0))
-		floor_rects.append(Rect2(nx - 2.0, nr.end.y - 0.5, 4.0, midz - nr.end.y + 2.5))
-		rooms.append(nr)
-		floor_rects.append(nr)
-		cur = nr
-	var bb: Rect2 = floor_rects[0]
-	for r in floor_rects:
-		bb = bb.merge(r)
-	bounds = bb.grow(3.0)
-	dirt_blobs = [[bounds.get_center(), 9999.0, 1.0]]
-	dirt_lines = []
-	# decor before rasterising
-	var sm := Props.stone_clean()
-	var boss_r: Rect2 = rooms[rooms.size() - 1]
-	for ri in rooms.size():
-		var r: Rect2 = rooms[ri]
-		var c := r.get_center()
-		if ri == rooms.size() - 1:
-			for i in 10:
-				var a := TAU * i / 10.0
-				var pp := Vector3(c.x + cos(a) * 10.5, 0, c.y + sin(a) * 10.5)
-				_pillar(pp, 4.0)
-			_hoard_room(r, c)
-			for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
-				var bp := Vector3(c.x + corner.x * 11.0, 0, c.y + corner.y * 11.0)
-				var br := Models.N(null, "brazier")
-				Models.P(br, Geo.cyl(0.1, 0.2, 1.1, 8), Props.iron(), Vector3(0, 0.55, 0))
-				Models.P(br, Geo.lathe([Vector2(0.05, 0.0), Vector2(0.4, 0.1), Vector2(0.45, 0.32), Vector2(0.0, 0.22)], 12, "brazier2"), Props.iron(), Vector3(0, 1.1, 0))
-				_place(br, bp)
-				Props.fire(br, Vector3(0, 1.45, 0), 1.1, Color(1.0, 0.42, 0.15), true, corner.y < 0, true, "brazier")
-				add_circle(bp, 0.5)
-			boss_spawn = {"kind": act_name("boss"), "pos": Vector3(c.x, 0, c.y - 3)}
-			continue
-		if r.size.x > 14 and r.size.y > 14 and ri > 0:
-			for corner in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
-				_pillar(Vector3(c.x + corner.x * r.size.x * 0.27, 0, c.y + corner.y * r.size.y * 0.27), 3.6)
-		var nsar := rng.randi_range(1, 3) if ri > 0 else 0
-		for k in nsar:
-			var sp := Vector3(rng.randf_range(r.position.x + 2.5, r.end.x - 2.5), 0, rng.randf_range(r.position.y + 2, r.end.y - 2))
-			if not is_near_obstacle(sp, 1.5):
-				_sarcophagus(sp, rng.randf_range(-15, 15) + (90.0 if rng.randf() < 0.5 else 0.0))
-		for k in rng.randi_range(2, 4):
-			var bp2 := Vector3(rng.randf_range(r.position.x + 1, r.end.x - 1), 0, rng.randf_range(r.position.y + 1, r.end.y - 1))
-			_bones(bp2)
-		for k in 2:
-			var cp := Vector3(r.position.x + 1.0 if k == 0 else r.end.x - 1.0, 0, rng.randf_range(r.position.y + 2, r.end.y - 2))
-			_candles(cp, true)
-		# wall torches on the north wall
-		for k in 2:
-			var tx := lerpf(r.position.x + 2.0, r.end.x - 2.0, 0.25 + k * 0.5)
-			_wall_torch(Vector3(tx, 0, r.position.y + 0.15), k == 0 and ri % 2 == 0)
-		if ri > 0:
-			var foes: Array = act_info()["foes"]
-			for k in rng.randi_range(1, 2):
-				var ep := Vector3(rng.randf_range(r.position.x + 2, r.end.x - 2), 0, rng.randf_range(r.position.y + 2, r.end.y - 2))
-				var kk: String = foes[rng.randi() % foes.size()]
-				enemy_spawns.append({"kind": kk, "pos": ep, "count": rng.randi_range(3, 5), "champ": rng.randf() < 0.15 + ri * 0.04, "pack": ri * 10 + k, "level": level + ri / 2})
-	crypt_shell()
-	var r0: Rect2 = rooms[0]
-	# stairs back up
-	var st := Models.N(null, "stairs")
-	for i in 6:
-		Models.P(st, Geo.box(3.6, 0.25 + i * 0.25, 0.7), sm, Vector3(0, (0.25 + i * 0.25) * 0.5, -i * 0.7))
-	_place(st, Vector3(r0.get_center().x, 0, r0.end.y - 0.6))
-	st.rotation.y = PI
-	var shaft := MeshInstance3D.new()
-	shaft.mesh = Geo.cyl(1.4, 2.2, 7.0, 16)
-	shaft.material_override = Mats.glow(Color(0.6, 0.7, 0.8), 0.25, 1.0, 0.5)
-	shaft.position = Vector3(r0.get_center().x, 3.5, r0.end.y - 1.5)
-	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	props_root.add_child(shaft)
-	exits.append({"pos": Vector3(r0.get_center().x, 0, r0.end.y - 0.8), "radius": 1.8, "to": "wild", "label": act_name("wild")})
-	spawns["start"] = Vector3(r0.get_center().x, 0, r0.end.y - 5.0)
-	spawns["boss_room"] = Vector3(boss_r.get_center().x, 0, boss_r.end.y - 3)
-
-## The crypt's stone shell around `floor_rects`: everything that isn't floor is solid rock, wall blocks along the
-## floor's edges, a dark top over the rock, and the crypt floor. Used by the crypt and the Battlegrounds dungeon.
-## The rock round a crypt's floor_rects: everything not floor is solid, wall blocks along the floor's edges, dark
-## caps over the rock near the floor (the void further out is left empty: the camera never sees it). Floors far
-## apart (the Battlegrounds' three) each get their own walls; `themes` [{"rect": Rect2, "a": Color, "b": Color,
-## "moss": Color}] colours the walls inside a rect (the frozen floor's ice-white stone, the overgrown one's mossy).
-func crypt_shell(themes := []) -> void:
-	_rasterize()
-	# the floor, rasterized once (is_floor per cell and per neighbour was rects x cells x 9)
-	var fl := PackedByteArray()
-	fl.resize(gw * gh)
-	fl.fill(0)
-	for r in floor_rects:
-		var rr: Rect2 = r
-		var x0 := clampi(int(floor((rr.position.x - origin.x) / CELL)), 0, gw - 1)
-		var x1 := clampi(int(ceil((rr.end.x - origin.x) / CELL)), 0, gw)
-		var y0 := clampi(int(floor((rr.position.y - origin.y) / CELL)), 0, gh - 1)
-		var y1 := clampi(int(ceil((rr.end.y - origin.y) / CELL)), 0, gh)
-		for y in range(y0, y1):
-			for xx in range(x0, x1):
-				if rr.has_point(Vector2(origin.x + (xx + 0.5) * CELL, origin.y + (y + 0.5) * CELL)):
-					fl[y * gw + xx] = 1
-	var at := func(xx: int, y: int) -> int:
-		return fl[y * gw + xx] if xx >= 0 and y >= 0 and xx < gw and y < gh else 0
-	rock.resize(gw * gh)
-	rock.fill(0)
-	var wall_xf := {}             # theme index (-1 = the plain stone) -> transforms
-	var top_xf := []
-	for y in gh:
-		for xx in gw:
-			if fl[y * gw + xx] == 1:
-				continue
-			rock[y * gw + xx] = 1
-			blocked[y * gw + xx] = 1
-			astar.set_point_solid(Vector2i(xx, y), true)
-			var wx := origin.x + (xx + 0.5) * CELL
-			var wz := origin.y + (y + 0.5) * CELL
-			var edge := false
-			var near := false
-			for dy in range(-4, 5):
-				for dx in range(-4, 5):
-					if at.call(xx + dx, y + dy) == 1:
-						near = true
-						if absi(dx) <= 1 and absi(dy) <= 1:
-							edge = true
-			if edge:
-				var hh := rng.randf_range(2.8, 3.4)
-				var ti := -1
-				for k in themes.size():
-					if (themes[k]["rect"] as Rect2).has_point(Vector2(wx, wz)):
-						ti = k
-				if not wall_xf.has(ti):
-					wall_xf[ti] = []
-				wall_xf[ti].append(Transform3D(Basis(Vector3.UP, rng.randf_range(-0.04, 0.04)).scaled(Vector3(1.0, hh, 1.0)), Vector3(wx, hh * 0.5, wz)))
-			elif near:
-				top_xf.append(Transform3D(Basis().scaled(Vector3(1.0, 0.2, 1.0)), Vector3(wx, 3.0, wz)))
-	for ti in wall_xf:
-		var wm: Material
-		if ti < 0:
-			wm = Mats.world(Color(0.4, 0.38, 0.35), Color(0.28, 0.27, 0.25), 0.9, 2.2, 0.25, Color(0.14, 0.16, 0.09))
-		else:
-			var th: Dictionary = themes[ti]
-			wm = Mats.world(th["a"], th["b"], 0.9, 2.2, 0.25, th.get("moss", Color(0.14, 0.16, 0.09)))
-		Props.multimesh(props_root, Geo.box(1.02, 1.0, 1.02), wall_xf[ti]).material_override = wm
-	Props.multimesh(props_root, Geo.box(1.0, 1.0, 1.0), top_xf, false).material_override = Mats.world(Color(0.05, 0.05, 0.05), Color(0.03, 0.03, 0.03), 1.0, 1.0, 0.0, Props.MOSS, true)
-	_flush_stones(Props.stone())
-	_build_terrain(CRYPT_TERRAIN)
-
-## King Grubb's vault: heaps of coins, open chests, his throne of chests, goblin tunnels.
-func _hoard_room(r: Rect2, c: Vector2) -> void:
-	var coin := Goblin.coin_mat(Goblin.GOLD, 1.0)
-	var gm := Goblin.gold_m()
-	# the throne at the north end: a heap of gold with a chair of stacked chests on it
-	var tp := Vector3(c.x, 0, r.position.y + 2.6)
-	var throne := Props.footprint(Models.N(null, "throne"), Vector2(1.9, 1.2))
-	Models.P(throne, Goblin.mound_mesh(3.0, 0.9), coin, Vector3(0, 0, 0.3))
-	var wd := Props.wood()
-	Models.P(throne, Geo.box(1.6, 0.7, 1.1), wd, Vector3(0, 0.75, 0))
-	Models.P(throne, Geo.box(1.4, 0.18, 0.9), Goblin.cloth_m(Color(0.42, 0.08, 0.36), Color(0.15, 0.02, 0.12)), Vector3(0, 1.24, -0.05))
-	Models.P(throne, Geo.box(1.7, 0.08, 1.2), gm, Vector3(0, 1.12, 0))
-	Models.P(throne, Geo.box(1.7, 1.9, 0.35), wd, Vector3(0, 1.9, 0.5))
-	Models.P(throne, Geo.box(1.8, 0.1, 0.45), gm, Vector3(0, 2.86, 0.5))
-	for sx in [-1, 1]:
-		Models.P(throne, Geo.box(0.35, 0.5, 1.0), wd, Vector3(sx * 0.95, 1.35, 0.05))
-		Models.P(throne, Geo.sph(0.14, 12), gm, Vector3(sx * 0.95, 1.68, -0.35))
-		Models.P(throne, Geo.cone(0.12, 0.5, 8), gm, Vector3(sx * 0.75, 3.1, 0.5))
-	Models.P(throne, Geo.sph(0.22, 14), Mats.glow(Color(1.0, 0.2, 0.1), 2.0), Vector3(0, 2.5, 0.31), Vector3.ZERO, Vector3(1, 1, 0.5))
-	Models.P(throne, Geo.lathe([Vector2(0.3, 0.0), Vector2(0.34, 0.0), Vector2(0.36, 0.14), Vector2(0.3, 0.14), Vector2(0.3, 0.0)], 20, "throne_crown"), gm, Vector3(0, 2.95, 0.5))
-	_place(throne, tp)
-	solid(throne)
-	var tl := OmniLight3D.new()
-	tl.light_color = Color(1.0, 0.72, 0.35)
-	tl.light_energy = 2.4
-	tl.omni_range = 9.0
-	tl.position = Vector3(0, 3.2, -1.5)
-	tl.add_to_group("flicker")
-	tl.set_meta("base", 2.4)
-	throne.add_child(tl)
-	# heaps of gold along the walls, open chests, scattered coins
-	var heaps := [Vector2(-9.5, -7.5), Vector2(9.0, -8.0), Vector2(-10.0, 4.0), Vector2(9.5, 5.5), Vector2(-5.5, 10.0), Vector2(6.0, 10.5)]
-	for i in heaps.size():
-		var hp := Vector3(c.x + heaps[i].x, 0, c.y + heaps[i].y)
-		var hr := rng.randf_range(1.6, 2.3)
-		var heap := Props.footprint(Models.N(null, "heap"), hr * 0.65)
-		Models.P(heap, Goblin.mound_mesh(hr, hr * 0.42), coin)
-		_place(heap, hp)
-		solid(heap)
-		if i % 2 == 0:
-			var hl := OmniLight3D.new()
-			hl.light_color = Color(1.0, 0.75, 0.35)
-			hl.light_energy = 1.3
-			hl.omni_range = 5.0
-			hl.position = Vector3(0, 1.6, 0)
-			heap.add_child(hl)
-	for k in 4:
-		var cp := Vector3(c.x + (-6.0 if k % 2 == 0 else 6.5) + rng.randf_range(-1, 1), 0, c.y + (-3.0 if k < 2 else 2.0) * 2.0)
-		if not is_near_obstacle(cp, 1.5):
-			_treasure_chest(cp, rng.randf_range(0, 360))
-	var cx := []
-	for k in 260:
-		var a := rng.randf() * TAU
-		var d := pow(rng.randf(), 0.6) * 12.5
-		var cpos := Vector3(c.x + cos(a) * d, 0.006, c.y + sin(a) * d)
-		cx.append(Transform3D(Basis.from_euler(Vector3(rng.randf_range(-0.25, 0.25), rng.randf() * TAU, rng.randf_range(-0.25, 0.25))), cpos))
-	Props.multimesh(props_root, Geo.cyl(0.055, 0.055, 0.012, 10), cx, false).material_override = Mats.mat(Color(1.0, 0.74, 0.3), 0.35, 0.7, Color(1.0, 0.7, 0.25), 0.35)
-	# goblin tunnels in the floor near the walls
-	hoard_holes = []
-	for hp2 in [Vector2(-12.0, -1.0), Vector2(12.0, 0.5), Vector2(-3.5, 12.0), Vector2(4.0, -11.5)]:
-		var hp3 := Vector3(c.x + hp2.x, 0, c.y + hp2.y)
-		var hole := Models.N(null, "hole")
-		Models.P(hole, Geo.cyl(0.75, 0.75, 0.02, 20), Mats.flat(Color(0.0, 0.0, 0.0)), Vector3(0, 0.015, 0))
-		Models.P(hole, Geo.torus(0.7, 1.05, 22, 6), Mats.world(Color(0.24, 0.17, 0.11), Color(0.15, 0.1, 0.07), 0.95, 2.0), Vector3(0, 0.04, 0), Vector3.ZERO, Vector3(1, 0.35, 1))
-		for pl in 3:
-			Models.P(hole, Geo.box(0.12, 0.05, 1.3), wd, Vector3(-0.4 + pl * 0.4, 0.07, 0), Vector3(0, 10 - pl * 8, 6))
-		_place(hole, hp3)
-		hoard_holes.append(hp3)
-
-## An open treasure chest, overflowing.
-func _treasure_chest(p: Vector3, yaw: float) -> void:
-	var g := Props.footprint(Models.N(null, "tchest"), Vector2(0.6, 0.42))
-	var wd := Props.wood()
-	var gm := Goblin.gold_m()
-	Models.P(g, Geo.box(1.1, 0.6, 0.75), wd, Vector3(0, 0.3, 0))
-	for x in [-0.5, 0.5]:
-		Models.P(g, Geo.box(0.07, 0.62, 0.78), gm, Vector3(x, 0.31, 0))
-	Models.P(g, Goblin.mound_mesh(0.5, 0.28), Goblin.coin_mat(Goblin.GOLD, 1.6), Vector3(0, 0.58, 0), Vector3.ZERO, Vector3(1.0, 1.0, 0.7))
-	var lid := Models.N(g, "lid", Vector3(0, 0.6, 0.37), Vector3(-110, 0, 0))
-	Models.P(lid, Geo.box(1.1, 0.12, 0.75), wd, Vector3(0, 0.06, -0.375))
-	Models.P(lid, Geo.box(1.12, 0.13, 0.08), gm, Vector3(0, 0.06, -0.72))
-	Models.P(g, Geo.sph(0.06, 10), Mats.glow(Color(0.3, 0.5, 1.0), 2.0), Vector3(0.2, 0.78, -0.1))
-	_place(g, p)
-	g.rotation_degrees.y = yaw
-	solid(g)
-
-## The crypt's props (A3's crypt, the Last Flame): the Arena hall's Meshy pieces when they are there
-## (ArenaProps, the Arena hall's), the old code-built ones otherwise. Footprints and the rolls on `rng` are the same either way.
-func _pillar(p: Vector3, h: float) -> void:
-	var g := Models.N(null, "pillar")
-	var mm := ArenaProps.pillar(h)
-	if mm != null:
-		g.add_child(mm)
-	else:
-		var sm := Props.stone_clean()
-		Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, 0.2, 0))
-		Models.P(g, Geo.cyl(0.36, 0.4, h - 0.8, 12), sm, Vector3(0, h * 0.5, 0))
-		Models.P(g, Geo.box(1.0, 0.4, 1.0), sm, Vector3(0, h - 0.2, 0))
-	_place(g, p)
-	add_circle(p, 0.55)
-
-func _sarcophagus(p: Vector3, yaw: float) -> void:
-	var g := Props.footprint(Models.N(null, "sarc"), Vector2(0.6, 1.2))
-	var sm := Props.stone_clean()
-	Models.P(g, Geo.box(1.1, 0.8, 2.3), sm, Vector3(0, 0.4, 0))
-	Models.P(g, Geo.box(1.2, 0.2, 2.4), sm, Vector3(0.15, 0.9, 0.1), Vector3(0, 8, 4))
-	Models.P(g, Geo.sph(0.12, 8), Mats.world(Color(0.75, 0.7, 0.6), Color(0.6, 0.55, 0.45), 0.7, 3.0, 0.0, Props.MOSS, true), Vector3(-0.3, 0.12, 1.4))
-	_place(g, p)
-	g.rotation_degrees.y = yaw
-	solid(g)
-
-func _bones(p: Vector3) -> void:
-	var g := Models.N(null, "bones")
-	# the same seven rolls whichever bones are drawn (the server's layout depends on what follows them)
-	var rolls := []
-	for i in 6:
-		rolls.append([rng.randf_range(0.3, 0.5), rng.randf_range(-0.4, 0.4), rng.randf_range(-0.4, 0.4), rng.randf() * 360.0])
-	var skull := rng.randf() < 0.6
-	var mm := ArenaProps.bones(deg_to_rad(float(rolls[0][3])))
-	if mm != null:
-		g.add_child(mm)
-	else:
-		var bm := Mats.world(Color(0.72, 0.68, 0.58), Color(0.55, 0.5, 0.4), 0.7, 3.0, 0.0, Props.MOSS, false)
-		for r in rolls:
-			Models.P(g, Geo.cyl(0.025, 0.025, float(r[0]), 5), bm, Vector3(float(r[1]), 0.03, float(r[2])), Vector3(90, float(r[3]), 0))
-		if skull:
-			Models.P(g, Geo.sph(0.11, 8), bm, Vector3(0.1, 0.1, 0.0), Vector3.ZERO, Vector3(0.9, 1.0, 1.1))
-	_place(g, p)
-
-func _candles(p: Vector3, on_floor: bool) -> void:
-	var g := Models.N(null, "candles")
-	var wax := Mats.mat(Color(0.85, 0.8, 0.65), 0.6, 0.0, Color(1.0, 0.7, 0.3), 0.1)
-	var n := 5 if on_floor else 1
-	for i in n:
-		var hh := rng.randf_range(0.12, 0.35)
-		var cp := Vector3(rng.randf_range(-0.25, 0.25), 0, rng.randf_range(-0.25, 0.25)) if on_floor else Vector3.ZERO
-		Models.P(g, Geo.cyl(0.03, 0.035, hh, 6), wax, cp + Vector3(0, hh * 0.5, 0))
-		Models.P(g, Geo.sph(0.02, 5), Mats.glow(Color(1.0, 0.7, 0.3), 4.0), cp + Vector3(0, hh + 0.03, 0), Vector3.ZERO, Vector3(0.7, 1.5, 0.7))
-	if on_floor:
-		_place(g, p)
-		var l := OmniLight3D.new()
-		l.light_color = Color(1.0, 0.65, 0.3)
-		l.light_energy = 0.7
-		l.omni_range = 3.5
-		l.position = Vector3(0, 0.6, 0)
-		l.add_to_group("flicker")
-		l.set_meta("base", 0.7)
-		g.add_child(l)
-	else:
-		props_root.add_child(g)
-		g.position = p
-
-func _wall_torch(p: Vector3, shadow: bool) -> void:
-	var g := Models.N(null, "sconce")
-	var mm := ArenaProps.sconce()
-	if mm != null:
-		# the Meshy iron sconce, its back plate on the wall behind it (-z), the torch burning in its cup
-		mm.position = Vector3(0, 2.1, 0.0)
-		g.add_child(mm)
-		_place(g, p)
-		Props.fire(g, Vector3(0, 2.1, 0) + ArenaProps.SCONCE_CUP, 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")
-		return
-	Models.P(g, Geo.box(0.12, 0.3, 0.1), Props.iron(), Vector3(0, 2.2, 0.0))
-	Models.seg(g, Vector3(0, 2.1, 0), Vector3(0, 2.5, 0.3), 0.03, 0.04, Props.wood_dark(), 6)
-	_place(g, p)
-	Props.fire(g, Vector3(0, 2.62, 0.34), 0.6, Color(1.0, 0.5, 0.2), true, shadow, false, "torch")

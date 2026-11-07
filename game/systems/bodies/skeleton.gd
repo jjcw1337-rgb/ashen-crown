@@ -15,9 +15,6 @@ const VARIANTS := {
 	"archer_ice": {"name": "Frost Archer", "bone": Color(0.72, 0.78, 0.84), "grime": Color(0.45, 0.55, 0.65), "eyes": Color(0.55, 0.9, 1.0), "frost": Color(0.75, 0.92, 1.0),
 		"cloak": Color(0.2, 0.27, 0.35), "cloak2": Color(0.1, 0.15, 0.22), "steel": Color(0.76, 0.84, 0.92), "rust": Color(0.55, 0.7, 0.85),
 		"gold": Color(0.66, 0.82, 1.0), "leather": Color(0.2, 0.22, 0.28)},
-	"king": {"name": "The Ashen King", "bone": Color(0.42, 0.36, 0.3), "grime": Color(0.06, 0.04, 0.03), "eyes": Color(1.0, 0.35, 0.05), "ember": Color(1.0, 0.38, 0.05),
-		"cloak": Color(0.34, 0.03, 0.05), "cloak2": Color(0.1, 0.01, 0.02), "steel": Color(0.24, 0.22, 0.23), "rust": Color(0.1, 0.05, 0.03),
-		"gold": Color(1.0, 0.72, 0.3), "leather": Color(0.12, 0.07, 0.04), "king": true, "weapon": "cinderbrand"},
 }
 const BONE := 0
 const STEEL := 1
@@ -140,15 +137,11 @@ static func _part_mesh(variant: String, part: String) -> Mesh:
 	match part:
 		"head":
 			_skull(n, v)
-			if v.get("king", false):
-				_crown(n, v)
-			else:
-				_helm(n, v)
+			_helm(n, v)
 		"jaw": _jaw(n, v)
 		"torso":
 			_spine_ribs(n, v)
-			if not v.get("king", false):
-				_quiver(n, v)
+			_quiver(n, v)
 		"hips":
 			_pelvis(n, v)
 			_belt_faulds(n, v)
@@ -447,24 +440,6 @@ static func _helm(n: Node3D, v: Dictionary) -> void:
 		for k in 5:
 			Models.P(n, Geo.prism(0.012, 0.05, 0.012), ice, Vector3(-0.06 + k * 0.03, 0.17 - absf(k - 2) * 0.02, 0.05), Vector3(-20, 0, (k - 2) * 15))
 
-## The Ashen King's crown: a spiked gold circlet set with burning gems.
-static func _crown(n: Node3D, v: Dictionary) -> void:
-	var gd := _gold_m(v)
-	var gem := Mats.glow(v["eyes"], 3.0)
-	Models.P(n, Geo.torus(0.084, 0.1, 40, 8), gd, Vector3(0, 0.15, 0.016), Vector3.ZERO, Vector3(0.92, 1.6, 1.08))
-	Models.P(n, Geo.torus(0.086, 0.094, 40, 5), gd, Vector3(0, 0.128, 0.016), Vector3.ZERO, Vector3(0.94, 1.0, 1.1))
-	for i in 10:
-		var a := TAU * i / 10.0
-		var p := Vector3(sin(a) * 0.088, 0.16, 0.016 - cos(a) * 0.098)
-		var tall := 0.075 if i % 2 == 0 else 0.048
-		if i == 0:
-			tall = 0.1
-		var sp := Models.P(n, Geo.cone(0.016, tall, 6), gd, p + Vector3(0, tall * 0.5, 0))
-		sp.rotation = Vector3(cos(a) * 0.18, 0, sin(a) * 0.18)
-		Models.P(n, Geo.sph(0.006, 6), gd, p + Vector3(0, tall + 0.002, 0))
-		if i % 2 == 0:
-			Models.P(n, Geo.sph(0.011, 8), gem, p + Vector3(sin(a) * 0.006, -0.01, -cos(a) * 0.006))
-
 static func _pauldron(n: Node3D, v: Dictionary, side: float) -> void:
 	var st := _steel_m(v)
 	var gd := _gold_m(v)
@@ -625,8 +600,7 @@ static func _cloth_and_fx(J: Dictionary, v: Dictionary) -> void:
 		l.omni_range = 2.6
 		l.position = Vector3(0, 0.08, -0.16)
 		head.add_child(l)
-		if not v.get("king", false):
-			Props.fire(head, Vector3(0, 0.21, 0.02), 0.24, v["ember"], false, false, true, "magic")
+		Props.fire(head, Vector3(0, 0.21, 0.02), 0.24, v["ember"], false, false, true, "magic")
 		var em := GPUParticles3D.new()
 		em.amount = 16
 		em.lifetime = 1.8

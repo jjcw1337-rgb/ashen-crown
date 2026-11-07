@@ -1,5 +1,5 @@
 extends SceneTree
-## The Demon's body from the game camera on the moor: standing, running, Hellfire Claw, a cast, phased into
+## The Demon's body from the game camera in the Arena's hall: standing, running, Hellfire Claw, a cast, phased into
 ## the Underworld, dead and cooling. outdir/<name>.png. Needs a display:
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . -s tools/demon_shots.gd -- outdir
 var g
@@ -22,13 +22,13 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "demon")
 	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "sandbox", "start")
 	g.ui.close_all()
 	g.test_immortal = true
 	g.hero.set_level(12)
 	for e in g.world.enemies_root.get_children():
 		e.queue_free()
-	var p0: Vector3 = g.world.spawns["road"]
+	var p0: Vector3 = g.world.spawns["start"]
 	var h = g.hero
 	h.global_position = Vector3(p0.x, g.world.height_at(p0.x, p0.z), p0.z)
 	g.zoom = 0.7

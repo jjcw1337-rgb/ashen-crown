@@ -235,7 +235,7 @@ class Vat extends Node3D:
 			for lib in anim.get_animation_library_list():
 				for nm in anim.get_animation_library(lib).get_animation_list():
 					var a: Animation = anim.get_animation_library(lib).get_animation(nm)
-					ForestCamp._pin_root(a)
+					MapKit.pin_root(a)
 					if "Walk" in nm or "Idle" in nm:
 						a.loop_mode = Animation.LOOP_LINEAR
 			_play("Zombie_Scream")

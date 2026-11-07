@@ -1,5 +1,5 @@
 #!/bin/bash
-# A skill's performance cost (docs/systems/performance_kpis.md "Skills"): the KPI fight (24 monsters on the moor, High preset,
+# A skill's performance cost (docs/systems/performance_kpis.md "Skills"): the KPI fight (24 monsters in the Arena's hall, High preset,
 # 1600x900, a real window) with the class using only its weapon, then casting only this skill every 1.2 s, and the
 # difference. Run it on every new or redone skill before it ships:
 #   bash tools/skill_perf.sh <class> <skill id> [quality 0-3] [secs]

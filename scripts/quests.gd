@@ -14,48 +14,9 @@ extends RefCounted
 
 signal changed
 
-const LINES := {0: [
-	{"id": "gilded_king", "name": "The Gilded King", "giver": "elder", "main": true, "auto": true,
-		"offer": "",
-		"busy": "Grubb holds his fort at the far end of Cairnfell Moor, behind a palisade and a ditch of black water. Go through the gate, past his guards, and end him in his own courtyard.",
-		"done": "Grubb is dead and his gold is ours. The moor already feels lighter. The road north is open to you now, crusader.",
-		"goals": [{"kind": "kill", "ids": ["goblin_king"], "n": 1, "text": "King Grubb slain"}],
-		"reward": {"gold": 500, "xp": 1500, "items": [["unique", 0, 1]]}},
-	{"id": "embers_road", "name": "Embers on the Road", "giver": "elder",
-		"offer": "The Fallen have the Kingsroad. Skirmishers, reavers, stalkers: they come at our carts from the trees and leave nothing. Thin them out, ten of them, and the road may breathe again.",
-		"busy": "The Fallen still hold the road. Ten of them, and we can send the carts out again.",
-		"done": "Ten of the Fallen, and the road is quiet for the first time in weeks. Take this, you've earned it.",
-		"goals": [{"kind": "kill", "ids": ["fallen_skirmisher", "fallen_reaver", "fallen_stalker", "fallen"], "n": 10, "text": "Fallen slain"}],
-		"reward": {"gold": 150, "xp": 300, "items": [["ring", 1, 1]]}},
-	{"id": "dying_forge", "name": "The Dying Forge", "giver": "smith",
-		"offer": "Hear that? Neither do I. My forge fire is dying, and wood won't save it. Out on the moor there's a sloth made of embers, Cinderhide, and its heart burns hotter than any coal. Bring me its Cinderheart and I'll forge you something worth carrying.",
-		"busy": "The fire's down to sparks. Cinderhide's lair is a burnt hollow off the road. Bring me its heart.",
-		"done": "Now that is a fire. Feel the heat off it! Here, I forged this while it caught. Swing it well.",
-		"goals": [{"kind": "pick", "ids": ["cinderheart"], "n": 1, "text": "Cinderheart taken from Cinderhide"}],
-		"after": "embers_road",
-		"reward": {"gold": 100, "xp": 500, "items": [["weapon", 2, 1]]}},
-	{"id": "sunstar", "name": "Sunstar", "giver": "alch",
-		"offer": "There's a flower out on the moor that glows like a little sun, the Sunstar Bloom. Only a few grow, far from the road. Pick one, and the light of it will sharpen you. Then come back and tell me where it grew.",
-		"busy": "The Sunstar Bloom glows. You'll see it from a distance at dusk, away from the road.",
-		"done": "You found one! I can smell it on your hands. These will serve you better than any I sell.",
-		"goals": [{"kind": "flower", "n": 1, "text": "Sunstar Bloom picked"}],
-		"reward": {"gold": 60, "xp": 250, "items": [["hp_potion", 0, 4], ["rejuv", 0, 2]]}},
-	{"id": "forsaken", "name": "The Forsaken", "giver": "armor",
-		"offer": "Two bears roam the moor that aren't bears any more. Antlers, rot, eyes like coals. They've taken three of our hunters. Kill them both, and I'll make you armour that remembers what they were.",
-		"busy": "Both of the Forsaken Bears still walk. They keep to the moor, well off the road.",
-		"done": "Both of them. Good. Here: hide and iron, the best I've made this winter.",
-		"goals": [{"kind": "kill", "ids": ["bear"], "n": 2, "text": "Forsaken Bears slain"}],
-		"reward": {"gold": 120, "xp": 600, "items": [["armor", 2, 1]]}},
-	{"id": "three_hollows", "name": "Three Hollows", "giver": "elder",
-		"offer": "Three giants sleep in the hollows of the moor: one of fire, one of frost, one of storm. While they live the moor won't heal. Kill all three.",
-		"busy": "Cinderhide, Rimeclaw and Thundermaw. Each keeps its own hollow off the road. All three must fall.",
-		"done": "All three hollows are quiet. I didn't think I'd live to see it. Take this, it was my father's.",
-		"goals": [{"kind": "kill", "ids": ["sloth_fire"], "n": 1, "text": "Cinderhide slain"},
-			{"kind": "kill", "ids": ["sloth_ice"], "n": 1, "text": "Rimeclaw slain"},
-			{"kind": "kill", "ids": ["sloth_storm"], "n": 1, "text": "Thundermaw slain"}],
-		"after": "embers_road",
-		"reward": {"gold": 300, "xp": 1200, "items": [["unique", 0, 1]]}},
-]}
+## Act I's quests: none today (the old ones all sent the hero onto the moor or into Grubb's fort, which are cut).
+## A new quest goes here, for the camp's people to give.
+const LINES := {0: []}
 
 var game
 var all := {}          # str(run) -> {quest id: {"s": state, "c": [counts]}}
@@ -63,12 +24,12 @@ var all := {}          # str(run) -> {quest id: {"s": state, "c": [counts]}}
 func _init(g) -> void:
 	game = g
 
-## The quests of the run being played (Act I's when difficulty is 0).
+## Act I's quests (the only act).
 func line() -> Array:
-	return LINES.get(int(game.difficulty), [])
+	return LINES.get(0, [])
 
 func state() -> Dictionary:
-	var k := str(int(game.difficulty))
+	var k := "0"
 	if not all.has(k):
 		all[k] = {}
 	var st: Dictionary = all[k]
@@ -163,7 +124,7 @@ func progress(kind: String, key := "", n := 1) -> void:
 				game.ui.message("%s: %d/%d" % [g["text"], c[i], g["n"]], Color(0.9, 0.84, 0.66), 2.0)
 		if _complete(q, c):
 			st[id]["s"] = "ready"
-			var who: String = Data.VENDORS[0].get(q["giver"], "the camp")
+			var who: String = Data.VENDORS.get(q["giver"], "the camp")
 			game.ui.message("%s complete: return to %s" % [q["name"], who], Color(1.0, 0.82, 0.45), 4.0)
 			Sfx.play("levelup", -8.0, 1.2)
 	if moved:

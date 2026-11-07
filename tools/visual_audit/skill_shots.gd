@@ -1,5 +1,5 @@
 extends SceneTree
-## Frames of any class's skills cast into a pack on the moor, for before/after comparisons of skill effects.
+## Frames of any class's skills cast into a pack in the Arena's hall, for before/after comparisons of skill effects.
 ## Needs a display and --fixed-fps 30 (frames 1/30 s apart whatever the render takes):
 ##   xvfb-run -a godot --path . --rendering-driver vulkan --resolution 960x540 --fixed-fps 30 \
 ##     -s tools/visual_audit/skill_shots.gd -- outdir class skill[:secs][,skill[:secs]...] [--quality 2] [--every 3] [--secs 1.6] [--view game|close]
@@ -36,7 +36,7 @@ func _run() -> void:
 	g.apply_quality(q)
 	await g.start_game(false, cls)
 	g.ui.close_all()
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "sandbox", "start")
 	g.apply_quality(q)
 	g.ui.close_all()
 	var h = g.hero

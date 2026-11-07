@@ -82,7 +82,7 @@ func _run() -> void:
 			continue
 		await g.start_game(false, cls)
 		g.ui.close_all()
-		await g.travel(0, "wild", "start")
+		await g.travel(0, "sandbox", "start")
 		while g._busy:
 			await process_frame
 		g.exit_grace = 1e9

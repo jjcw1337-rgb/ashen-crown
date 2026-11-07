@@ -72,11 +72,11 @@ func _host() -> void:
 	print("[H2] partner joined: ", g.net.players.size() == 1, " name=", g.net.players.values()[0]["name"] if g.net.players.size() > 0 else "-")
 	await secs(3.0)
 	g.playing = false
-	g.travel(0, "wild", "from_town")
+	g.travel(0, "bg", "start")
 	await secs(1.0)
 	print("[H2b] the ready check: the partner said Not yet, the party waits in town: ", g.cur_zone == "town" and g.ui.vote_panel.visible, " (", g.ui.vote_wait.text, ")")
 	var tw := Time.get_ticks_msec()
-	while g.cur_zone != "wild" and Time.get_ticks_msec() - tw < 15000:
+	while g.cur_zone != "bg" and Time.get_ticks_msec() - tw < 15000:
 		await wait(5)
 	await wait(5)
 	await idle()
@@ -84,7 +84,7 @@ func _host() -> void:
 	h.vit = 400
 	h.recalc()
 	h.life = h.max_life
-	print("[H3] wild loaded, enemies=", g.net.enemies.size())
+	print("[H3] forest loaded, enemies=", g.net.enemies.size())
 	await secs(4.0)
 	var ally = g.net.puppets()[0]
 	print("[H4] partner visible=", ally.visible, " partner pos ok=", ally.global_position.distance_to(h.global_position) < 6.0)
@@ -94,7 +94,7 @@ func _host() -> void:
 	var cast_t := 0.0
 	var fx0: int = g.net.fx_got
 	var fx_nodes := 0
-	while Time.get_ticks_msec() - t0 < 40000 and g.cur_zone == "wild":
+	while Time.get_ticks_msec() - t0 < 40000 and g.cur_zone == "bg":
 		h.life = h.max_life
 		# the host casts at the partner's foes now and then, so the partner sees his effects on this puppet
 		cast_t -= 10.0 / 60.0
@@ -159,10 +159,10 @@ func _join() -> void:
 	await secs(1.0)
 	print("[C1] joined=", g.net.is_client(), " zone=", g.cur_zone, " host visible=", host_p != null and host_p.visible, " host class=", host_p.cls if host_p else "-")
 	t0 = Time.get_ticks_msec()
-	while (g.cur_zone != "wild" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
+	while (g.cur_zone != "bg" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
 		await wait(5)
 	await secs(2.0)
-	print("[C2] followed host to wild=", g.cur_zone == "wild", " monsters mirrored=", g.net.enemies.size(), " all remote=", g.net.enemies.values().all(func(e): return e.remote))
+	print("[C2] followed host to the forest=", g.cur_zone == "bg", " monsters mirrored=", g.net.enemies.size(), " all remote=", g.net.enemies.values().all(func(e): return e.remote))
 	var h = g.hero
 	h.level = 14
 	h.str_ = 120
@@ -252,7 +252,7 @@ func _join() -> void:
 			belt1 += int(b.get("count", 1))
 	var got: int = (h.gold - gold0) + (h.inventory.filter(func(x): return x != null).size() - inv0) + (belt1 - belt0)
 	print("[C4] tried to pick up ", picked, " items, received something=", got > 0, " ground items left=", g.world.items_root.get_child_count())
-	g.travel(0, "town", "from_wild")
+	g.travel(0, "town", "start")
 	t0 = Time.get_ticks_msec()
 	while (g.cur_zone != "town" or g.net.loading or g._busy) and Time.get_ticks_msec() - t0 < 30000:
 		await wait(5)

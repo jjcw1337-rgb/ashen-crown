@@ -1,10 +1,11 @@
 extends SceneTree
-## The Hollow Sloths (sloth.gd): three roam the Act I moor, one each of fire, ice and lightning. Each wanders far on its own; one that sees a
+## The Hollow Sloths (hollow_sloth.gd): three put in three glades of the Verdant Reach, one each of fire, ice and
+## lightning (the test places them: no map does today). Each wanders on its own; one that sees a
 ## hero rises, stares, roars and comes, building into a run; its sweep throws the hero back, its slam
 ## stuns, its pounce leaps; badly hurt it runs off, a hero who gets away is given up on, and killing one
 ## drops a unique and its own material (picked up glowing, with its ting). Each element's skills do their
-## thing: burning ground, a freeze, lightning bolts. Each lives in its own lair off the road (dressed, no
-## trees in it) and wanders only there; crossing the lair's edge wakes it, and it never gives up or runs:
+## thing: burning ground, a freeze, lightning bolts. Each wanders only round its home; crossing its edge
+## (Sloth.BOUNDARY) wakes it, and it never gives up or runs:
 ## it fights until one of you is dead, then walks home. The corner map marks one that's near. Prints [S] lines.
 var g
 var fails := 0
@@ -42,9 +43,20 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "knight")
-	g.difficulty = 0
 	g.test_immortal = true
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, Battlegrounds.ZONE, "start")
+	await wait(0.3)
+	for e in g.world.enemies_root.get_children():
+		e.free()
+	# one in each of the three glades the hero didn't start in
+	var homes := []
+	var kinds0 := ["sloth_fire", "sloth_ice", "sloth_storm"]
+	var glades: Array = BgForest.SPAWNS.filter(func(v): return Vector3(v.x, 0, v.y).distance_to(g.world.spawns["start"]) > 20.0)
+	for i in mini(3, glades.size()):
+		var gp: Vector2 = glades[i]
+		var at: Vector3 = g.world.free_spot_near(Vector3(gp.x, 0, gp.y), 3.0)
+		homes.append(at)
+		g.spawn_enemy(kinds0[i], at, 5, false, "", 800 + i)
 	await wait(0.3)
 	var ss := _sloths()
 	var spots := ss.map(func(e): return Vector2(e.global_position.x, e.global_position.z))
@@ -53,20 +65,9 @@ func _run() -> void:
 		for j in range(i + 1, spots.size()):
 			if spots[i].distance_to(spots[j]) < 30.0:
 				apart = false
-	check(ss.size() == 3 and apart, "three Hollow Sloths on the moor, far apart: %s" % [spots.map(func(v): return "(%.0f, %.0f)" % [v.x, v.y])])
-	# their lairs: well off the road, dressed for their element, no trees inside
-	var lairs: Array = g.world.props_root.get_children().filter(func(n): return n is SlothLair)
-	var road: Array = g.world.sloth_lairs.map(func(p): return snappedf(g.world.path_dist(p.x, p.z), 1.0))
-	# no trees in a clearing: their obstacle circles are the only small round ones there besides the scenery
-	var dressed: bool = lairs.all(func(l): return l.get_child_count() > 2)
-	var pieces := 0
-	for n in g.world.props_root.get_children():
-		if n.has_meta("lair_piece"):
-			pieces += 1
-	check(lairs.size() == 3 and road.all(func(d): return d > 18.0) and dressed and pieces >= 18,
-		"three lairs %s, %s m from the road, %d pieces of scenery" % [lairs.map(func(l): return SlothLair.NAMES[l.element]), road, pieces])
-	var homes_ok: bool = ss.all(func(e): return g.world.sloth_lairs.any(func(p): return Vector2(p.x - e.home.x, p.z - e.home.z).length() < 4.0))
-	check(homes_ok, "each lives in a lair")
+	check(ss.size() == 3 and apart, "three Hollow Sloths in three glades, far apart: %s" % [spots.map(func(v): return "(%.0f, %.0f)" % [v.x, v.y])])
+	var homes_ok: bool = ss.all(func(e): return homes.any(func(p): return Vector2(p.x - e.home.x, p.z - e.home.z).length() < 4.0))
+	check(homes_ok, "each lives where it was put")
 	var kinds := ss.map(func(e): return e.kind)
 	kinds.sort()
 	check(kinds == ["sloth_fire", "sloth_ice", "sloth_storm"], "one of each element: %s (%s)" % [kinds, ", ".join(ss.map(func(e): return e.display_name))])
@@ -75,7 +76,7 @@ func _run() -> void:
 		print("[S] done, %d failed" % (fails + 1))
 		quit()
 		return
-	# the hero far away: they wander, but only round their lairs
+	# the hero far away: they wander, but only round their homes
 	g.hero.global_position = Vector3(0, 0, -6)
 	var start := ss.map(func(e): return e.global_position)
 	var seen := {}
@@ -88,21 +89,21 @@ func _run() -> void:
 			seen[e.atk_style] = true
 			far = maxf(far, Vector2(e.global_position.x - e.home.x, e.global_position.z - e.home.z).length())
 			moved_max = maxf(moved_max, e.global_position.distance_to(start[ss.find(e)]))
-	check(moved_max > 2.0 and far < SlothLair.TERRITORY + 3.0 and ss.all(func(e): return e.sloth.state == "roam"),
-		"they wander their lairs while no one is near (moved up to %.0f m, never more than %.0f m from home)" % [moved_max, far])
+	check(moved_max > 2.0 and far < Sloth.TERRITORY + 3.0 and ss.all(func(e): return e.sloth.state == "roam"),
+		"they wander their homes while no one is near (moved up to %.0f m, never more than %.0f m from home)" % [moved_max, far])
 	# idling: a sniff or a rise to look about, given time
 	var s = ss[0]
 	s.sloth.idle_t = 0.0
 	var idled := await _until(s, 6.0, func(): return s.atk_style in ["sloth_sniff", "sloth_rise", "sloth_look"], seen)
 	check(idled and seen.has("sloth_walk"), "walks on all fours and stops to sniff or rise and look about: %s" % [seen.keys()])
-	# a hero just outside the lair's edge: nothing; across it: it rises, stares, roars, and comes
+	# a hero just outside its edge: nothing; across it: it rises, stares, roars, and comes
 	await _until(s, 6.0, func(): return s.atk_t < 0.0 and s.sloth.queue.is_empty() and s.sloth.move == "", seen)
-	var outside: Vector3 = g.world.free_spot_near(s.home + (Vector3(0, 0, -6) - s.home).normalized() * (SlothLair.BOUNDARY + 4.0), 1.5)
+	var outside: Vector3 = g.world.free_spot_near(s.home + (Vector3(0, 0, -6) - s.home).normalized() * (Sloth.BOUNDARY + 4.0), 1.5)
 	g.hero.global_position = Vector3(outside.x, g.world.height_at(outside.x, outside.z), outside.z)
 	await wait(1.5)
-	check(s.sloth.state == "roam" and not s.aggro, "a hero outside the lair's edge isn't noticed (%.0f m from its home)" % Vector2(outside.x - s.home.x, outside.z - s.home.z).length())
+	check(s.sloth.state == "roam" and not s.aggro, "a hero outside its edge isn't noticed (%.0f m from its home)" % Vector2(outside.x - s.home.x, outside.z - s.home.z).length())
 	var fwd: Vector3 = (s.home - s.global_position).normalized() if s.global_position.distance_to(s.home) > 1.0 else -s.rig.global_transform.basis.z
-	var spot: Vector3 = g.world.free_spot_near(s.home + (Vector3(0, 0, -6) - s.home).normalized() * (SlothLair.BOUNDARY - 3.0), 1.5)
+	var spot: Vector3 = g.world.free_spot_near(s.home + (Vector3(0, 0, -6) - s.home).normalized() * (Sloth.BOUNDARY - 3.0), 1.5)
 	g.hero.global_position = spot
 	g.hero.global_position.y = g.world.height_at(spot.x, spot.z)
 	var noticed := {}
@@ -167,7 +168,7 @@ func _run() -> void:
 		if aw.length() < 30.0:
 			var fp: Vector3 = g.world.free_spot_near(s.global_position + aw.normalized() * 40.0, 4.0)
 			g.hero.global_position = Vector3(fp.x, g.world.height_at(fp.x, fp.z), fp.z)
-	check(states.keys() == ["hunt"] and s.aggro, "hurt and outrun, it never runs or gives up: %s, %.0f m from its lair now" % [states.keys(), s.global_position.distance_to(s.home)])
+	check(states.keys() == ["hunt"] and s.aggro, "hurt and outrun, it never runs or gives up: %s, %.0f m from its home now" % [states.keys(), s.global_position.distance_to(s.home)])
 	# whoever strikes it is the one it fights
 	s.sloth.on_hit(g.hero.global_position)
 	check(s.sloth.attacker == g.hero, "it turns on whoever strikes it")
@@ -179,7 +180,8 @@ func _run() -> void:
 	var went := await _until(s, 3.0, func(): return s.sloth.state == "home", {})
 	g.hero.dead = false
 	g.hero.phased = true
-	var back := await _until(s, 40.0, func(): return s.sloth.state == "roam", {})
+	# (up to 80 m home, round the forest's trees, at its walk)
+	var back := await _until(s, 70.0, func(): return s.sloth.state == "roam", {})
 	g.hero.phased = false
 	check(went and back and s.global_position.distance_to(s.home) < 6.0, "its prey dead, it walks home (%.0f m from home)" % s.global_position.distance_to(s.home))
 	# each element's slam, with the hero beside it

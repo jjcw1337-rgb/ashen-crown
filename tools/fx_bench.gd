@@ -32,7 +32,7 @@ func _run() -> void:
 	await g.start_game(false, "knight")
 	while g._busy:
 		await process_frame
-	await g.load_zone(0, "wild", "waypoint")
+	await g.load_zone(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	await SkillWarm.run(g, classes)

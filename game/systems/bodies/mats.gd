@@ -14,10 +14,8 @@ static func ensure_globals() -> void:
 	_globals_ready = true
 	RenderingServer.global_shader_parameter_add("player_pos", RenderingServer.GLOBAL_VAR_TYPE_VEC3, Vector3.ZERO)
 	RenderingServer.global_shader_parameter_add("occlude_k", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.73)
-	# 0 = no snow, 1 = everything outdoors snowed over (A2)
+	# 0 = no snow, 1 = everything outdoors snowed over (no zone today: Game.is_snowy)
 	RenderingServer.global_shader_parameter_add("snow_amt", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
-	# 0 = normal, 1 = everything scorched and burning (A3)
-	RenderingServer.global_shader_parameter_add("ash_amt", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 	# 0 = normal, 1 = the Demon has phased into the Underworld
 	RenderingServer.global_shader_parameter_add("under_amt", RenderingServer.GLOBAL_VAR_TYPE_FLOAT, 0.0)
 	# grass (grass_field.gd / grass.gd): where the touch field lies (origin x, z, size, strength; strength 0 =
@@ -232,8 +230,6 @@ render_mode blend_mix, cull_back, diffuse_burley, specular_schlick_ggx;
 global uniform vec3 player_pos;
 global uniform float occlude_k;
 global uniform float snow_amt;
-global uniform float ash_amt;
-uniform float breakable = 0.0;
 uniform vec3 albedo : source_color = vec3(0.5);
 uniform vec3 albedo2 : source_color = vec3(0.4);
 uniform float roughness = 0.85;
@@ -261,13 +257,6 @@ void fragment(){
 		cover *= step(0.9, h) * step(0.2, d.z);
 		if (cover * 0.9 > dith(FRAGCOORD.xy)) { discard; }
 	}
-	float burn_rim = 0.0;
-	if (ash_amt > 0.0 && breakable > 0.5 && emission_energy < 0.5) {
-		// burned-through holes in hides and planks, with glowing edges
-		float hn = fbm(wpos.xz * 0.85 + vec2(wpos.y * 1.3, -wpos.y * 0.7) + 4.0);
-		if (hn > 0.64) { discard; }
-		burn_rim = smoothstep(0.55, 0.64, hn);
-	}
 	vec3 an = abs(wnorm);
 	vec2 uvp = an.y > 0.6 ? wpos.xz : (an.x > an.z ? wpos.zy : wpos.xy);
 	if (grain > 0.0) { uvp = vec2(uvp.x * 4.0, uvp.y * 0.35); }
@@ -284,18 +273,6 @@ void fragment(){
 		sn = mix(sn, vec3(0.7, 0.78, 0.92), (1.0 - wnorm.y) * 0.4);
 		col = mix(col, sn, snowc);
 	}
-	float ember = 0.0;
-	if (ash_amt > 0.0 && emission_energy < 0.5) {
-		// soot-blackened, ash dusted on top, embers smouldering in wood and hide
-		float charv = ash_amt * (0.5 + 0.4 * smoothstep(0.3, 0.7, n1));
-		col = mix(col, col * 0.2 + vec3(0.018, 0.015, 0.013), charv);
-		col = mix(col, vec3(0.34, 0.32, 0.3) * (0.85 + n2 * 0.2), ash_amt * smoothstep(0.5, 0.85, wnorm.y + (n1 - 0.5) * 0.4) * 0.5);
-		col = mix(col, vec3(0.06, 0.02, 0.01), burn_rim);
-		if (breakable > 0.5 || grain > 0.0) {
-			ember = smoothstep(0.82, 0.95, n2) * smoothstep(0.4, 0.7, n1) * ash_amt;
-		}
-		ember += burn_rim * 1.6;
-	}
 	ALBEDO = col;
 	ROUGHNESS = mix(clamp(roughness + (n2 - 0.5) * 0.2, 0.05, 1.0), 0.6, snowc);
 	METALLIC = metallic * (1.0 - snowc);
@@ -309,8 +286,7 @@ void fragment(){
 	vec3 b = cross(wn, t);
 	vec3 pn = normalize(wn + (t * (hc - hx) + b * (hc - hy)) * 3.0 * (1.0 - snowc * 0.7));
 	NORMAL = normalize((VIEW_MATRIX * vec4(pn, 0.0)).xyz);
-	float pulse = 0.7 + 0.3 * sin(TIME * 2.2 + wpos.x * 1.7 + wpos.z * 1.3);
-	EMISSION = emission * emission_energy + vec3(1.0, 0.34, 0.07) * ember * pulse * 2.4;
+	EMISSION = emission * emission_energy;
 }
 """
 
@@ -332,7 +308,6 @@ uniform float ripples = 0.0;
 uniform float ground_detail = 1.0;
 uniform float litter = 0.0;
 global uniform float snow_amt;
-global uniform float ash_amt;
 global uniform float under_amt;
 global uniform vec3 player_pos;
 varying vec3 wpos;
@@ -535,28 +510,8 @@ void fragment(){
 		vec3 slush = mix(vec3(0.5, 0.49, 0.48), vec3(0.3, 0.27, 0.24), smoothstep(0.3, 0.75, n3) + rut);
 		base = mix(base, mix(snowcol, slush, trod * 0.9), cover);
 	}
-	if (ash_amt > 0.0) {
-		// scorched earth: charcoal and grey ash, dusty ash on the roads
-		vec3 charc = mix(vec3(0.07, 0.06, 0.055), vec3(0.17, 0.15, 0.13), n3);
-		vec3 ashg = mix(vec3(0.33, 0.31, 0.29), vec3(0.47, 0.45, 0.42), n4);
-		vec3 burnt = mix(charc, ashg, smoothstep(0.45, 0.78, fbm(p * 0.35 + 3.0)) * 0.85);
-		burnt = mix(burnt, vec3(0.3, 0.28, 0.26) * (0.85 + n4 * 0.3), path * 0.75);
-		burnt = mix(burnt, col_cliff * 0.35, cliff * 0.6);
-		base = mix(base, burnt * (0.85 + n3 * 0.2), ash_amt);
-	}
 	ALBEDO = base;
 	ROUGHNESS = mix(mix(0.95, 0.35, wetf), 0.55 + trod * 0.35, cover);
-	if (ash_amt > 0.0) {
-		// glowing cracks and smouldering patches that pulse slowly
-		float cv = abs(fbm(p * 0.17 + 3.0) - 0.5);
-		float cr = (1.0 - smoothstep(0.0, 0.016, cv)) * smoothstep(0.5, 0.68, fbm(p * 0.05 + 9.0));
-		float hotspot = smoothstep(0.9, 0.97, vnoise(p * 2.6)) * smoothstep(0.45, 0.7, n2);
-		float pulse = 0.65 + 0.35 * sin(TIME * 1.3 + p.x * 0.25 + p.y * 0.17);
-		float keep = ash_amt * (1.0 - path) * (1.0 - cliff * 0.7);
-		float glow = (cr * 1.7 + hotspot * 0.8) * pulse * keep;
-		EMISSION = vec3(1.0, 0.32, 0.06) * glow;
-		ALBEDO = mix(ALBEDO, vec3(0.2, 0.05, 0.02), clamp(cr * 0.9 + hotspot * 0.5, 0.0, 1.0) * keep);
-	}
 	if (cover > 0.0) {
 		// tiny ice crystals glinting in the light
 		vec2 gc = floor(p * 38.0);
@@ -699,7 +654,6 @@ uniform vec3 trim : source_color = vec3(0.8, 0.65, 0.2);
 uniform float wave = 1.0;
 uniform float stripes = 0.0;
 uniform float edges = 1.0;
-global uniform float ash_amt;
 varying vec3 cwp;
 float ch(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float cn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -716,14 +670,6 @@ void fragment(){
 	c = mix(c, trim, stripe * 0.6);
 	if (stripes > 0.0) { c = mix(albedo, trim, step(0.5, fract(UV.x * stripes))); }
 	vec3 em = vec3(0.0);
-	if (ash_amt > 0.0) {
-		// scorched cloth: burned-through holes with glowing edges, soot creeping up from the hem
-		float hn = cn(UV * vec2(5.0, 4.0) + cwp.xz * 0.4) * 0.65 + cn(UV * 13.0) * 0.35;
-		if (hn > 0.68) { discard; }
-		float rim = smoothstep(0.58, 0.68, hn);
-		c = mix(c * 0.32, vec3(0.03, 0.02, 0.015), clamp(rim + (1.0 - UV.y) * 0.3, 0.0, 1.0) * ash_amt);
-		em = vec3(1.0, 0.36, 0.07) * rim * rim * 2.2 * ash_amt * (0.7 + 0.3 * sin(TIME * 3.0 + cwp.x * 4.0));
-	}
 	ALBEDO = c;
 	EMISSION = em;
 	ROUGHNESS = 0.95;

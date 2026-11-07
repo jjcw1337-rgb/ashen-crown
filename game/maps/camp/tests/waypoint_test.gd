@@ -1,6 +1,6 @@
 extends SceneTree
-## Waypoint network rules: sealed acts and untouched waypoints can't be taken; taken ones travel
-## (same act and across acts); the window closes when you walk away from the stone.
+## Waypoint rules: Act I is the only act; an untouched waypoint can't be taken; a touched one travels, arriving
+## by its own stone; the window closes when you walk away from the stone.
 ## godot --headless --path . -s game/maps/camp/tests/waypoint_test.gd
 var g
 var fails := 0
@@ -27,41 +27,34 @@ func _run() -> void:
 	ok(errs.is_empty(), "Data.WAYPOINT_ACTS checks out " + str(errs))
 	await g.start_game(false, "knight")
 	await _settle()
-	g.max_run = 0
 	g.waypoints_known = ["town"]
-	g.run_progress = {}
-	ok(g.act_unlocked(0) and not g.act_unlocked(1), "only Act I is open at the start")
-	ok(g.waypoint_known(0, "town") and not g.waypoint_known(0, "wild"), "the camp waypoint is known, the moor's is not")
-	g.waypoint_go(0, "wild")
+	ok(Data.WAYPOINT_ACTS.size() == 1 and g.act_unlocked(0) and not g.act_unlocked(1), "Act I is the only act, and open")
+	ok(g.waypoint_known(0, "town") and not g.waypoint_known(0, "nowhere"), "the camp waypoint is known, an untouched one is not")
+	g.waypoint_go(0, "nowhere")
 	await _settle()
-	ok(g.cur_zone == "town", "an untouched waypoint can't be taken (still in %s)" % g.cur_zone)
+	ok(g.cur_zone == "town" and not g._busy, "an untouched waypoint can't be taken (still in %s)" % g.cur_zone)
 	g.waypoint_go(1, "town")
 	await _settle()
-	ok(g.difficulty == 0, "a sealed act can't be entered")
-	g.waypoints_known.append("wild")
-	g.waypoint_go(0, "wild")
+	ok(g.difficulty == 0 and g.cur_zone == "town", "no other act to enter")
+	var home = null
+	for it in g.world.interactables:
+		if is_instance_valid(it) and it.kind == "waypoint":
+			home = it
+	g.hero.global_position = g.world.free_spot_near(home.global_position + Vector3(0, 0, 14), 1.0) if home != null else g.hero.global_position
+	g.waypoint_go(0, "town")
 	await _settle()
-	ok(g.cur_zone == "wild", "a touched waypoint travels there (now in %s)" % g.cur_zone)
 	var ws = null
 	for it in g.world.interactables:
 		if is_instance_valid(it) and it.kind == "waypoint":
 			ws = it
-	ok(ws != null and g.hero.global_position.distance_to(ws.global_position) < 5.0, "arrived beside that waypoint's own stone")
-	ok(g.world.spawns.has("waypoint_wild"), "each stone registers its own arrival spot")
-	g.max_run = 1
-	g.waypoint_go(1, "town")
-	await _settle()
-	ok(g.difficulty == 1 and g.cur_zone == "town", "an open act: switched to %s, %s" % [g.run_name(), g.cur_zone])
-	ok(g.waypoint_known(0, "wild"), "Act I keeps its moor waypoint after leaving")
-	g.waypoint_go(0, "wild")
-	await _settle()
-	ok(g.difficulty == 0 and g.cur_zone == "wild", "back across acts straight to Act I's moor waypoint")
+	ok(g.cur_zone == "town" and ws != null and g.hero.global_position.distance_to(ws.global_position) < 5.0, "a touched waypoint travels there, arriving beside its own stone")
+	ok(g.world.spawns.has("waypoint_town"), "each stone registers its own arrival spot")
 	# the window: opened from the stone, closes when the hero walks off
 	var stone = null
 	for it in g.world.interactables:
 		if is_instance_valid(it) and it.kind == "waypoint":
 			stone = it
-	ok(stone != null, "the moor has a waypoint stone")
+	ok(stone != null, "the camp has a waypoint stone")
 	if stone:
 		g.hero.global_position = stone.global_position + Vector3(2, 0, 0)
 		g.ui.open_waypoints(stone)
