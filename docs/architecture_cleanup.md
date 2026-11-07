@@ -135,8 +135,9 @@ Touch points to coordinate:
 
 ### In progress
 
-- Claude-2: the Archer, end to end (`game/heroes/archer/**`, `game/systems/**`, plus the Archer's places in `hero.gd`,
-  `class_skills.gd`, `skill_fx.gd` and `run_talents.gd`).
+- Claude-2 (2026-11-07, one agent per hero, each on its own branch): the Plague Doctor, the Warlock, Doug, the Wraith
+  and the Demon onto the Archer's template with their skills on the server; then the Knight and the dragons. Also
+  click-to-cast for AoE skills (`game/systems/skills/aiming.gd`, JJ and Blaine).
 - Claude-1: the monsters into `game/monsters/<name>/` (the Verdant Reach's first; King Grubb as a boss any camp can
   use), then the remaining cuts (Act II, the moor and fort).
 
@@ -204,7 +205,11 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 ## Status
 
 - [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
-  Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`.
+  Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`. Shared systems out of
+  `scripts/` (2026-11-07): `game/systems/fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/` and `game/items/`.
+  Left in `scripts/`: the big shared files (`game.gd`, `hero.gd`, `net.gd`, `enemy.gd`, `ui.gd`), the net stack,
+  the screens, the world and loading (Claude-1's), and the heroes not moved yet. A skill's own sounds live in its
+  `sounds/` folder (the Archer's first).
 - [ ] 2. The Archer, end to end. Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
   Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his
