@@ -1000,6 +1000,16 @@ func sv_skill_make(id: String, kind: String, data: Dictionary) -> void:
 	if server:
 		ServerRules.received(game, multiplayer.get_remote_sender_id(), id, kind, data)
 
+## Server: what a player's skill's rules gave its hero here (Skill.give: life back, mana) goes to that player's game.
+func send_skill_given(pid: int, id: String, kind: String, data: Dictionary) -> void:
+	if server and active and pid > 0 and multiplayer.get_peers().has(pid):
+		rpc_id(pid, "cl_skill_given", id, kind, data)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_skill_given(id: String, kind: String, data: Dictionary) -> void:
+	if not loading and game.world != null:
+		ServerRules.got(game, id, kind, data)
+
 ## A player's game: its build (level, attributes, the run's skills, rites and gems) for the server's copy of it.
 func send_build(d: Dictionary) -> void:
 	if active and not server:
@@ -1515,7 +1525,7 @@ func cl_arena_reset(at: Vector3) -> void:
 	game.hero.shove = Vector3.ZERO
 	game.hero.atk_t = -1
 	game.hero.charge_t = -1
-	game.hero.drain_t = -1
+	game.hero.channel_t = -1
 	game.hero.direct_dir = Vector3.ZERO
 	game.hero.life=game.hero.max_life
 	game.hero.mana=game.hero.max_mana

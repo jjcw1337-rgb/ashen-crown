@@ -44,6 +44,19 @@ func made(_kind: String, _data: Dictionary) -> void:
 func server_ok(_kind: String, _data: Dictionary) -> bool:
 	return true
 
+## What its rules give its own hero (life back, mana, a cooldown cut): at once where the hero is played; from the
+## match server's copy of a player, it goes to that player's game (ServerRules.give), whose own copy of the skill
+## takes it (`given`). The rules never touch the life or mana of the server's copy: the player's game owns them.
+func give(kind: String, data: Dictionary) -> void:
+	if hero.puppet and hero.game != null and hero.game.net != null and hero.game.net.server:
+		ServerRules.give(hero, id, kind, data)
+	else:
+		given(kind, data)
+
+## What `give` gives, on the hero's own game.
+func given(_kind: String, _data: Dictionary) -> void:
+	pass
+
 ## A foe its rules may strike: alive, and not its own player's stand-in (the server keeps one for every player).
 func foe(e) -> bool:
 	return not e.dead and not (int(e.get("pvp_pid")) > 0 and int(e.pvp_pid) == hero.peer_id)

@@ -1,6 +1,7 @@
 class_name WarlockFx
 extends RefCounted
-## Visual effects for the Warlock's skills. Everything is parented to the zone's FX node.
+## Visual effects for the Warlock's skills (her effects script: it only draws, from the events her skills send,
+## WarlockSkills). Everything is parented to the zone's FX node.
 
 const FEL := Warlock.FEL
 const PALE := Warlock.PALE
@@ -17,8 +18,10 @@ static func _free_later(n: Node, t: float) -> void:
 ##    `update` from his hand to the main victim and arching on to the forks), "victims" {t: all of them now} whenever
 ##    the set changes, "tick" (the motes of life streaming back and the victims' green flash, every 0.3 s) and
 ##    "end" (the release). A partner's copy also ends itself after DRAIN_TIMEOUT s without a tick.
-##  Blight Bolt: "bolt" {d: direction, x: Twin Skulls}: the skulls fly in h.bolts (`update`); "burst" {p, r, x: dur}:
-##    the burst and the pool (a puppet's skull nearest the burst is taken by it).
+##    "healed" {x}: the green "+N" over her (her own screen), about once a second.
+##  Blight Bolt: "bolt" {d: direction, x: Twin Skulls}: the skulls fly in h.fxs["blight_bolts"] (`update`) as the
+##    rules fly theirs (BlightBolt.fly), hiding at the first foe they meet; "burst" {p, r, x: dur}: the burst and the
+##    pool (the skull nearest the burst is taken by it).
 ##  Soul Shackles: "impact" {r: reach, x: how long, t: the foes bound}
 ##  Fel Covenant: "impact"
 const DRAIN_TIMEOUT := 1.5
@@ -39,6 +42,10 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			for e in victims:
 				latch(root, SkillFx.chest_of(e, 1.0))
 			SkillFx.snd(h, "drain_start", -3.0)
+			SkillFx.shake(h, 0.08)
+		["drain", "healed"]:
+			if not h.puppet and float(ev.get("x", 0.0)) >= 1.0:
+				Fx.number(root, h.global_position + Vector3(0, 2.3, 0), "+%d" % int(float(ev["x"])), Color(0.45, 1.0, 0.4))
 		["drain", "victims"]:
 			if not h.fxs.has("drain"):
 				return true
@@ -75,30 +82,31 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			_end_drain(h, true)
 		["blight", "bolt"]:
 			var dir: Vector3 = ev["d"]
-			var dirs := [dir] if not bool(ev.get("x", false)) else [dir.rotated(Vector3.UP, 0.14), dir.rotated(Vector3.UP, -0.14)]
-			for dv in dirs:
+			if not h.fxs.has("blight_bolts"):
+				h.fxs["blight_bolts"] = []
+			for dv in BlightBolt.dirs(dir, bool(ev.get("x", false))):
 				var n := bolt_node(root)
 				n.global_position = pos + Vector3(0, 1.3, 0) + dv * 0.6
 				n.look_at(n.global_position + dv, Vector3.UP)
-				h.bolts.append({"node": n, "dir": dv, "left": 15.0})
+				h.fxs["blight_bolts"].append({"node": n, "p": n.global_position, "d": dv, "left": float(Data.skill_def("blight").get("range", 15.0))})
 		["blight", "burst"]:
 			var g: Vector3 = ev["p"]
 			var rad: float = float(ev.get("r", 3.0))
 			blight_burst(root, g, rad)
 			blight_pool(root, g, rad, float(ev.get("x", 4.0)))
 			Sfx.play_at("blight_burst", g, -1.0)
-			if h.puppet:
-				# the skull that burst: the one nearest to it is gone
-				var best = null
-				var bd := 3.0
-				for b in h.bolts:
-					var n = b["node"]
-					if is_instance_valid(n) and n.global_position.distance_to(g) < bd:
-						bd = n.global_position.distance_to(g)
-						best = b
-				if best != null:
-					(best["node"] as Node).queue_free()
-					h.bolts.erase(best)
+			SkillFx.shake(h, 0.18)
+			# the skull that burst: the one nearest to it is gone
+			var best = null
+			var bd := 3.0
+			for b in h.fxs.get("blight_bolts", []):
+				var n = b["node"]
+				if is_instance_valid(n) and n.global_position.distance_to(g) < bd:
+					bd = n.global_position.distance_to(g)
+					best = b
+			if best != null:
+				(best["node"] as Node).queue_free()
+				h.fxs["blight_bolts"].erase(best)
 		["shackles", "impact"]:
 			var reach_s: float = float(ev.get("r", 7.0))
 			var bind_t: float = float(ev.get("x", 2.5))
@@ -108,7 +116,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			for e in ev.get("t", []):
 				chain(root, pos + Vector3(0, 1.1, 0), SkillFx.chest_of(e, 0.8), 0.8)
 				if not e.dead:
-					shackle(e, bind_t * (0.3 if e.boss else 1.0))
+					shackle(e, bind_t * (0.3 if e.get("boss") else 1.0))
 		["covenant", "impact"]:
 			covenant(root, pos)
 			SkillFx.snd(h, "covenant")
@@ -146,7 +154,7 @@ static func _end_drain(h: Hero, release_flash: bool) -> void:
 static func update(h: Hero, delta: float) -> void:
 	if h.fxs.has("drain"):
 		_draw_drain(h, delta)
-	if not h.bolts.is_empty():
+	if not (h.fxs.get("blight_bolts", []) as Array).is_empty():
 		_fly_bolts(h, delta)
 	WarlockHarrowFx.update(h, delta)
 
@@ -208,41 +216,33 @@ static func _draw_drain(h: Hero, delta: float) -> void:
 		sg.global_position = h.global_position + Vector3(0, 0.06, 0)
 		sg.rotation.y = h.anim_time * 0.9
 
-## Blight Bolt flies straight until it meets an enemy, a wall or the end of its range. The caster's own
-## bursts it (Hero._blight_burst: the damage, and the "burst" event everyone sees); a puppet's just flies
-## until that event takes it, or quietly vanishes at a wall or its range.
+## A Blight Bolt's skull flies straight as its rules' does (BlightBolt.fly), until the "burst" event takes it (the
+## rules found a foe, a wall or the end of its range), or quietly vanishes at a wall, its range or the first foe it
+## meets (the burst comes a moment later from the rules, here or from the match server).
 static func _fly_bolts(h: Hero, delta: float) -> void:
 	var world = h.game.world
-	for b in h.bolts.duplicate():
+	var bolts: Array = h.fxs["blight_bolts"]
+	var speed := Skill.num("blight", "speed", 16.0)
+	var near := Skill.num("blight", "near", 1.0)
+	for b in bolts.duplicate():
 		var n = b["node"]
 		if not is_instance_valid(n):
-			h.bolts.erase(b)
+			bolts.erase(b)
 			continue
-		var step := 16.0 * delta
-		var p: Vector3 = n.global_position
-		var np: Vector3 = world.move(p, (b["dir"] as Vector3) * step, 0.15)
-		var moved := np - p
-		moved.y = 0
-		np.y = lerpf(p.y, world.height_at(np.x, np.z) + 1.2, clampf(delta * 6.0, 0.0, 1.0))
+		var blocked := BlightBolt.fly(world, b, delta, speed)
+		var np: Vector3 = b["p"]
 		n.global_position = np
-		b["left"] -= step
-		var blocked: bool = b["left"] <= 0.0 or moved.length() < step * 0.4
-		if h.puppet:
-			if blocked:
-				n.queue_free()
-				h.bolts.erase(b)
-		elif blocked or not h.game.enemies_near(np, 1.0).is_empty():
-			h._blight_burst(np)
+		if blocked or not h.game.enemies_near(np, near).filter(func(e) -> bool: return int(e.get("pvp_pid")) != int(h.peer_id) or int(h.peer_id) <= 0).is_empty():
 			n.queue_free()
-			h.bolts.erase(b)
+			bolts.erase(b)
 
 static func clear(h: Hero) -> void:
 	_end_drain(h, false)
 	WarlockHarrowFx.clear(h)
-	for b in h.bolts:
+	for b in h.fxs.get("blight_bolts", []):
 		if is_instance_valid(b["node"]):
 			(b["node"] as Node).queue_free()
-	h.bolts.clear()
+	h.fxs.erase("blight_bolts")
 
 ## One Drain Life beam: twisting green strands redrawn every frame, turned to face the
 ## camera. Bright pulses and motes of life run from the victim back toward the caster, a

@@ -11,10 +11,13 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "warlock")
 	var h = g.hero
+	var drain := func() -> DrainLife: return WarlockSkills.skill(h, "drain") as DrainLife
+	var blight := func() -> BlightBolt: return WarlockSkills.skill(h, "blight") as BlightBolt
+	var covenant_left := func() -> float: return (h.kit["covenant"] as FelCovenant).left if h.kit.has("covenant") else 0.0
 	print("[W] class ", h.cls, " warlock rig ", h.rig.has_meta("warlock"), " skills ", h.skill_list().map(func(s): return s["id"]))
 	print("[W] stats str %d dex %d vit %d ene %d life %d mana %d weapon %s shield %s" % [h.str_, h.dex, h.vit, h.ene, h.max_life, h.max_mana, h.equipment["weapon"]["name"], str(h.equipment["shield"])])
 	h.mana = h.max_mana
-	print("[W] drain with nobody around: ", h.use_skill("drain", h.global_position + Vector3(3, 0, 0)), " channel ", h.drain_t)
+	print("[W] drain with nobody around: ", h.use_skill("drain", h.global_position + Vector3(3, 0, 0)), " channel ", h.channel_t)
 	await g.travel(0, "wild", "start")
 	while g._busy:
 		await process_frame
@@ -43,7 +46,7 @@ func _run() -> void:
 	var ok: bool = h.use_skill("drain", best.global_position)
 	await create_timer(0.5).timeout
 	# main: latched onto the pack that was aimed at (the facing assist may pick any of it)
-	print("[W] drain ok=%s channel=%s main=%s victims=%d (pack of %d) beams=%d light=%s" % [ok, h.drain_t >= 0.0, h.drain_main != null and (h.drain_main == best or (h.drain_main as Node3D).global_position.distance_to(best.global_position) < 5.5), h._drain_victims().size(), bn, (h.fxs["drain"]["beams"] as Dictionary).size() if h.fxs.has("drain") else 0, h.fxs.has("drain") and h.fxs["drain"]["light"] != null])
+	print("[W] drain ok=%s channel=%s main=%s victims=%d (pack of %d) beams=%d light=%s" % [ok, h.channel_t >= 0.0, drain.call().main != null and (drain.call().main == best or (drain.call().main as Node3D).global_position.distance_to(best.global_position) < 5.5), drain.call().victims_now().size(), bn, (h.fxs["drain"]["beams"] as Dictionary).size() if h.fxs.has("drain") else 0, h.fxs.has("drain") and h.fxs["drain"]["light"] != null])
 	print("[W] can_act while channelling: ", h.can_act())
 	var lit := func():
 		return g.world.get_node("Enemies").get_children().filter(func(e): return e._drained).size()
@@ -51,17 +54,17 @@ func _run() -> void:
 	await create_timer(0.4).timeout
 	print("[W] drain damage %d healed %d" % [int(l0 - lives.call()), int(h.life - life0)])
 	await create_timer(0.5).timeout
-	print("[W] channel ended after tap: ", h.drain_t < 0.0, " beams left ", (h.fxs["drain"]["beams"] as Dictionary).size() if h.fxs.has("drain") else 0, " rims left ", lit.call(), " sigil ", h.fxs.has("drain"))
+	print("[W] channel ended after tap: ", h.channel_t < 0.0, " beams left ", (h.fxs["drain"]["beams"] as Dictionary).size() if h.fxs.has("drain") else 0, " rims left ", lit.call(), " sigil ", h.fxs.has("drain"))
 	# retarget: kill the main victim mid-channel
 	h.mana = h.max_mana
 	var foes: Array = g.enemies_near(h.global_position, 11.0)
 	if foes.size() >= 2:
 		h.use_skill("drain", foes[0].global_position)
 		await create_timer(0.2).timeout
-		var first = h.drain_main
+		var first = drain.call().main
 		first.take_damage(first.life * 10.0 + 9999.0, 0.0, h.global_position, 0.0, false)
 		await create_timer(0.1).timeout
-		print("[W] retarget after kill: ", h.drain_t >= 0.0 and h.drain_main != null and h.drain_main != first)
+		print("[W] retarget after kill: ", h.channel_t >= 0.0 and drain.call().main != null and drain.call().main != first)
 	else:
 		print("[W] retarget after kill: skipped (", foes.size(), " foes)")
 	await create_timer(1.2).timeout
@@ -72,7 +75,7 @@ func _run() -> void:
 		h.use_skill("drain", foes[0].global_position)
 		await create_timer(0.1).timeout
 		h.cmd_move(h.global_position + Vector3(0, 0, 3))
-		print("[W] moving breaks channel: ", h.drain_t < 0.0)
+		print("[W] moving breaks channel: ", h.channel_t < 0.0)
 	# Blight Bolt
 	foes = g.enemies_near(h.global_position, 30.0)
 	if foes.size() > 0:
@@ -82,11 +85,11 @@ func _run() -> void:
 		l0 = lives.call()
 		h.use_skill("blight", foes[0].global_position)
 		await create_timer(0.7).timeout
-		print("[W] blight: bolts in flight %d pools %d damage %d" % [h.bolts.size(), h.blights.size(), int(l0 - lives.call())])
+		print("[W] blight: bolts in flight %d pools %d damage %d" % [blight.call().bolts.size(), blight.call().pools.size(), int(l0 - lives.call())])
 		await create_timer(2.0).timeout
-		print("[W] blight pool after 2.7s: pools %d total damage %d" % [h.blights.size(), int(l0 - lives.call())])
+		print("[W] blight pool after 2.7s: pools %d total damage %d" % [blight.call().pools.size(), int(l0 - lives.call())])
 		await create_timer(2.5).timeout
-		print("[W] blight pool expired: ", h.blights.is_empty())
+		print("[W] blight pool expired: ", blight.call().pools.is_empty())
 	# Soul Shackles
 	foes = g.enemies_near(h.global_position, 40.0)
 	if foes.size() > 0:
@@ -101,14 +104,14 @@ func _run() -> void:
 	h.mana = h.max_mana
 	h.use_skill("covenant", h.global_position)
 	await create_timer(0.9).timeout
-	print("[W] covenant: buff %.1f covenant %.1f" % [h.buff_t, h.covenant_t])
+	print("[W] covenant: buff %.1f covenant %.1f" % [h.buff_t, covenant_left.call()])
 	g.save_game()
 	await g.travel(0, "town", "start")
 	while g._busy:
 		await process_frame
-	print("[W] after travel: bolts %d pools %d channel %s" % [h.bolts.size(), h.blights.size(), h.drain_t >= 0.0])
+	print("[W] after travel: bolts %d pools %d channel %s" % [blight.call().bolts.size(), blight.call().pools.size(), h.channel_t >= 0.0])
 	h.set_class("knight")
-	print("[W] switched to knight: covenant ", h.covenant_t, " slots ", ["Q", "E", "R", "F"].map(func(k): return h.bound(k)), " mouse ", [h.bound("lmb"), h.bound("rmb")])
+	print("[W] switched to knight: covenant ", covenant_left.call(), " slots ", ["Q", "E", "R", "F"].map(func(k): return h.bound(k)), " mouse ", [h.bound("lmb"), h.bound("rmb")])
 	g.load_game()
 	print("[W] after load: class ", h.cls, " warlock rig ", h.rig.has_meta("warlock"), " net class ", h.net_gear().get("_cls"))
 	quit()

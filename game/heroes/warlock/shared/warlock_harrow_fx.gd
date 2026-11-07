@@ -13,7 +13,7 @@ extends RefCounted
 ##   <any> "fear" {t, x}                 the terror mark; "root" {t}: thorns hold the foe where its fear ended
 ##   w_terrify "scream" {t}              a shriek from him to the foe
 ##   w_effigy "plant" {p, x} / "caw" {p, t} / "gone" {p}
-##   w_darkwind "wind" {t}               a void wisp flies the chain, WarlockHex.WIND_GAP a hop
+##   w_darkwind "wind" {t}               a void wisp flies the chain, the Void Wisp's "gap" a hop
 ##   w_crowstorm "blink" {p, q} / "storm" {x, r}
 ##   w_harvest "sweep" {r, t}
 ##   w_soulfeast "feast" {x} / "end"     beams to every foe in reach, drawn here every frame from the local enemies
@@ -146,7 +146,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 		"storm":
 			if h.fxs.has("hx_storm"):
 				_end_storm(h)
-			var r := float(ev.get("r", WarlockHex.STORM_R))
+			var r := float(ev.get("r", Skill.num("w_crowstorm", "radius", 5.0)))
 			var n := Node3D.new()
 			root.add_child(n)
 			var wisps := []
@@ -167,7 +167,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			_snd(h, "eclipse_bloom", "covenant", -2.0)
 			SkillFx.shake(h, 0.3)
 		"sweep":
-			_sweep(h, root, float(ev.get("r", WarlockHex.HARVEST_R)))
+			_sweep(h, root, float(ev.get("r", Skill.num("w_harvest", "radius", 5.0))))
 			for t in targets:
 				var at := SkillFx.chest_of(t, 1.0)
 				_burst(root, at, SHADOW, 0.6)
@@ -329,7 +329,7 @@ static func _update_wind(h: Hero, key: String, d: Dictionary, delta: float, now:
 		return
 	d["hop"] = float(d["hop"]) + delta
 	var to := SkillFx.chest_of(e, 1.1)
-	var u := clampf(float(d["hop"]) / WarlockHex.WIND_GAP, 0.0, 1.0)
+	var u := clampf(float(d["hop"]) / Skill.num("w_darkwind", "gap", 0.14), 0.0, 1.0)
 	var p: Vector3 = (d["from"] as Vector3).lerp(to, u) + Vector3.UP * sin(u * PI) * 0.6
 	if p.distance_to(c.global_position) > 0.01:
 		c.look_at(p + (p - c.global_position), Vector3.UP)
@@ -764,7 +764,7 @@ static func _update_feast(h: Hero, d: Dictionary, delta: float, now: float) -> v
 	d["scan"] = float(d["scan"]) - delta
 	if d["scan"] <= 0.0:
 		d["scan"] = 0.2
-		d["near"] = h.game.enemies_near(h.global_position, WarlockHex.FEAST_R).filter(func(e): return not e.get("pvp_obj") and not e.get("pvp_hidden")).slice(0, 8)
+		d["near"] = h.game.enemies_near(h.global_position, Skill.num("w_soulfeast", "radius", 7.0)).filter(func(e): return not e.get("pvp_obj") and not e.get("pvp_hidden")).slice(0, 8)
 	var beams: Dictionary = d["beams"]
 	var hand := SkillFx.hand(h, false)
 	var live := {}

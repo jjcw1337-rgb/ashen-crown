@@ -11,9 +11,11 @@ extends RefCounted
 ## The classes whose skills run on the server (the rest still deal their own hits until they move over).
 const CLASSES := ["archer"]
 
-## Tests: what the server made from players' skills, and what it refused.
+## Tests: what the server made from players' skills, and what it refused; what a player's game took from its skills'
+## rules on the server (Skill.give: life back, mana).
 static var made_count := 0
 static var refused_count := 0
+static var given_count := 0
 
 ## This hero's skills run on the server: the server's copy deals them; the player's own game only shows them.
 static func on(h) -> bool:
@@ -48,6 +50,24 @@ static func received(game, pid: int, id: String, kind: String, data: Dictionary)
 	Hero.striker = h
 	made_count += 1
 	s.made(kind, data)
+
+## Server: what a player's skill's rules gave its own hero here (Skill.give) goes to that player's game.
+static func give(h, id: String, kind: String, data: Dictionary) -> void:
+	h.game.net.send_skill_given(int(h.peer_id), id, kind, data)
+
+## A player's game: the server's rules gave its hero something (life back, mana); the skill takes it (Skill.given).
+static func got(game, id: String, kind: String, data: Dictionary) -> void:
+	var h = game.hero
+	if h == null or not is_instance_valid(h) or h.dead or str(Data.skill_def(id).get("cls", "")) != str(h.cls):
+		return
+	var m = ClassSkills.of(h.cls)
+	if m == null or not m.has_method("skill"):
+		return
+	var s = m.skill(h, id)
+	if s == null:
+		return
+	given_count += 1
+	s.given(kind, data)
 
 ## Server, every frame: the copies' skills fly, beat and blow.
 static func update(h, delta: float) -> void:

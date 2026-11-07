@@ -116,11 +116,8 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
 	return true
 
-## One of his skills holds him in place (mid-Thunderstep his feet are the vault's).
-static func rooted(h: Hero) -> bool:
-	for sk in h.kit.values():
-		if sk.rooted():
-			return true
+## One of his skills holds him in place (mid-Thunderstep his feet are the vault's): ClassSkills asks his skill objects.
+static func rooted(_h: Hero) -> bool:
 	return false
 
 ## His wolf and arrows stay through death (the wolf rises again on its own, SpiritBeast.keep).
@@ -152,18 +149,12 @@ static func shatter(h: Hero, e) -> float:
 	return 1.2 if h.talent("frost_shatter") > 0.0 and e.chill_t > 0.0 else 1.0
 
 # ---------------------------------------------------------------- every frame
+## (his skills that are objects, Hero.kit: arrows in flight, the rains, the sigils, are run by ClassSkills, on his own
+## game only, since a partner's copy of him only shows them; it clears them too)
 static func update(h: Hero, delta: float) -> void:
 	SpiritBeast.keep(h, delta)
-	# his skills that are objects (Hero.kit): arrows in flight, the rains, the sigils; on his own game only, since a partner's
-	# copy of him only shows them
-	if not h.puppet:
-		for sk in h.kit.values():
-			sk.update(delta)
 
 static func clear(h: Hero) -> void:
-	for sk in h.kit.values():
-		sk.clear()
-	h.kit.clear()
 	ArcherArrowFx.clear(h)
 	ArrowFx.end_draw(h)
 	FrostVolleyRainFx.clear(h)

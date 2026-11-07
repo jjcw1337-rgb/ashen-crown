@@ -1,6 +1,6 @@
 extends SceneTree
-## The Warlock's three directions (WarlockHex, WarlockHarrowFx): every new skill on monsters spawned for it, the
-## curses' ticks and their rules, fear, the crows, the drain and the shield, and every rite key.
+## The Warlock's three directions (WarlockHex and her skill objects, WarlockHarrowFx): every new skill on monsters
+## spawned for it, the curses' ticks and their rules, fear, the wisps, the drain and the shield, and every rite key.
 ##   godot --headless --path . -s game/heroes/warlock/tests/warlock_hex_test.gd   (run with --fixed-fps 60 for steady timings)
 var g
 var fails := 0
@@ -60,8 +60,8 @@ func _run() -> void:
 		await process_frame
 	h.level = 15
 	h.recalc()
-	var hex = load("res://game/heroes/warlock/shared/warlock_hex.gd")
-	var ids: Array = hex.IDS
+	var hex: WarlockHex = WarlockSkills.hex(h)
+	var ids: Array = WarlockHex.IDS
 	var known: Array = h.skill_list().map(func(s): return s["id"])
 	ok(ids.all(func(i): return known.has(i)), "all %d new skills are the Warlock's (%d in all)" % [ids.size(), known.size()])
 	ok(ids.all(func(i): return RunBuild.skill_pool("warlock").any(func(s): return s["id"] == i)), "every new skill can be drawn in a run")
@@ -71,24 +71,24 @@ func _run() -> void:
 	var e = es[1]
 	ok(cast(h, "w_corruption", e.global_position), "Corruption casts")
 	await secs(0.6)
-	ok(hex.curses_on(h, e) == 1, "Corruption is on the foe (%d curse)" % hex.curses_on(h, e))
+	ok(hex.curses_on(e) == 1, "Corruption is on the foe (%d curse)" % hex.curses_on(e))
 	ok(h.fxs.has("hx_mark_%d" % e.get_instance_id()), "its mark shows on the foe")
 	var l0 := lost([e])
 	await secs(2.0)
 	var per2 := lost([e]) - l0
 	ok(per2 > 0.0, "Corruption ticks (%.0f in 2 s)" % per2)
-	var expect: float = hex.amount(h, "w_corruption", float(hex.CURSES["w_corruption"][0])) / 10.0 * 2.0
+	var expect: float = hex.amount("w_corruption", Skill.num("w_corruption", "dmg", 240.0) / 100.0) / Skill.num("w_corruption", "secs", 10.0) * 2.0
 	ok(absf(per2 - expect) < expect * 0.5 + 2.0, "about 240%% spell over 10 s (%.0f vs %.0f expected)" % [per2, expect])
 	cast(h, "w_unending", e.global_position)
 	await secs(0.6)
 	cast(h, "w_leeching", e.global_position)
 	await secs(0.6)
-	ok(hex.curses_on(h, e) == 3, "three curses stack on one foe (%d)" % hex.curses_on(h, e))
+	ok(hex.curses_on(e) == 3, "three curses stack on one foe (%d)" % hex.curses_on(e))
 	h.life = h.max_life * 0.5
 	var life0: float = h.life
 	await secs(2.0)
 	ok(h.life > life0, "Leeching Curse heals him (%+.0f)" % (h.life - life0))
-	ok(hex.afflicted(h, e) > 3.0, "the foe has been cursed without a break for %.1f s" % hex.afflicted(h, e))
+	ok(hex.afflicted(e) > 3.0, "the foe has been cursed without a break for %.1f s" % hex.afflicted(e))
 	# Malediction grows with curses
 	var e2 = es[2]
 	l0 = lost([e2])
@@ -109,7 +109,7 @@ func _run() -> void:
 	l0 = lost([e])
 	await secs(2.0)
 	var with_reck := lost([e]) - l0
-	ok(hex.curses_on(h, e) == 4, "Reckoning is a fourth curse (%d: %s)" % [hex.curses_on(h, e), str(h.wl["dots"].filter(func(x): return x["e"] == e).map(func(x): return x["id"]))])
+	ok(hex.curses_on(e) == 4, "Reckoning is a fourth curse (%d: %s)" % [hex.curses_on(e), str(hex.dots.filter(func(x): return x["e"] == e).map(func(x): return x["id"]))])
 	ok(with_reck > per2 * 1.6, "Reckoning roughly doubles the curses' damage (%.0f in 2 s)" % with_reck)
 	# Festering Hex: bursts and stuns every 5 s
 	var e0 = es[0]
@@ -127,9 +127,9 @@ func _run() -> void:
 	var e3 = (await foes(h, 1))[0]
 	cast(h, "w_corruption", e3.global_position)
 	await secs(0.6)
-	var d: Dictionary = hex._dot(h, e3, "w_corruption")
+	var d: Dictionary = hex.dot(e3, "w_corruption")
 	ok(not d.is_empty() and float(d["t"]) > 13.5, "Slow Decay: the curse lasts 50%% longer (%.1f s left)" % (float(d["t"]) if not d.is_empty() else 0.0))
-	ok(not d.is_empty() and hex._tick_amount(h, d) > float(d["per"]) + 4.9, "Lingering Rot: +5 a tick")
+	ok(not d.is_empty() and hex.tick_amount(d) > float(d["per"]) + 4.9, "Lingering Rot: +5 a tick")
 	h.tfx["dot_echo"] = 1.0
 	l0 = lost([e3])
 	cast(h, "w_corruption", e3.global_position)
@@ -148,17 +148,17 @@ func _run() -> void:
 	e = es[0]
 	ok(cast(h, "w_terrify", e.global_position), "Terrify casts")
 	await secs(0.5)
-	ok(hex.feared(h, e) and e.stun_t > 0.0, "the foe is frozen in terror")
+	ok(hex.is_feared(e) and e.stun_t > 0.0, "the foe is frozen in terror")
 	ok(h.fxs.has("hx_mark_%d" % e.get_instance_id()) and h.fxs["hx_mark_%d" % e.get_instance_id()]["terror"] != null, "the terror mark shows")
-	var bonus: float = hex.amount(h, "w_corruption", 1.0, e) / hex.amount(h, "w_corruption", 1.0)
+	var bonus: float = hex.amount("w_corruption", 1.0, e) / hex.amount("w_corruption", 1.0)
 	ok(absf(bonus - 1.2) < 0.01, "feared foes take 20%% more from his spells (x%.2f)" % bonus)
 	h.tfx["dmg_feared"] = 10.0
-	ok(absf(hex.amount(h, "w_corruption", 1.0, e) / hex.amount(h, "w_corruption", 1.0) - 1.3) < 0.01, "Nightmare Fuel adds to it")
+	ok(absf(hex.amount("w_corruption", 1.0, e) / hex.amount("w_corruption", 1.0) - 1.3) < 0.01, "Nightmare Fuel adds to it")
 	h.tfx.erase("dmg_feared")
 	# Paralysing Terror, Dread Harvest
 	h.tfx["fear_root"] = 1.0
 	await secs(1.6)
-	ok(not hex.feared(h, e) and e.slow_t > 0.0, "Paralysing Terror roots the foe as the fear ends")
+	ok(not hex.is_feared(e) and e.slow_t > 0.0, "Paralysing Terror roots the foe as the fear ends")
 	h.tfx.erase("fear_root")
 	h.tfx["fear_kill"] = 1.0
 	cast(h, "w_terrify", es[1].global_position)
@@ -184,7 +184,7 @@ func _run() -> void:
 	var spot: Vector3 = es[0].global_position + Vector3(-1.0, 0, 0)
 	ok(cast(h, "w_effigy", spot), "the Effigy is planted")
 	await secs(1.0)
-	var feared_n: int = es.filter(func(x): return hex.feared(h, x)).size()
+	var feared_n: int = es.filter(func(x): return hex.is_feared(x)).size()
 	ok(feared_n == 3, "it frightened the first three to come near (%d)" % feared_n)
 	ok(h.fxs.keys().any(func(k): return str(k).begins_with("hx_effigy_")), "the scarecrow stands")
 	# Crowstorm
@@ -194,7 +194,7 @@ func _run() -> void:
 	await secs(1.7)
 	ok(h.global_position.distance_to(start) > 4.0, "he blinked (%.1f m)" % h.global_position.distance_to(start))
 	ok(h.fxs.has("hx_storm"), "the storm of crows whirls round him")
-	ok(es.filter(func(x): return hex.feared(h, x)).size() >= 1, "everything near as he landed is frightened")
+	ok(es.filter(func(x): return hex.is_feared(x)).size() >= 1, "everything near as he landed is frightened")
 	l0 = lost(es)
 	await secs(2.0)
 	ok(lost(es) - l0 > 0.0, "the storm hurts what's near (%.0f)" % (lost(es) - l0))
@@ -218,27 +218,27 @@ func _run() -> void:
 	# Blood Ward: healing past full becomes a shield, which soaks a blow
 	h.tfx["overheal_shield"] = 20.0
 	h.life = h.max_life
-	hex.heal(h, h.max_life * 0.5)
-	var sh: float = hex.shield(h)
+	hex.healed(h.max_life * 0.5)
+	var sh: float = hex.shield
 	ok(absf(sh - h.max_life * 0.2) < 1.0, "Blood Ward: overflow becomes a shield, capped at 20%% (%.0f)" % sh)
 	ok(h.fxs.has("hx_shield"), "the shield shows")
 	g.test_immortal = false
 	var lb: float = h.life
 	h.take_hit(sh * 0.5, h.global_position + Vector3(2, 0, 0), "melee", "phys")
-	ok(hex.shield(h) < sh and h.life >= lb - 1.0, "the shield soaks a blow first (%.0f left)" % hex.shield(h))
+	ok(hex.shield < sh and h.life >= lb - 1.0, "the shield soaks a blow first (%.0f left)" % hex.shield)
 	g.test_immortal = true
 	h.tfx.erase("overheal_shield")
 	# Soul Feast
 	es = await foes(h, 4, Vector3(4, 0, 0), 1.2)
 	h.life = h.max_life
-	h.wl["shield"] = 0.0
+	hex.shield = 0.0
 	l0 = lost(es)
 	ok(cast(h, "w_soulfeast", h.global_position), "Soul Feast casts")
 	await secs(1.0)
 	ok(h.fxs.has("hx_feast") and (h.fxs["hx_feast"]["beams"] as Dictionary).size() >= 3, "beams reach every foe near (%d)" % ((h.fxs["hx_feast"]["beams"] as Dictionary).size() if h.fxs.has("hx_feast") else 0))
 	await secs(2.4)
 	ok(lost(es) > l0, "the feast drains them (%.0f)" % (lost(es) - l0))
-	ok(hex.shield(h) > 0.0, "at full life the feast hardens into a shield (%.0f)" % hex.shield(h))
+	ok(hex.shield > 0.0, "at full life the feast hardens into a shield (%.0f)" % hex.shield)
 	await secs(0.5)
 	ok(not h.fxs.has("hx_feast"), "the feast's beams are gone when it ends")
 
@@ -264,6 +264,6 @@ func _run() -> void:
 	await g.travel(0, "town", "start")
 	while g._busy:
 		await process_frame
-	ok(h.wl.get("dots", []).is_empty() and h.wl.get("effigies", []).is_empty() and not h.fxs.keys().any(func(k): return str(k).begins_with("hx_") and k != "hx_shield"), "a zone change leaves nothing behind but his shield (%s)" % str(h.fxs.keys()))
+	ok(hex.dots.is_empty() and (WarlockSkills.skill(h, "w_effigy") as DreadTotem).totems.is_empty() and not h.fxs.keys().any(func(k): return str(k).begins_with("hx_") and k != "hx_shield"), "a zone change leaves nothing behind but his shield (%s)" % str(h.fxs.keys()))
 	print("[WH] done, %d failed" % fails)
 	quit(1 if fails > 0 else 0)

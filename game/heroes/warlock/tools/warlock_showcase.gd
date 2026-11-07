@@ -102,12 +102,12 @@ func _run() -> void:
 		cast(h, id, target)
 		await frames(id, 5 if id in ["w_crowstorm", "w_soulfeast", "w_darkwind", "drain"] else 4, 0.22)
 		if id == "drain":
-			WarlockSkills.end_drain(h)
+			h.end_channel()
 		await create_timer(0.8).timeout
 	# a shield
-	h.wl["shield"] = 0.0
+	WarlockSkills.hex(h).shield = 0.0
 	h.tfx["overheal_shield"] = 20.0
-	WarlockHex.heal(h, h.max_life * 2.0)
+	WarlockSkills.hex(h).healed(h.max_life * 2.0)
 	await create_timer(0.4).timeout
 	await snap("shield")
 	print("[SHOW] %d frames in %s" % [shots, out])
