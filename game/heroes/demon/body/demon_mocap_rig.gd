@@ -1,6 +1,6 @@
 extends "res://scripts/knight_mocap_rig.gd"
-## The Demon on his motion-captured body (assets/models/demon_mocap.glb, tools/blender/demon/prep_demon_mocap.py;
-## built by Demon.build_mocap): the shared mocap system with his own moving parts laid over the clips every frame:
+## The Demon on his motion-captured body (body/demon_mocap.glb, build/prep_demon_mocap.py;
+## built by DemonBody.build_mocap): the shared mocap system with his own moving parts laid over the clips every frame:
 ##  - the wings (bones wL1..4 / wR1..4 from Spine01: root, arm, leading finger, lower finger) are posed in code,
 ##    springs lagging behind what the moment wants: folded and breathing at rest, half open and flexing with the
 ##    walk, spread and swept back at a run or a charge, thrown wide for a roar or a cast, a big beat on the slams
@@ -127,7 +127,7 @@ func sync_pose(st: Dictionary) -> void:
 		var lag := clampf(wrapf(_vis_yaw - yaw, -PI, PI), -0.6, 0.6)
 		body_root.rotation.y += lag
 
-## The run's planted foot moves at Demon.RUN_SPEED; between the crawl and the run the blend's natural speed runs
+## The run's planted foot moves at DemonBody.RUN_SPEED; between the crawl and the run the blend's natural speed runs
 ## from the walk's to the run's, so the clips play at his real ground speed (slower than Meshy's, heavy).
 func _rate(v: float, pts: Array) -> float:
 	if v < 0.3 or pts.size() < 4:
@@ -184,7 +184,7 @@ func _sway_hair(fwd_speed: float, side_speed: float, t: float, dt: float) -> voi
 	_tail(a, style, die, g, t, dt, started, struck, yaw_v, fwd_speed, side_speed)
 	_cloth(g, t, dt, die, fwd_speed, side_speed, yaw_v)
 
-## Molten Fists over its clip (Demon.SHOTS "fists" snaps into the chamber and holds it): through the gather he
+## Molten Fists over its clip (DemonBody.SHOTS "fists" snaps into the chamber and holds it): through the gather he
 ## rears back, chest out and head up, twisting into it with a strained tremble; through the blow he folds down
 ## over his fists, driving them at the ground ahead, then straightens with the recovery. Turns in the rig frame
 ## (-z ahead: a negative turn about x bends forward) laid over whatever the clip has the bone doing.

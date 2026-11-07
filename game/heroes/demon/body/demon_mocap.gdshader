@@ -1,4 +1,4 @@
-// The Demon's mocap body (Demon.build_mocap): Meshy's textures kept matte (cracked charcoal skin, never plastic),
+// The Demon's mocap body (DemonBody.build_mocap): Meshy's textures kept matte (cracked charcoal skin, never plastic),
 // with the magma showing through the cracks: the hot orange texels of the albedo glow, breathing slowly, flaring
 // with "glow" (attacks, casts, a hit's pulse), cooling to dark cinders as he dies ("cool"); the wing membrane
 // (vertex colour G) is a touch backlit; phased into the Underworld ("phase_amt") he goes to a shadow, see-through
@@ -15,7 +15,7 @@ uniform float cool = 0.0;        // 1 = the lava gone dark (death)
 uniform float phase_amt = 0.0;   // 1 = in the Underworld
 uniform float lava_base = 1.0;   // the lava's light at rest
 uniform float wrath = 0.0;       // 1 = Wrath of the Pit: the cracks blaze white-hot
-uniform float brand = 0.0;       // Molten Fists' gather (DemonFistsFx): the magma runs down into his fists
+uniform float brand = 0.0;       // Molten Fists' gather (MoltenFistsFx): the magma runs down into his fists
 uniform vec3 hand_l = vec3(0.0, -100.0, 0.0);   // his fists, world space
 uniform vec3 hand_r = vec3(0.0, -100.0, 0.0);
 varying float v_wing;

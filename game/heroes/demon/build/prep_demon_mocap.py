@@ -1,9 +1,9 @@
-# The Demon's mocap body (assets/models/demon_mocap.glb): the Meshy "Magma Brute" (concept A: cracked charcoal
+# The Demon's mocap body (game/heroes/demon/body/demon_mocap.glb): the Meshy "Magma Brute" (concept A: cracked charcoal
 # skin with lava glowing through, swept-back horns, bat wings, a spiked tail, a loincloth, hooves), auto-rigged by
 # Meshy (the 24-bone humanoid, like the knight's, the ranger's and the Wraith's), with Meshy library clips merged
 # onto its armature, trimmed to their useful part, their root motion taken out, and decimated. Meshy bound the
 # wings to the arm bones and the tail to the legs, so they tore about with every swing; here each gets its own
-# bones the game animates (scripts/demon_mocap_rig.gd):
+# bones the game animates (game/heroes/demon/body/demon_mocap_rig.gd):
 #  - wings: per side a chain from the back join: wL1 (the wing's root, on the back) -> wL2 (the arm, up to the
 #    top joint) -> wL3 (the leading finger, out to the outer tip) and wL4 (the lower finger, down to the bottom
 #    tip), parented to Spine01 (wR.. the right). The membrane is skinned to the nearest finger bones, blending

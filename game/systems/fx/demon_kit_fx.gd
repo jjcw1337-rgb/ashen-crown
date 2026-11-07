@@ -1,34 +1,23 @@
 class_name DemonKitFx
 extends RefCounted
-## The pieces the Demon's overhauled skills are made of. None of it is Molten Fists' (no hellfire tongues, rift
-## cracks or obsidian fangs): each skill has its own look out of these.
+## A toolkit of effect pieces any look may use (the Demon's skills first, then the Archer's frost and thunder, the
+## arcs, the dragons, the camp's chimneys and forge). It names no hero; its class name is older than that rule (a
+## rename touches every look that uses it).
 ##  - Simulated smoke (`smoke`): Blender Mantaflow sims rendered as premultiplied flipbooks
 ##    (tools/blender/fx/smoke_flipbook.py, packed by tools/fx_smokebook.py into assets/textures/fx/demon/smoke_<kind>.png):
-##    impact (a rock hitting the ground), comet (a burning rock's trail), steam, ash (a hoof's puff), blast (the
-##    Crucible's ring). The ground ones were rendered from the game camera's own 44 deg and are held facing the camera,
+##    impact (a rock hitting the ground), comet (a burning rock's trail), steam, ash (a hoof's puff), blast (a burst's
+##    ring). The ground ones were rendered from the game camera's own 44 deg and are held facing the camera,
 ##    so the card shows the cloud as the camera would see it in 3D; steam stands upright; the comet lies along its flight.
 ##  - Ground marks (`decal`): Meshy-painted top-down textures (crater, furrow, crush) on a mesh laid over the terrain
 ##    (not a Decal: the Compatibility renderer draws none), each with a glow mask for its hot part (made from the
 ##    painting by tools/fx_glow_mask.py).
-##  - Real pieces (`pieces`): the Meshy boulder broken into Voronoi chunks in Blender (fracture_rock.py), the cocoon
-##    broken the same way: thrown with gravity, bouncing, their molten insides cooling.
+##  - Real pieces (`pieces`): a Meshy model broken into Voronoi chunks in Blender (fracture_rock.py): thrown with
+##    gravity, bouncing, their molten insides cooling.
 ##  - Sparks (`sparks`): metal-spark streaks stretched along their flight.
-##  - The Meshy props: boulder, meteor, fault plate, fissure, claw, chain, horns, cocoon (`model`), stand-ins without them.
+##  - A look's Meshy props (`model`, `heat_model`), from the look's own folder.
 ##  - Landing marks (`target_mark`), shock rings of bending air (`shock_ring`), lights (`flash_light`), finding a
 ##    player's body from an event (`by_pid`, `targets`).
 
-const DIR := "res://assets/models/fx/demon/"
-const BOULDER := DIR + "boulder.glb"
-const BOULDER_PIECES := DIR + "boulder_pieces.glb"
-const METEOR := DIR + "meteor.glb"
-const METEOR_PIECES := DIR + "meteor_pieces.glb"
-const PLATE := DIR + "fault_plate.glb"
-const FISSURE := DIR + "fissure.glb"
-const CLAW := DIR + "hellclaw.glb"
-const CHAIN := DIR + "chain.glb"
-const HORNS := DIR + "horns.glb"
-const COCOON := DIR + "cocoon.glb"
-const COCOON_PIECES := DIR + "cocoon_pieces.glb"
 const TEX := "res://assets/textures/fx/demon/"
 ## smoke books (the lines tools/fx_smokebook.py prints): file, grid (cols, rows), frames, cell aspect (w / h), where
 ## the sim's origin sits in a frame (u, v from the bottom left: the card's anchor), the cloud's width as a fraction of
@@ -89,10 +78,6 @@ static func height_of(n: Node) -> float:
 
 static func chest(n: Node3D, k := 0.6) -> Vector3:
 	return n.global_position + Vector3(0, height_of(n) * k, 0)
-
-## His head, roughly: above his shoulders and a little forward of his facing.
-static func head(h: Hero) -> Vector3:
-	return h.global_position + Vector3(0, 2.15 * Demon.SCALE, 0) + h.facing() * 0.32
 
 # ---------------------------------------------------------------- models
 static func model(path: String) -> Node3D:

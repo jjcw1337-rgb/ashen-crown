@@ -425,7 +425,7 @@ func _build_rig() -> void:
 	if is_wraith():
 		rig = Wraith.build(wraith_gear())
 	elif is_demon():
-		rig = Demon.build(demon_gear())
+		rig = DemonBody.build(demon_gear())
 	elif is_warlock():
 		rig = Warlock.build(warlock_gear())
 	elif is_archer():
@@ -521,7 +521,7 @@ func _tint_aura() -> void:
 	(aura.process_material as ParticleProcessMaterial).color_ramp = gt
 
 func demon_gear() -> Dictionary:
-	var g := Demon.default_gear()
+	var g := DemonBody.default_gear()
 	var a = equipment.get("armor")
 	if a != null:
 		var p := Models.palette(a)
@@ -881,7 +881,7 @@ func refresh_gear() -> void:
 	if is_wraith():
 		Wraith.rebuild_body(rig, wraith_gear())
 	elif is_demon():
-		Demon.rebuild_body(rig, demon_gear())
+		DemonBody.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
 	elif is_dragon():
@@ -2046,7 +2046,7 @@ func _process_body(delta: float) -> void:
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
 	if is_demon():
-		Demon.animate(rig, anim_time, move_amt, self)
+		DemonBody.animate(rig, anim_time, move_amt, self)
 		return
 	if is_warlock():
 		Warlock.animate(rig, anim_time, move_amt, 1.0 if covenant_t > 0.0 or (puppet and net_buff) else 0.0,

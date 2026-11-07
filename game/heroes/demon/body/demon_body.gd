@@ -1,6 +1,6 @@
-class_name Demon
+class_name DemonBody
 extends RefCounted
-## The Demon class: a horned, winged fiend in obsidian plate. Like the Wraith it reuses the
+## The Demon's body (his skills are demon.gd's, Demon): a horned, winged fiend. Like the Wraith it reuses the
 ## knight's skeleton and joints (so Anim.pose, weapon grips, co-op puppets all work) and adds
 ## its own pieces. Everything sharp (horns, spikes, claws, blades, wing bones, the tail spade)
 ## is dark obsidian with a crisp, solid ember edge.
@@ -32,10 +32,10 @@ static func body_gear(g: Dictionary) -> Dictionary:
 	k["coif"] = false
 	return k
 
-## His real body: the Meshy "Magma Brute" on the shared mocap system (tools/blender/demon/prep_demon_mocap.py:
+## His real body: the Meshy "Magma Brute" on the shared mocap system (build/prep_demon_mocap.py:
 ## Meshy library clips, root motion taken out, the wings, tail and loincloth on their own bones that
-## scripts/demon_mocap_rig.gd animates). Without the glb the knight body in obsidian plate below stands in.
-const MOCAP_GLB := "res://assets/models/demon_mocap.glb"
+## body/demon_mocap_rig.gd animates). Without the glb the knight body in obsidian plate below stands in.
+const MOCAP_GLB := "res://game/heroes/demon/body/demon_mocap.glb"
 ## A brute: the model is 2.2 m tall as Meshy made it, and he stands this much bigger again (the knight is 1.8 m).
 const SCALE := 1.08
 ## The clips' natural ground speeds (m/s; prep_demon_mocap.py prints them): the slow walk, the run, the head-down charge.
@@ -45,7 +45,7 @@ const CHARGE_SPEED := 7.6
 const WALK_BLEND := 2.6        # above this ground speed the walk is gone from the blend
 ## His moves' clips per attack style (KnightMocapRig "shots": [[attack progress, clip second], ...], the blow on
 ## Anim.impact_at's frame): the weapon swings the punch, the axe chop and the ground slam (the finisher), Space's
-## swings the chop, the punch and the hurl; his skills' styles below (DemonSkills.STYLE).
+## swings the chop, the punch and the hurl; his skills' styles below (Demon, skills/).
 const SHOTS := {
 	"side": {"style": "side", "clip": "claw", "keys": [[0.0, 0.45], [0.3, 1.0], [0.48, 1.33], [0.7, 1.7], [1.0, 2.4]]},
 	"cast": {"style": "cast", "clip": "cast", "keys": [[0.0, 0.5], [0.3, 1.4], [0.55, 2.08], [1.0, 2.66]]},
@@ -57,7 +57,7 @@ const SHOTS := {
 	# felling a tree (Harvest): Meshy's Charged Axe Chop is his "smash", the blow into the trunk at 0.55
 	"chop": {"style": "chop", "clip": "smash", "keys": [[0.0, 0.7], [0.55, 1.58], [0.8, 2.0], [1.0, 2.7]]},
 	"thrust": {"style": "thrust", "clip": "hurl", "keys": [[0.0, 0.5], [0.52, 1.75], [0.8, 2.3], [1.0, 3.3]]},
-	# his skills (DemonSkills): the punch, the charge (the clip loops through the run), the slam, the throw (the
+	# his skills (skills/): the punch, the charge (the clip loops through the run), the slam, the throw (the
 	# boulder leaves at the release), the grab (seized at 0.25, held up, smashed at 0.5), the roar and the stomp
 	# Molten Fists: snaps into the chamber, holds it while the fists catch fire (DemonFistsFx), then the blow at
 	# full speed and a lingering follow-through (the blow's frame unchanged)
@@ -68,7 +68,7 @@ const SHOTS := {
 	"grip": {"style": "grip", "clip": "grab_throw", "keys": [[0.0, 0.2], [0.25, 1.2], [0.5, 3.08], [0.7, 3.4], [1.0, 4.0]]},
 	"wrath_roar": {"style": "wrath_roar", "clip": "roar", "keys": [[0.0, 0.0], [0.5, 1.25], [1.0, 2.75]]},
 	"wrath_stomp": {"style": "wrath_stomp", "clip": "stomp", "keys": [[0.0, 0.0], [0.5, 0.62], [1.0, 1.3]]},
-	# the kit overhaul's stages (DemonSkills.STAGES): Hellrunner's paw and skid, Shatterstone's second throw, the
+	# the kit overhaul's stages (Demon.STAGES): Hellrunner's paw and skid, Shatterstone's second throw, the
 	# Chain of the Pit's fling and haul, the Crucible's knee
 	"icharge_wind": {"style": "icharge_wind", "clip": "stomp", "keys": [[0.0, 0.0], [0.7, 0.5], [1.0, 0.64]]},
 	"icharge_skid": {"style": "icharge_skid", "clip": "skid", "keys": [[0.0, 0.0], [1.0, 1.04]]},
@@ -99,7 +99,7 @@ static func build_mocap(g: Dictionary) -> Node3D:
 	var r := Knight.build_mocap(MOCAP_GLB, {
 		"relaxed": ["idle", 0.0, "walk", WALK_SPEED, "run", WALK_BLEND, "run", RUN_SPEED, "charge", CHARGE_SPEED],
 		"combat": ["combat_idle", 0.0, "walk", WALK_SPEED, "run", WALK_BLEND, "run", RUN_SPEED, "charge", CHARGE_SPEED],
-		"meta": "demon", "scale": SCALE, "script": "res://scripts/demon_mocap_rig.gd",
+		"meta": "demon", "scale": SCALE, "script": "res://game/heroes/demon/body/demon_mocap_rig.gd",
 		"shots": SHOTS})
 	r.remove_meta("knight")
 	r.set_meta("demon", true)
@@ -116,10 +116,10 @@ static func build_mocap(g: Dictionary) -> Node3D:
 	_mocap_extras(r, g)
 	return r
 
-## The Meshy textures under the magma shader (scripts/demon_mocap.gdshader): matte skin, the lava in the cracks
+## The Meshy textures under the magma shader (body/demon_mocap.gdshader): matte skin, the lava in the cracks
 ## breathing, flaring, cooling in death, the Underworld's shadow.
 static func _magma(r: Node3D, g: Dictionary) -> void:
-	var sh: Shader = load("res://scripts/demon_mocap.gdshader")
+	var sh: Shader = load("res://game/heroes/demon/body/demon_mocap.gdshader")
 	var mats := []
 	for mi in r.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
