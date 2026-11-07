@@ -165,13 +165,19 @@ static func free_later(n: Node, t: float) -> void:
 			m.queue_free())
 
 # ---------------------------------------------------------------- the wire
-## Enemy nodes in "t" become ids: their net id in co-op, their instance id otherwise (tests round-trip them).
+## Targets in "t" become ids: a monster's net id in co-op (its instance id otherwise: tests round-trip them); a
+## player's stand-in (an Enemy with pvp_pid, the caster's copy of another player) becomes minus that player's peer
+## id, so every game aims the effect at that player: their own hero on their screen, their puppet on the others'.
 static func encode(net: Node, ev: Dictionary) -> Dictionary:
 	var w := ev.duplicate()
 	if w.has("t"):
 		var ids := PackedInt64Array()
 		for e in w["t"]:
-			if e != null and is_instance_valid(e):
+			if e == null or not is_instance_valid(e):
+				continue
+			if net.active and e is Enemy and int(e.pvp_pid) > 0:
+				ids.append(-int(e.pvp_pid))
+			else:
 				ids.append(int(e.net_id) if net.active else e.get_instance_id())
 		w["t"] = ids
 	return w
@@ -181,8 +187,26 @@ static func decode(net: Node, w: Dictionary) -> Dictionary:
 	if ev.has("t"):
 		var out := []
 		for id in ev["t"]:
+			if net.active and int(id) < 0:
+				var who = player_hero(net, -int(id))
+				if who != null:
+					out.append(who)
+				continue
 			var e = net.enemies.get(int(id)) if net.active else instance_from_id(int(id))
 			if e != null and is_instance_valid(e) and e is Enemy and not e.dead:
 				out.append(e)
 		ev["t"] = out
 	return ev
+
+## Tests: how many effects arrived aimed at this game's own hero.
+static var aimed_at_me := 0
+
+## A player as this game sees them: its own hero if it's them, else their puppet; null if they're gone or dead.
+static func player_hero(net: Node, pid: int):
+	var h = null
+	if net.multiplayer.has_multiplayer_peer() and pid == net.multiplayer.get_unique_id():
+		h = net.game.hero
+		aimed_at_me += 1
+	elif net.players.has(pid):
+		h = net.players[pid].get("hero")
+	return h if h != null and is_instance_valid(h) and not h.dead else null
