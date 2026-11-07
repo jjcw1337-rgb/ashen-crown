@@ -21,7 +21,7 @@ dressing: `mush`, `elf`, `frost`, `ruins`, `barrow`, `forest`) and foes (kind, c
 spawns them and the chest. To add a camp, add a row; a boss camp names its `boss` (a kind with a brain in `game/monsters/`).
 
 Still borrowed from outside, to move with their owners:
-- the other monsters (`scripts/data.gd` `ENEMIES`, their brains in `enemy.gd`, bodies in `goblin.gd`): they go to
+- the other monsters (`game/systems/data/data.gd` `ENEMIES`, their brains in `enemy.gd`, bodies in `goblin.gd`): they go to
   `game/monsters/<name>/` like the bosses;
 - models from other places: `models/roman/` ruins, `models/fort/tower`, `models/lairs/ice_rock`, `models/camp/` tent
   and runestone, `models/waypoint/` banner and crystal rune;

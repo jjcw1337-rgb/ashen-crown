@@ -9,8 +9,8 @@ var RT
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
-	RB = load("res://scripts/run_build.gd")
-	RT = load("res://scripts/run_talents.gd")
+	RB = load("res://game/items/run_build.gd")
+	RT = load("res://game/items/run_talents.gd")
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -330,23 +330,23 @@ func _gems(h) -> void:
 func _consumables(h) -> void:
 	await _fresh(h, "archer", {})
 	h.belt = [null, null, null, null]
-	check(h.add_to_inventory(load("res://scripts/items.gd").potion("elixir_fury")), "an elixir goes on the belt")
+	check(h.add_to_inventory(load("res://game/items/items.gd").potion("elixir_fury")), "an elixir goes on the belt")
 	var d0: float = h.talent("dmg")
 	h.drink(0)
 	check(is_equal_approx(h.talent("dmg"), d0 + 30.0), "Elixir of Fury: +30% damage")
 	RT.tick(h, 21.0)
 	check(is_equal_approx(h.talent("dmg"), d0), "Elixir of Fury: runs out after 20 s")
-	h.add_to_inventory(load("res://scripts/items.gd").potion("flask_frost"))
+	h.add_to_inventory(load("res://game/items/items.gd").potion("flask_frost"))
 	var e = _foe(h, Vector3(5, 0, 0), "zombie", 100000.0)
 	h.cursor = e.global_position
 	h.drink(0)
 	await create_timer(1.0).timeout
 	check(e.life < e.max_life and e.stun_t > 0.5, "Frost Flask: thrown at the pointer, it hurts and freezes (stun %.2f)" % e.stun_t)
-	h.add_to_inventory(load("res://scripts/items.gd").potion("scroll_ward"))
+	h.add_to_inventory(load("res://game/items/items.gd").potion("scroll_ward"))
 	h.drink(0)
 	check(h.ward >= h.max_life * 0.39, "Scroll of Warding: a ward of 40%% of life (%.0f)" % h.ward)
 	var lvl: int = h.level
-	h.add_to_inventory(load("res://scripts/items.gd").potion("tome_insight"))
+	h.add_to_inventory(load("res://game/items/items.gd").potion("tome_insight"))
 	h.drink(0)
 	check(h.xp > 0 or h.level > lvl, "Tome of Insight: experience")
 	var rng := RandomNumberGenerator.new()
@@ -589,5 +589,5 @@ func _skills(h) -> void:
 	# every run skill is in its class's pool and reads its theme
 	for cls in ["archer", "plague", "serpent", "wyvern"]:
 		var ids: Array = RB.skill_pool(cls).map(func(s): return s["id"])
-		var run_ids: Array = load("res://scripts/data.gd").run_skills_for(cls).map(func(s): return s["id"])
+		var run_ids: Array = load("res://game/systems/data/data.gd").run_skills_for(cls).map(func(s): return s["id"])
 		check(run_ids.all(func(i): return ids.has(i) and RT.SKILL_THEMES.has(i)), "%s: run skills in the pool with their themes (%d skills to find)" % [cls, ids.size()])

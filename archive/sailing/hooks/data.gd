@@ -1,4 +1,4 @@
-## Not a script: what sailing had in scripts/data.gd, cut out whole when sailing was archived (2026-11-06), to paste back.
+## Not a script: what sailing had in game/systems/data/data.gd, cut out whole when sailing was archived (2026-11-06), to paste back.
 ## REVIVE.md says where each piece was used.
 
 # ACTS[0]: "coast": "The Mournwater Coast"

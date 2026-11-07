@@ -72,10 +72,10 @@ func _validate(s: Dictionary) -> String:
 
 func _run() -> void:
 	var g = (load("res://main.tscn") as PackedScene).instantiate()
-	SS = load("res://scripts/skill_spec.gd")
-	DG = load("res://scripts/dodge.gd")
-	AN = load("res://scripts/anim.gd")
-	SH = load("res://scripts/shared_skills.gd")
+	SS = load("res://game/systems/skills/skill_spec.gd")
+	DG = load("res://game/systems/skills/dodge.gd")
+	AN = load("res://game/systems/bodies/anim.gd")
+	SH = load("res://game/systems/skills/shared_skills.gd")
 	get_root().add_child(g)
 	while g.world == null or g._busy or g._intro_playing or not g.ui.title_panel.visible:
 		g._intro_skip = true

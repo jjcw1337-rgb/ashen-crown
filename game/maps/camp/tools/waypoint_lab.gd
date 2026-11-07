@@ -16,10 +16,10 @@ func _run() -> void:
 	# the autoloads (Sfx) exist only after the first frame; the game's scripts are loaded then, by hand
 	await process_frame
 	var WG = load("res://game/maps/camp/waypoint_grand.gd")
-	var MatsS = load("res://scripts/mats.gd")
+	var MatsS = load("res://game/systems/bodies/mats.gd")
 	var PropsS = load("res://scripts/props.gd")
 	var GradeS = load("res://scripts/grade.gd")
-	var InfS = load("res://scripts/infernal_fx.gd")
+	var InfS = load("res://game/systems/fx/infernal_fx.gd")
 	var a := OS.get_cmdline_user_args()
 	var out: String = a[0] if a.size() > 0 else "/tmp/wplab"
 	var frames := int(a[1]) if a.size() > 1 else 1

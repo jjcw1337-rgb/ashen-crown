@@ -28,13 +28,13 @@ sequenceDiagram
 ## Statuses
 
 - **Monsters** carry burn, chill, stun and slow, and tags such as Hunter's Mark, in `enemy.gd`.
-- **Players** take crowd control through `PvpStatus` (`scripts/pvp_status.gd`): stagger (a stun), knockup, pull,
+- **Players** take crowd control through `PvpStatus` (`game/systems/combat/pvp_status.gd`): stagger (a stun), knockup, pull,
   fear, slow, burn and more. The server checks it, and hard crowd control has diminishing returns. New crowd control
   on players goes through `PvpStatus`.
 
 ## Rites and gems
 
-`scripts/run_talents.gd` holds what rites and gems do. They hook into combat at fixed points: before and after a
+`game/items/run_talents.gd` holds what rites and gems do. They hook into combat at fixed points: before and after a
 hit (`hit_mult`, `on_hit`), on a kill, when struck, on a cooldown, every frame, and on a shot.
 
 ## Who decides

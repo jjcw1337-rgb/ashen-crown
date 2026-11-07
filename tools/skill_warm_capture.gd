@@ -107,7 +107,7 @@ func _run() -> void:
 			else:
 				if Data.run_skills_for(cls).any(func(x): return x["id"] == id):
 					# a run's skill: only a run character has it
-					h.run = load("res://scripts/run_build.gd").new()
+					h.run = load("res://game/items/run_build.gd").new()
 					h.run.skills.append(id)
 				h.use_skill(id, h.skill_aim(id, en[1].global_position))
 				h.run = null

@@ -13,7 +13,7 @@ func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	SV = load("res://scripts/survivors.gd")
-	RB = load("res://scripts/run_build.gd")
+	RB = load("res://game/items/run_build.gd")
 	_run()
 
 func check(ok: bool, what: String) -> void:
@@ -55,7 +55,7 @@ func _run() -> void:
 	h.run_changed()
 	h.bind("rmb", h.run.skills[5])      # (the spellbook's sixth swapped onto right mouse)
 	var rmb: String = h.bound("rmb")
-	h.belt[2] = load("res://scripts/items.gd").potion("hp_potion")
+	h.belt[2] = load("res://game/items/items.gd").potion("hp_potion")
 	var want := {"cls": h.cls, "level": h.level, "skills": h.run.skills.duplicate(), "binds": h.binds.duplicate(), "passives": h.run.passives.duplicate(),
 		"weapon": str(h.equipment["weapon"]["name"]), "belt": h.belt.filter(func(x): return x != null).size(), "life": h.max_life}
 	# the extraction (as Net.cl_extracted calls it)

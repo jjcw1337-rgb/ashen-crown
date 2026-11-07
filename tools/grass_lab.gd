@@ -102,7 +102,7 @@ func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(out)
 	GF = load("res://scripts/grass_field.gd")
 	GR = load("res://scripts/grass.gd")
-	load("res://scripts/mats.gd").ensure_globals()
+	load("res://game/systems/bodies/mats.gd").ensure_globals()
 	stage = Node3D.new()
 	get_root().add_child(stage)
 	_stage()

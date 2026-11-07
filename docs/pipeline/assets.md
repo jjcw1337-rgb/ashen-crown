@@ -23,7 +23,9 @@ flowchart LR
 5. **Effects** are simulations (Blender fire, smoke and liquid rendered to flipbooks) and real fractured pieces
    ([effects](../systems/effects.md)).
 6. **Icons** are Meshy-painted grids cut by `tools/skill_icons.py` and `tools/talent_icons.py`.
-7. **Sound** is ElevenLabs through `tools/audio/` (a human picks the takes), never synthesized.
+7. **Sound** is ElevenLabs through `tools/audio/` (a human picks the takes), never synthesized. A sound only one skill
+   plays lives in that skill's `sounds/` folder (one hero's shared ones in its `shared/sounds/`), the rest in
+   `assets/audio/sfx/`; `tools/audio/build_sfx.py --bank` writes each one's folder into the bank (`sfx_bank.gd`).
 
 ## Keep it cheap
 

@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://bls8k3cdlod5o"
-path="res://.godot/imported/storm_shot_0.wav-986ab02270f8d8e8466cb005848a6c93.sample"
+path="res://.godot/imported/storm_shot_0.wav-6b52c195b9138d5fa59d5e63beb4100c.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/storm_shot_0.wav"
-dest_files=["res://.godot/imported/storm_shot_0.wav-986ab02270f8d8e8466cb005848a6c93.sample"]
+source_file="res://game/heroes/archer/skills/storm_shot/sounds/storm_shot_0.wav"
+dest_files=["res://.godot/imported/storm_shot_0.wav-6b52c195b9138d5fa59d5e63beb4100c.sample"]
 
 [params]
 

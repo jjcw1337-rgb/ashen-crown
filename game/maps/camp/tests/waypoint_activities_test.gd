@@ -33,7 +33,7 @@ func _run():
  while g.world == null or g._busy or g._intro_playing:
   g._intro_skip = true
   await process_frame
- data = load("res://scripts/data.gd")
+ data = load("res://game/systems/data/data.gd")
  await g.start_game(false, "knight")
  g.ui.close_all()
  g.hero.global_position = g.world.spawns["waypoint_town"]
