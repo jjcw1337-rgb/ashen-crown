@@ -10,8 +10,6 @@ const KEYS := ["id", "cls", "name", "key", "lvl", "mana", "cd", "aim", "range", 
 
 ## Styles more than one user plays (the weapon swings, monsters' attacks, the shared skills): a skill's "hit" must
 ## not retime them.
-## Tags that allow a cooldown (docs/content/skills.md, "Designing a skill": cooldowns are for utility).
-const UTILITY := ["movement", "warcry", "buff", "cc", "trap", "summon", "command", "ultimate", "sustain"]
 const SHARED_STYLES := ["over", "back", "side", "thrust", "cast", "slam", "smash", "claw", "bite", "lob", "cleave",
 	"swipe1", "swipe2", "swipe3", "burst", "cackle", "scoop", "bow", "chop"]
 
@@ -70,9 +68,6 @@ func _validate(s: Dictionary) -> String:
 		return "%s: \"k\" is a dictionary of numbers >= 0" % id
 	if s.has("pvp") and not (s["pvp"] is Dictionary and (s["pvp"] as Dictionary).values().all(func(v): return _num(v) and float(v) >= 0.0)):
 		return "%s: \"pvp\" is a dictionary of numbers >= 0" % id
-	# the Path of Exile way: a main skill has no cooldown (its use time is its limit); a cooldown is for utility
-	if float(s.get("cd", 0.0)) > 0.0 and not (s.get("tags", []) as Array).any(func(t): return UTILITY.has(t)):
-		return "%s: a cooldown on a main skill; take it off (its \"use\" time is the limit) or tag it as utility (%s)" % [id, ", ".join(UTILITY)]
 	return ""
 
 func _run() -> void:

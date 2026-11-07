@@ -40,10 +40,20 @@ The Archer is the example to copy. Most other heroes still keep every skill in o
 
 ## Designing a skill
 
-- **Damage skills have no cooldown;** mana limits them. A skill with a cooldown carries a utility tag (`movement`,
-  `cc`, `buff`, `summon`…). `tools/skill_spec_test.gd` checks this and every data field.
+- **Make it cool.** A skill should be something a player wants to press again: one strong idea, a big readable
+  moment, a sound that lands. If it looks like a placeholder, it isn't done.
+- **It builds toward a direction.** Each hero has a few directions, the build themes in `RunTalents.THEMES` (the
+  Archer: Flame, Frost, Storm and Hunt). Every skill feeds one of them, and its rites and gems make that direction
+  stronger, so a run grows into a build. A skill that serves no direction doesn't belong on the hero.
+- **Good models.** Whatever a skill puts in the world (an arrow, a totem, a summon, a weapon) is a real model made
+  for it ([assets](../pipeline/assets.md)), never a stack of primitives, and its look meets the bar in
+  [effects](../systems/effects.md).
+- **It's cheap.** Every copy of the hero draws it, so four players casting costs four times as much. Free what's
+  done, share materials, keep lights and particles few, and measure it with `tools/skill_perf.sh <class> <skill>`
+  before it ships ([performance](../systems/performance_kpis.md)).
 - **Every skill has an answer** (its counterplay), and no button carries more than one hard crowd control.
 - **The wind-up is readable:** a heavy blow lands later in its animation than a quick one.
+- `tools/skill_spec_test.gd` checks every data field.
 
 ## Changing a skill
 
