@@ -11,17 +11,27 @@ func cast(aim: Vector3) -> void:
 	hero.atk_dur = val("cast_s", 0.45)
 
 func impact() -> void:
+	make("mark", {"at": hero.atk_aim})
+
+## Server: a mark within his skill's range of where it has him.
+func server_ok(kind: String, d: Dictionary) -> bool:
+	return kind == "mark" and d.get("at") is Vector3 and (d["at"] as Vector3).distance_to(hero.global_position) <= float(Data.skill_def(id).get("range", 18.0)) + 4.0
+
+## The foe nearest the point is marked (on the match server when his skills run there; it says so to everyone).
+func made(kind: String, d: Dictionary) -> void:
+	if kind != "mark":
+		return
 	var h := hero
-	var at: Vector3 = h.atk_aim
+	var at: Vector3 = d["at"]
 	var reach := val("reach", 3.5)
 	var best = null
 	var bd := reach
 	for e in h.game.enemies_near(at, reach):
-		if e.dead or e.pvp_obj > 0:
+		if not foe(e) or e.pvp_obj > 0:
 			continue
-		var d: float = Vector2(e.global_position.x - at.x, e.global_position.z - at.z).length()
-		if d < bd:
-			bd = d
+		var dist: float = Vector2(e.global_position.x - at.x, e.global_position.z - at.z).length()
+		if dist < bd:
+			bd = dist
 			best = e
 	if best == null:
 		h.fx(id, "impact", {"p": at})

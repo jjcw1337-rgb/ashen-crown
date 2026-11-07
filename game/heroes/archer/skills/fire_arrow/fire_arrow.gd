@@ -31,3 +31,6 @@ func hit(m: Missile, e) -> void:
 	e.ignite(dps * pyre * hero.dmg_mult(id), val("burn_s", 3.0) * pyre, kind)
 	hero.mark = e
 	hero.mark_t = 6.0
+
+func pierces() -> bool:
+	return true

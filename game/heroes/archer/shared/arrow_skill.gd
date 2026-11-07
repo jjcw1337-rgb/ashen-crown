@@ -17,7 +17,7 @@ func cast(aim: Vector3) -> void:
 	hero._start_attack("bow", id)
 
 ## Looses one toward `at`, turned by `yaw` radians, for `mult` of the weapon's blow.
-func shoot(at: Vector3, pierce: bool, mult: float, yaw: float) -> Missile:
+func shoot(at: Vector3, pierce: bool, mult: float, yaw: float) -> void:
 	var h := hero
 	var from: Vector3 = h.global_position + Vector3(0, 1.35, 0)
 	# the shot's own aim (taken from the pointer when the draw began), so walking on while he draws doesn't swing
@@ -32,17 +32,41 @@ func shoot(at: Vector3, pierce: bool, mult: float, yaw: float) -> Missile:
 	if J.has("at_hand_l") and h.weapon_node != null and is_instance_valid(h.weapon_node) and h.weapon_node.get_parent() == J.get("grip_bow_at"):
 		from = (J["at_hand_l"] as Node3D).global_position + dir * 0.15
 	h.fx(id, "loose", {"p": from, "d": dir, "k": kind, "x": pierce, "m": mult})
-	var m := Missile.new(from, dir)
+	make("shot", {"p": from, "d": dir, "x": pierce, "m": mult})
+
+## The arrow its rules fly (here, or on the match server's copy of him).
+func made(kind: String, d: Dictionary) -> void:
+	if kind != "shot":
+		return
+	var m := Missile.new(d["p"], d["d"])
 	m.speed = Archer.ARROW_SPEED
 	m.left = Archer.FLIGHT
-	m.pierce = pierce
-	m.data = {"mult": mult}
+	m.pierce = bool(d["x"])
+	m.data = {"mult": float(d["m"])}
 	shots.append(m)
-	return m
+
+## Server: an arrow loosed near where it has him, flying the way this skill's arrows fly, for no more than its share.
+func server_ok(kind: String, d: Dictionary) -> bool:
+	if kind != "shot" or not (d.get("p") is Vector3 and d.get("d") is Vector3):
+		return false
+	if (d["p"] as Vector3).distance_to(hero.global_position) > 4.0:
+		return false
+	d["d"] = (d["d"] as Vector3).normalized()
+	d["x"] = pierces()
+	d["m"] = clampf(float(d.get("m", 1.0)), 0.0, max_mult())
+	return true
+
+## Its arrows go through every foe in a line.
+func pierces() -> bool:
+	return false
+
+## The most of the weapon's blow one of its arrows may carry (its codex "dmg").
+func max_mult() -> float:
+	return val("dmg", 100.0) / 100.0
 
 func update(delta: float) -> void:
 	for m in shots.duplicate():
-		m.step(hero.game, delta, func(e) -> bool: return not e.dead, func(e) -> void: hit(m, e))
+		m.step(hero.game, delta, func(e) -> bool: return foe(e), func(e) -> void: hit(m, e))
 		if m.done:
 			shots.erase(m)
 			ended(m)

@@ -74,6 +74,8 @@ func _server() -> void:
 	await until(func(): return g.bg != null and g.net.active and not g._busy, 40.0)
 	check(await until(func(): return g.net.players.size() == 2, 60.0), "both players are in the crypt")
 	check(await until(func(): return g.bg.last_hit.size() > 0, 60.0), "a player struck another (through the server)")
+	if OS.get_cmdline_user_args().has("archer"):
+		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "the Archer's skills ran here: the server made his arrow and his sigil (%d)" % ServerRules.made_count)
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
 	await until(func(): return g.net.players.is_empty(), 90.0)
 
@@ -124,8 +126,11 @@ func _player() -> void:
 			g.hero.mana = g.hero.max_mana
 			g.hero.cds.erase("snare")
 			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.0, 0, 0), 0.5)
+			await secs(0.6)      # (the server hears where I am before the sigil goes down: it checks that)
 			check(g.hero.use_skill("snare", foe.global_position), "Thunderstep beside them")
-			await secs(2.0)
+			await secs(0.3)
+			check(Archer.skill(g.hero, "snare").sigils.is_empty() and Archer.skill(g.hero, "pierce").shots.is_empty(), "my game keeps no sigil or arrow of its own: the server's copy of me deals them")
+			await secs(1.7)
 		var life_seen: Array = []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:

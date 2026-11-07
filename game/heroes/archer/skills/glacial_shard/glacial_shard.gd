@@ -19,3 +19,6 @@ func hit(m: Missile, e) -> void:
 		e.chill(val("chill", 40.0) / 100.0, val("chill_s", 3.0))
 	hero.mark = e
 	hero.mark_t = 6.0
+
+func pierces() -> bool:
+	return true

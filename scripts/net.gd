@@ -975,9 +975,65 @@ func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at:
 			if m:
 				m.visible = on
 
-## PvP: the local hero struck another player's stand-in (Battlegrounds.sync_proxies); the server deals it.
+## PvP: the local hero struck another player's stand-in (Battlegrounds.sync_proxies); the server deals it. On the
+## server itself (a player's skills running there, ServerRules) it's dealt at once, from the player who struck.
 func send_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
+	if server:
+		if game.bg != null:
+			game.bg.pvp_hit(_striker_pid(), target_pid, amount, from)
+		return
 	rpc_id(1, "sv_pvp_hit", target_pid, amount, from)
+
+## Server: the player whose skill is acting now (Hero.striker is the server's copy of them).
+func _striker_pid() -> int:
+	var s = Hero.striker
+	return int(s.peer_id) if s != null and is_instance_valid(s) else 0
+
+# ---------------------------------------------------------------- skills that run on the server (ServerRules)
+## A player's game: one of its skills made something its rules act on; the server's copy of the player makes it.
+func send_skill_make(id: String, kind: String, data: Dictionary) -> void:
+	if active and not server:
+		rpc_id(1, "sv_skill_make", id, kind, data)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_skill_make(id: String, kind: String, data: Dictionary) -> void:
+	if server:
+		ServerRules.received(game, multiplayer.get_remote_sender_id(), id, kind, data)
+
+## A player's game: its build (level, attributes, the run's skills, rites and gems) for the server's copy of it.
+func send_build(d: Dictionary) -> void:
+	if active and not server:
+		rpc_id(1, "sv_build", d)
+
+@rpc("any_peer", "call_remote", "reliable")
+func sv_build(d: Dictionary) -> void:
+	var pid := multiplayer.get_remote_sender_id()
+	if server and players.has(pid):
+		ServerRules.apply_build(players[pid]["hero"], d)
+
+## Server: what a player's skills did here (a sigil blowing, a mark landing) is shown on every game, the player's
+## own included: on their own hero there, on their puppet everywhere else.
+func server_fx(h: Hero, ev: Dictionary) -> void:
+	if server and active and not players.is_empty():
+		rpc("cl_server_fx", int(h.peer_id), SkillFx.encode(self, ev))
+
+@rpc("authority", "call_remote", "reliable")
+func cl_server_fx(pid: int, w: Dictionary) -> void:
+	if loading or game.world == null:
+		return
+	var h = game.hero if pid == multiplayer.get_unique_id() else players.get(pid, {}).get("hero")
+	if h != null and is_instance_valid(h):
+		SkillFx.play(h, SkillFx.decode(self, w))
+
+## Server: the blow a player's skill landed here, for the number over the foe on their screen.
+func tell_dealt(h: Hero, at: Vector3, amount: float, crit: bool) -> void:
+	if server and active and int(h.peer_id) > 0 and multiplayer.get_peers().has(int(h.peer_id)):
+		rpc_id(int(h.peer_id), "cl_dealt", at, amount, crit)
+
+@rpc("authority", "call_remote", "unreliable")
+func cl_dealt(at: Vector3, amount: float, crit: bool) -> void:
+	if not loading and game.world != null and amount > 0.0:
+		Fx.number(game.world.fx_root, at + Vector3(0, 2.2, 0), str(int(amount)) + ("!" if crit else ""), Color(1.0, 0.85, 0.4), crit)
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
@@ -1005,7 +1061,11 @@ func cl_pvp_obj_hit(oid: int, attacker: int) -> void:
 
 ## PvP crowd control (PvpStatus): the local hero's skill did more than hurt another player's stand-in.
 func send_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionary) -> void:
-	if active and not server:
+	if server:
+		if game.bg != null:
+			game.bg.pvp_status(_striker_pid(), target_pid, kind, secs, data)
+		return
+	if active:
 		rpc_id(1, "sv_pvp_status", target_pid, kind, secs, data)
 
 @rpc("any_peer", "call_remote", "reliable")
@@ -1024,6 +1084,10 @@ func cl_pvp_status(kind: String, secs: float, data: Dictionary) -> void:
 const PVP_EFFECTS := ["slip", "pied", "quake", "sweep", "chill"]
 
 func send_pvp_effect(target_pid: int, kind: String, from: Vector3) -> void:
+	if server:
+		if game.bg != null and game.bg.state == "raid" and PVP_EFFECTS.has(kind):
+			game.bg.pvp_effect(_striker_pid(), target_pid, kind, from)
+		return
 	if active and not is_host and PVP_EFFECTS.has(kind):
 		rpc_id(1, "sv_pvp_effect", target_pid, kind, from)
 
@@ -1037,6 +1101,10 @@ func sv_pvp_effect(target_pid: int, kind: String, from: Vector3) -> void:
 ## PvP burning (a Fire Arrow, magma, a unique's burn on another player's stand-in, Enemy.ignite): the attacker's own
 ## `dps`; the server checks it like a blow and scales it (Battlegrounds.pvp_burn), a "burn" hit for Hero.BURN_SECS.
 func send_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
+	if server:
+		if game.bg != null:
+			game.bg.pvp_burn(_striker_pid(), target_pid, dps, from)
+		return
 	if active and not is_host:
 		rpc_id(1, "sv_pvp_dot", target_pid, dps, from)
 

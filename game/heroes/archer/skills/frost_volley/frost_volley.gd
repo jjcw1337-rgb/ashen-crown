@@ -19,8 +19,21 @@ func impact() -> void:
 	var g := Vector3(at.x, hero.game.world.height_at(at.x, at.z), at.z)
 	var r := val("radius", 4.0) * (1.0 + hero.talent("volley_size") / 100.0)
 	hero.fx(id, "impact", {"p": g, "r": r})    # the flight up and the storm, on every game
-	# the rain's beat (FrostVolleyRainFx keeps the same one from the same numbers)
-	zones.append(GroundZone.new(g, r, val("rain_s", 1.3), val("first", 0.25), val("beat", 0.2)))
+	make("rain", {"g": g, "r": r})
+
+## The rain its rules beat (FrostVolleyRainFx keeps the same beat from the same numbers).
+func made(kind: String, d: Dictionary) -> void:
+	if kind == "rain":
+		zones.append(GroundZone.new(d["g"], float(d["r"]), val("rain_s", 1.3), val("first", 0.25), val("beat", 0.2)))
+
+## Server: a rain within his reach of where it has him, no wider than his.
+func server_ok(kind: String, d: Dictionary) -> bool:
+	if kind != "rain" or not d.get("g") is Vector3:
+		return false
+	if (d["g"] as Vector3).distance_to(hero.global_position) > val("reach", 14.0) + 4.0:
+		return false
+	d["r"] = minf(float(d.get("r", 0.0)), val("radius", 4.0) * (1.0 + hero.talent("volley_size") / 100.0))
+	return true
 
 func update(delta: float) -> void:
 	for z in zones.duplicate():
@@ -37,7 +50,7 @@ func _slow() -> float:
 func _strike(z: GroundZone) -> void:
 	var slow := _slow()
 	for e in hero.game.enemies_near(z.pos, z.r):
-		if not e.dead:
+		if foe(e):
 			hero._hit_enemy(e, val("dmg", 35.0) / 100.0 * Archer.shatter(hero, e), 0.0, id)
 			e.chill(slow, val("chill_s", 2.0))
 
@@ -54,7 +67,7 @@ func _frozen_ground(z: GroundZone, delta: float) -> void:
 		return
 	var slow := _slow()
 	for e in hero.game.enemies_near(z.pos, fr):
-		if not e.dead:
+		if foe(e):
 			e.chill(slow, val("ground_chill_s", 0.6))
 
 static func frozen_radius(age: float, r: float) -> float:

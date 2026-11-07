@@ -25,7 +25,7 @@ func ended(m: Missile) -> void:
 	var r := val("radius", 3.5) * (1.0 + h.talent("blast_r") / 100.0)
 	var burning := []
 	for e in h.game.enemies_near(at, r):
-		if e.dead:
+		if not foe(e):
 			continue
 		h._hit_enemy(e, val("blast", 150.0) / 100.0, 0.6, id)
 		if not e.dead:

@@ -22,6 +22,32 @@ static func num(skill_id: String, key: String, fallback: float) -> float:
 	var k = Data.skill_def(skill_id).get("k", {})
 	return float(k.get(key, fallback)) if k is Dictionary else fallback
 
+## Its rules run here: on the hero's own game, except in a match where they run on the server (ServerRules), and on
+## the server's copy of a player whose skills run there.
+func deals() -> bool:
+	return not ServerRules.on(hero) or hero.game.net.server
+
+## Makes what its rules act on (an arrow, a rain, a sigil): here when its rules run here (`made`), else it goes to
+## the match server, whose copy of the player makes it (ServerRules.received).
+func make(kind: String, data: Dictionary) -> void:
+	if deals():
+		made(kind, data)
+	else:
+		hero.game.net.send_skill_make(id, kind, data)
+
+## What `make` makes: the skill's own rule state (its Missiles, GroundZones, DelayedAreas...).
+func made(_kind: String, _data: Dictionary) -> void:
+	pass
+
+## Server: does what a player's game says it made add up (near where the server has them, within the skill's
+## reach and numbers)? Nothing is made otherwise.
+func server_ok(_kind: String, _data: Dictionary) -> bool:
+	return true
+
+## A foe its rules may strike: alive, and not its own player's stand-in (the server keeps one for every player).
+func foe(e) -> bool:
+	return not e.dead and not (int(e.get("pvp_pid")) > 0 and int(e.pvp_pid) == hero.peer_id)
+
 ## Checks before the mana and the cooldown are spent (shows its own message on false).
 func can_cast(_aim: Vector3) -> bool:
 	return true

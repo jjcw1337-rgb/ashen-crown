@@ -1,0 +1,98 @@
+class_name ServerRules
+extends RefCounted
+## Skills whose rules run on the match server (docs/systems/combat.md). In a Battlegrounds, Arena or Sandbox match on
+## our server, a hero of these classes deals no hits on its own game: when one of its skills makes something its
+## rules act on (an arrow loosed, a rain called down, a sigil set: `Skill.make`), the player's game sends that to
+## the server, and the server's copy of that player makes it there. The server then flies it, decides who it hits
+## with its own positions, and deals the damage from its copy of the player's build (sent by `send_build`). What a
+## player sees still comes from their own game at once (the cast, the arrow); what only the rules know (a sigil
+## blowing, a mark landing) comes from the server to everyone. Single player and Enter World co-op are unchanged.
+
+## The classes whose skills run on the server (the rest still deal their own hits until they move over).
+const CLASSES := ["archer"]
+
+## Tests: what the server made from players' skills, and what it refused.
+static var made_count := 0
+static var refused_count := 0
+
+## This hero's skills run on the server: the server's copy deals them; the player's own game only shows them.
+static func on(h) -> bool:
+	if h == null or not is_instance_valid(h) or h.game == null or not CLASSES.has(str(h.cls)):
+		return false
+	var net = h.game.net
+	if net == null or not net.active:
+		return false
+	if net.server:
+		return true
+	return not net.is_host and (h.game.bg_mode or h.game.arena_mode)
+
+## Server: a player's game sent what one of its skills made; its copy of that player makes it here, if the skill is
+## its class's and it adds up (Skill.server_ok).
+static func received(game, pid: int, id: String, kind: String, data: Dictionary) -> void:
+	var p = game.net.players.get(pid)
+	if p == null:
+		return
+	var h = p["hero"]
+	if not is_instance_valid(h) or h.dead or not on(h):
+		return
+	if id != "attack" and str(Data.skill_def(id).get("cls", "")) != str(h.cls):
+		return
+	var m = ClassSkills.of(h.cls)
+	if m == null or not m.has_method("skill"):
+		return
+	var s = m.skill(h, id)
+	if s == null or not s.server_ok(kind, data):
+		refused_count += 1
+		print("[RULES] refused %s's %s %s at %s" % [h.peer_id, id, kind, str(h.global_position)])
+		return
+	Hero.striker = h
+	made_count += 1
+	s.made(kind, data)
+
+## Server, every frame: the copies' skills fly, beat and blow.
+static func update(h, delta: float) -> void:
+	if h.dead or not on(h):
+		return
+	Hero.striker = h
+	for sk in h.kit.values():
+		sk.update(delta)
+
+# ---------------------------------------------------------------- the build
+## What the server needs to work out a player's damage: level, attributes and the run's skills, rites and gems.
+## (Gear already goes with Net.pl_gear.) The server keeps it on its copy; the player's game still makes the picks.
+static func build_of(h) -> Dictionary:
+	var d := {"cls": str(h.cls), "level": int(h.level), "str": int(h.str_), "dex": int(h.dex), "vit": int(h.vit),
+		"ene": int(h.ene)}
+	if h.run != null:
+		d["run"] = h.run.to_dict()
+	return d
+
+## Server: a player's build arrives on its copy.
+static func apply_build(h, d: Dictionary) -> void:
+	if not is_instance_valid(h) or str(d.get("cls", "")) != str(h.cls):
+		return
+	h.level = clampi(int(d.get("level", h.level)), 0, 99)
+	h.str_ = int(d.get("str", h.str_))
+	h.dex = int(d.get("dex", h.dex))
+	h.vit = int(d.get("vit", h.vit))
+	h.ene = int(d.get("ene", h.ene))
+	if d.has("run") and d["run"] is Dictionary:
+		h.run = RunBuild.from_dict(d["run"])
+	h._talents_changed()      # (recalcs too)
+
+static var _sent := {}
+static var _t := 0.0
+
+## A player's game, every frame: sends its build to the server when it has changed (checked once a second).
+static func client_tick(game, delta: float) -> void:
+	_t += delta
+	if _t < 1.0:
+		return
+	_t = 0.0
+	var h = game.hero
+	if h == null or not on(h):
+		return
+	var d := build_of(h)
+	if d != _sent:
+		_sent = d
+		game.net.send_build(d)

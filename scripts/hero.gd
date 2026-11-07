@@ -259,6 +259,8 @@ func fx(skill: String, ev: String, data := {}) -> void:
 	SkillFx.play(self, d)
 	if not puppet and game != null and game.net != null:
 		game.net.skill_fx(d)
+	elif puppet and game != null and game.net != null and game.net.server and ServerRules.on(self):
+		game.net.server_fx(self, d)      # (what a player's skills did on the server: every game shows it)
 
 ## The attack in progress (0..1, -1 when none) and its style: the local hero's own, a puppet's from the net.
 func attack_progress() -> float:
@@ -1565,6 +1567,8 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 	if flat > 0.0:
 		r["phys"] += flat * buff_mult() * dmg_mult(src) * (2.0 if r["crit"] else 1.0)
 	var dealt: float = e.take_damage(r["phys"], r["fire"], global_position, knock, r["crit"])
+	if puppet and game.net.server:
+		game.net.tell_dealt(self, e.global_position, dealt, r["crit"])      # (the number on the player's screen)
 	if run != null:
 		RunTalents.on_hit(self, e, dealt, r["crit"], src)
 		if cls == "knight" and src != "k_judgment" and run.skills.has("k_judgment"):
@@ -2181,6 +2185,8 @@ func _puppet_process(delta: float) -> void:
 	block_amt = st.get("block", 0.0)
 	atk_t = 0.0 if st.get("atk", -1.0) >= 0.0 else -1.0
 	_show_chop_axe(atk_t >= 0.0 and str(st.get("style", "")) == "chop", "woodsman_axe")
+	if game.net.server:
+		ServerRules.update(self, delta)      # (a player's skills that run on the server: its arrows, rains, sigils)
 	if Enemy.server_nopose:
 		return
 	Anim.pose(rig, st)

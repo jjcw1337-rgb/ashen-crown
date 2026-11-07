@@ -27,8 +27,17 @@ func cast(aim: Vector3) -> void:
 	h.atk_dur = val("vault_s", 0.55)
 	vault = {"from": from, "to": to, "t": 0.0}
 	var g := Vector3(from.x, h.game.world.height_at(from.x, from.z), from.z)
-	sigils.append(DelayedArea.new(g, val("radius", 3.2), val("arm", 0.9), 1 + int(h.talent("snare_max")), val("again", 0.8)))
 	h.fx(id, "vault", {"p": g, "q": to})
+	make("sigil", {"g": g})
+
+## The sigil its rules charge and blow.
+func made(kind: String, d: Dictionary) -> void:
+	if kind == "sigil":
+		sigils.append(DelayedArea.new(d["g"], val("radius", 3.2), val("arm", 0.9), 1 + int(hero.talent("snare_max")), val("again", 0.8)))
+
+## Server: a sigil where he stood, within a vault of where it has him.
+func server_ok(kind: String, d: Dictionary) -> bool:
+	return kind == "sigil" and d.get("g") is Vector3 and (d["g"] as Vector3).distance_to(hero.global_position) <= val("vault", 6.5) + 6.0
 
 ## Mid-flip his feet are the vault's.
 func rooted() -> bool:
@@ -66,10 +75,10 @@ func _detonate(s: DelayedArea) -> void:
 	var hold := (val("stun_s", 3.0) + h.talent("snare_dur")) * (1.0 if first else 0.5)
 	var caught: Array = []
 	for e in h.game.enemies_near(pos, r):
-		if not e.dead:
+		if foe(e):
 			caught.append(e)
 	var arcs := int(val("arcs", 3.0)) + int(h.talent("arc_count"))
-	var near: Array = h.game.enemies_near(pos, val("chain_r", 8.0)).filter(func(e) -> bool: return not e.dead and not (e in caught))
+	var near: Array = h.game.enemies_near(pos, val("chain_r", 8.0)).filter(func(e) -> bool: return foe(e) and not (e in caught))
 	near.sort_custom(func(a, b) -> bool: return a.global_position.distance_to(pos) < b.global_position.distance_to(pos))
 	var struck: Array = near.slice(0, arcs)
 	# the blast and the chain, seen by everyone (the puppet's sigil detonates on this event)

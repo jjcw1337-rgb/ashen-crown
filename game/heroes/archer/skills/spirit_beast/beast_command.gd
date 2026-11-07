@@ -15,28 +15,36 @@ func impact() -> void:
 	var h := hero
 	var aim: Vector3 = h.atk_aim
 	var reach := val("reach", 3.0)
-	var foe = null
+	var target = null
 	var bd := reach
 	for e in h.game.enemies_near(aim, reach):
 		var d: float = e.global_position.distance_to(aim)
 		if not e.dead and d < bd:
 			bd = d
-			foe = e
-	var home: bool = foe == null and aim.distance_to(h.global_position) < val("home", 2.5)
-	if foe != null:
-		h.mark = foe
+			target = e
+	var home: bool = target == null and aim.distance_to(h.global_position) < val("home", 2.5)
+	if target != null:
+		h.mark = target
 		h.mark_t = val("mark_s", 8.0)
 	h.buff_t = val("buff_s", 12.0) + h.talent("buff_dur")
-	command(h, foe, home, aim)
-	h.fx(id, "impact", {"p": aim, "t": [foe] if foe != null else [], "x": home})
+	command(h, target, home, aim)
+	h.fx(id, "impact", {"p": aim, "t": [target] if target != null else [], "x": home})
+	# his wolf runs on every game, but the hunt's +damage counts where his skills deal their hits
+	if not deals():
+		h.game.net.send_skill_make(id, "rouse", {})
+
+## The server's copy of him is roused too, so its arrows hit as hard as his.
+func made(kind: String, _d: Dictionary) -> void:
+	if kind == "rouse":
+		hero.buff_t = val("buff_s", 12.0) + hero.talent("buff_dur")
 
 ## Each of his beasts takes the command (his own here; a partner's copy, in ArcherFx).
-static func command(h: Hero, foe, home: bool, aim: Vector3) -> void:
+static func command(h: Hero, target, home: bool, aim: Vector3) -> void:
 	for b in h.beasts:
 		if not is_instance_valid(b) or b.dead:
 			continue
-		if foe != null:
-			b.command("attack", foe)
+		if target != null:
+			b.command("attack", target)
 		elif home:
 			b.command("follow")
 		else:
