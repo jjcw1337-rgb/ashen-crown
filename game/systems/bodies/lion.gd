@@ -7,7 +7,7 @@ class_name Lion
 ## reaching, land); the maul ("feral_swipe": rear, rake with the right paw, then a bite). Lions use the
 ## Feral's pack AI (circle, one lunges at a time, back off, dart in).
 
-const GLB := "res://assets/models/monsters/lion.glb"
+const GLB := "res://game/monsters/lion/lion.glb"
 const SCALE := 1.3
 ## ground the trot covers per cycle, at the model's own scale
 const STRIDE := 1.7

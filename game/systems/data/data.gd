@@ -137,20 +137,11 @@ const ENEMIES := {
 		"blood": Color(0.4, 0.05, 0.02),
 		"look": {"height": 2.0, "eyes": Color(1.0, 0.75, 0.15)}},
 
-	"mummy": {"name": "Embalmed", "rig": "humanoid", "life": 48, "dmg": [6, 12], "speed": 1.8, "range": 1.7, "xp": 24,
-		"ai": "melee", "atk": "claw", "atk_time": 1.3, "armor": 10, "radius": 0.5, "blood": Color(0.6, 0.55, 0.4),
-		"look": {"skin": Color(0.72, 0.65, 0.5), "cloth": Color(0.68, 0.6, 0.45), "height": 1.05, "bulk": 1.0, "head": "mummy", "eyes": Color(1.0, 0.6, 0.1)}},
 
-	"fetish": {"name": "Mire Fetish", "rig": "humanoid", "life": 26, "dmg": [6, 11], "speed": 4.6, "range": 10.0, "xp": 28,
-		"ai": "ranged", "atk": "thrust", "atk_time": 1.0, "armor": 10, "radius": 0.4, "proj": "dart", "blood": Color(0.5, 0.02, 0.02),
-		"look": {"skin": Color(0.35, 0.22, 0.12), "cloth": Color(0.3, 0.45, 0.15), "height": 0.62, "bulk": 0.85, "head": "mask", "eyes": Color(1.0, 0.9, 0.2), "weapon": "blowgun"}},
 	"spider": {"name": "Bog Spider", "rig": "crawler", "life": 44, "dmg": [8, 14], "speed": 5.3, "range": 1.7, "xp": 32,
 		"ai": "melee", "atk": "bite", "atk_time": 0.85, "armor": 12, "radius": 0.8, "blood": Color(0.3, 0.6, 0.1),
 		"look": {"skin": Color(0.12, 0.1, 0.08), "shell": Color(0.2, 0.15, 0.08), "legs": 8, "size": 1.1, "eyes": Color(1.0, 0.1, 0.1), "stripe": Color(0.7, 0.4, 0.05)}},
 
-	"imp": {"name": "Cinder Imp", "rig": "humanoid", "life": 46, "dmg": [12, 19], "speed": 5.2, "range": 1.5, "xp": 46,
-		"ai": "melee", "atk": "claw", "atk_time": 0.75, "armor": 20, "radius": 0.45, "blood": Color(0.9, 0.3, 0.05),
-		"look": {"skin": Color(0.55, 0.08, 0.04), "cloth": Color(0.12, 0.05, 0.03), "height": 0.8, "bulk": 0.85, "head": "horned", "eyes": Color(1.0, 0.7, 0.1), "wings": true, "tail": true}},
 }
 
 ## Champion name prefixes for elite packs.

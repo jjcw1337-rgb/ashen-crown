@@ -18,7 +18,7 @@ extends RefCounted
 ##
 ## The body is posed in code every frame from the enemy's state, like the lion (lion.gd): a skeleton
 ## standing upright at rest (the Meshy A-pose), turned per bone about the model's own axes. Until the
-## Meshy model exists (assets/models/monsters/hollow_sloth.glb) a stand-in of capsules on the same
+## Meshy model exists (game/monsters/hollow_sloth/) a stand-in of capsules on the same
 ## skeleton is built. Host-authoritative: every timed move goes through the enemy's atk_t / atk_dur /
 ## atk_style, so co-op partners see it posed by the same `pose` from the synced state.
 

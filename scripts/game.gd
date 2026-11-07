@@ -968,7 +968,7 @@ func _monster_paths() -> Array:
 		kinds[k] = true
 	var out: Array = []
 	for k in kinds:
-		for p in Enemy.model_paths(k):
+		for p in Monsters.model_paths(k):
 			if not out.has(p):
 				out.append(p)
 	return out

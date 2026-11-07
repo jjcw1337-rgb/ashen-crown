@@ -1,7 +1,7 @@
 class_name PoisonMushroom
 extends BossBrain
 ## A Poison Mushroom (kind spore_shroom): stands where it sprang up, breathing its cloud (POISON_R) every 1.5 s. Its
-## body is the Verdant Reach's fungus prop (Enemy.build_rig, the def's "prop"). Mossbeard's (his pack) wither
+## body is the Verdant Reach's fungus prop (Monsters.build_rig, the def's "prop"). Mossbeard's (his pack) wither
 ## when he dies; another camp's are just monsters.
 
 const POISON_R := 3.0

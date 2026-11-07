@@ -1,11 +1,14 @@
 extends SceneTree
-## Close-up contact sheet of monsters on their in-game rigs: one row per kind (idle, walk, run, attack
-## frames) in a lit studio. Usage: -- out.png kind [kind ...]   (Data.ENEMIES keys)
-const CELL := 300
+## Contact sheet of monsters on their in-game bodies (Monsters.build_rig, posed by Monsters.pose_rig: the very rig and
+## animation the game uses): one row per kind (idle, walk, run, attack frames) in a lit studio, so every monster can be
+## seen rigged and moving. Usage: -- out.png [kind ...]   (Data.ENEMIES keys; none: every kind). Through tools/_late.gd.
+const CELL := 200
 
 func _initialize():
-	var args := OS.get_cmdline_user_args()
+	var args: Array = Array(OS.get_cmdline_user_args()).filter(func(x): return not str(x).begins_with("res://"))
 	var kinds: Array = args.slice(1)
+	if kinds.is_empty():
+		kinds = Data.ENEMIES.keys()
 	var root3 := Node3D.new()
 	get_root().add_child(root3)
 	var env := WorldEnvironment.new()
@@ -37,7 +40,7 @@ func _initialize():
 	for r in kinds.size():
 		var def: Dictionary = Data.ENEMIES[kinds[r]]
 		var look: Dictionary = def["look"]
-		var rig: Node3D = MeshyMonster.build(def["mesh"], look) if def.has("mesh") and MeshyMonster.ok(def["mesh"]) else Models.humanoid(look)
+		var rig: Node3D = Monsters.build_rig(kinds[r])
 		rig.set_meta("pers", {"zombie": "zombie", "skel_archer": "skeleton", "fallen": "fallen"}.get(kinds[r], "warrior"))
 		root3.add_child(rig)
 		rig.rotation_degrees.y = 200
@@ -51,7 +54,7 @@ func _initialize():
 			for f in 12:
 				t += 1.0 / 30.0
 				ph += (1.0 / 30.0) * 4.0 * poses[c][0] / maxf(h / 1.8, 0.5)
-				Anim.pose(rig, {"time": t, "phase": ph, "move": poses[c][0], "atk": poses[c][1], "style": def["atk"], "zombie": kinds[r] == "zombie", "aggro": true})
+				Monsters.pose_rig(rig, {"time": t, "phase": ph, "move": poses[c][0], "atk": poses[c][1], "style": def["atk"], "zombie": kinds[r] == "zombie", "aggro": true}, float(look.get("height", look.get("size", 1.0))))
 				await process_frame
 			await RenderingServer.frame_post_draw
 			var img := get_root().get_texture().get_image()

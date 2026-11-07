@@ -53,7 +53,7 @@ var enraged := false
 var hoard: Hoard = null
 ## The Hollow Sloth's brain (sloth.gd), when this is one
 var sloth: Sloth = null
-## A boss's brain (BossBrain, game/monsters/): Hrimgar, Mossbeard and his poison mushrooms
+## A boss's brain (BossBrain, from Monsters.brain_for): Hrimgar, Mossbeard and his poison mushrooms
 var brain: BossBrain = null
 var _sloth_phase := 0.0
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
@@ -142,32 +142,11 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	atk_dur = def["atk_time"]
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
-	rig = build_rig(k, Feral.variant_at(global_position))
-	match kind:
-		"ice_troll": brain = Hrimgar.new(self)
-		"hermit": brain = Mossbeard.new(self)
-		"spore_shroom": brain = PoisonMushroom.new(self)
-	if rig.has_meta("feral"):
-		slot_a = randf_range(-1.6, 1.6)
-		lunge_cd = randf_range(0.3, 3.0)
-	elif rig.has_meta("sloth"):
-		Sloth.dress(rig, str(def.get("element", "")))
-		sloth = Sloth.new(self)
-		atk_style = "sloth_walk"
-		add_to_group("sloth")
-	elif rig.has_meta("lion"):
-		slot_a = randf_range(-1.6, 1.6)
-		lunge_cd = randf_range(0.5, 2.5)
+	rig = Monsters.build_rig(k, Feral.variant_at(global_position))
+	brain = Monsters.brain_for(self)
+	Monsters.on_setup(self)      # (its family's own start: a Feral's place in the pack, a Sloth's dress and brain)
 	add_child(rig)
-	var pers := "warrior"
-	match k:
-		"zombie", "mummy": pers = "zombie"
-		"skel_archer": pers = "skeleton"
-		"fallen", "fallen_skirmisher", "fallen_stalker", "imp", "fetish": pers = "fallen"
-		"grabber", "goblin_guard": pers = "goblin"
-	if boss:
-		pers = "boss"
-	rig.set_meta("pers", pers)
+	rig.set_meta("pers", "boss" if boss else Monsters.personality(k))
 	if champ:
 		rig.scale = Vector3.ONE * 1.15
 	_collect_meshes(rig)
@@ -204,9 +183,7 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 			rig.add_child(rim)
 	rig.rotation.y = randf() * TAU
 	home = global_position
-	if def.get("hoard", false):
-		hoard = Hoard.new(self)
-		hoard.call_deferred("start")
+	Monsters.on_placed(self)     # (once it stands where it lives: King Grubb's fight begins)
 
 func _collect_meshes(n: Node) -> void:
 	if n is MeshInstance3D:
@@ -600,21 +577,14 @@ func _remote_process(delta: float) -> void:
 	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
 	phase += _net_phase_rate * delta
 	_pose({"time": anim_time, "phase": phase, "move": move_amt, "atk": net_atk,
-		"style": atk_style, "hit": net_hit, "zombie": kind in ["zombie", "mummy"], "aggro": aggro})
+		"style": atk_style, "hit": net_hit, "zombie": kind == "zombie", "aggro": aggro})
 
 ## Visual and sound side of the special attacks, run on every player's game.
 func special_fx(ev: String) -> void:
 	if hoard != null and hoard.boss == self and hoard.fx(ev):
 		return
-	if ev.begins_with("sloth"):
-		Sloth.fx(self, ev)
-		return
-	if ev.begins_with("bb_"):
-		if kind == "ice_troll":
-			HrimgarFx.fx(self, ev)
-		else:
-			MossbeardFx.fx(self, ev)
-		return
+	if Monsters.fx(self, ev):
+		return      # (a monster's own look: game/monsters/<monster>/)
 	var col := Color(0.4, 1.0, 0.3) if def.get("nova", "") == "poison" else Color(1.0, 0.4, 0.1)
 	match ev:
 		"slam_tele":
@@ -812,13 +782,13 @@ func _process(delta: float) -> void:
 		move_amt = move_toward(move_amt, clampf(vel.length() / maxf(speed, 0.1), 0.0, 1.0), delta * 5.0)
 		var was := phase
 		phase += delta * vel.length() * (1.6 / maxf(height, 0.5)) * (-1.0 if f_state in ["back", "out"] else 1.0) * (float(rig.get_meta("stride")) if rig.has_meta("stride") else 1.0)
-		if boss and (rig.has_meta("goblin") or rig.has_meta("dino")) and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
+		if boss and rig.has_meta("goblin") and floorf(phase / PI) != floorf(was / PI) and move_amt > 0.4:
 			_footstep()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 5.0)
 	global_position.y = game.world.height_at(global_position.x, global_position.z)
 	_pose({"time": anim_time, "phase": phase, "move": move_amt, "atk": (atk_t / atk_dur) if atk_t >= 0.0 else -1.0,
-		"style": atk_style, "hit": hit_t, "zombie": kind in ["zombie", "mummy"], "aggro": aggro})
+		"style": atk_style, "hit": hit_t, "zombie": kind == "zombie", "aggro": aggro})
 
 ## A dedicated server doesn't pose the bodies of its monsters and players: nobody sees them, and posing was half of a
 ## busy server's CPU (Battlegrounds, 6 players fighting: 18.1% of a core -> 8.2%, with the 30 Hz tick 4.8%; Blaine's
@@ -829,99 +799,7 @@ static var server_nopose := false
 func _pose(st: Dictionary) -> void:
 	if Enemy.server_nopose:
 		return
-	pose_rig(rig, st, height)
-
-## The model files a monster kind's body loads (build_rig), so a zone can load them on worker threads before it
-## spawns its monsters (Game.load_zone: each first load was 23-34 ms on the main thread).
-static func model_paths(kind: String) -> PackedStringArray:
-	var out := PackedStringArray()
-	if not Data.ENEMIES.has(kind):
-		return out
-	var d: Dictionary = Data.ENEMIES[kind]
-	var mesh := str(d.get("mesh", ""))
-	match mesh:
-		"feral":
-			for k in 5:
-				out.append(Feral.GLB % (k + 1))
-		"lion":
-			out.append(Lion.GLB)
-		"bear":
-			out.append(Bear.GLB)
-		"sloth":
-			out.append(Sloth.GLB % str(d.get("variant", "")))
-		"wolf":
-			out.append(SpiritBeast.WOLF_GLB)
-		_:
-			if MeshyMonster.MODELS.has(mesh):
-				out.append(str(MeshyMonster.MODELS[mesh]["glb"]))
-	var res := PackedStringArray()
-	for p in out:
-		if ResourceLoader.exists(p):
-			res.append(p)
-	return res
-
-## A monster kind's body (its Meshy model, sculpted goblin, skeleton or code-built figure), as setup gives
-## it. variant: the Feral's model.
-static func build_rig(kind: String, variant := 1) -> Node3D:
-	var d: Dictionary = Data.ENEMIES[kind]
-	var look: Dictionary = d["look"]
-	var h: float = look.get("height", look.get("size", 1.0))
-	if d.get("mesh", "") == "feral" and Feral.ok():
-		return Feral.build(variant)
-	if d.get("mesh", "") == "lion" and Lion.ok():
-		return Lion.build()
-	if d.get("mesh", "") == "bear" and Bear.ok():
-		return Bear.build()
-	if d.get("mesh", "") == "sloth":
-		return Sloth.build(str(d.get("variant", "")), look.get("skin", Color(0.52, 0.56, 0.47)))
-	if d.has("prop"):
-		# a thing that grows rather than walks (the hermit's mushrooms): a Meshy prop, pulsing (pose_rig)
-		var pr := Node3D.new()
-		pr.set_meta("static_prop", true)
-		var pp := "res://game/maps/verdant_reach/props/%s.glb" % str(d["prop"])
-		var m: Node3D = (load(pp) as PackedScene).instantiate() if ResourceLoader.exists(pp) else null
-		if m == null:
-			m = Models.crawler(look)
-		m.name = "body"
-		m.scale = Vector3.ONE * float(look.get("prop_scale", 1.0))
-		pr.add_child(m)
-		return pr
-	if d.get("mesh", "") == "wolf" and ResourceLoader.exists(SpiritBeast.WOLF_GLB):
-		return Lion.build(SpiritBeast.WOLF_GLB, 1.0)
-	if d.has("mesh") and MeshyMonster.ok(d["mesh"]):
-		return MeshyMonster.build(d["mesh"], look)
-	if d.has("model"):
-		return Goblin.build(d["model"])
-	if d.has("skin"):
-		var r := SkeletonModel.build(d["skin"])
-		if absf(h - 1.0) > 0.01:
-			r.scale = Vector3.ONE * h
-		return r
-	return Models.crawler(look) if d["rig"] == "crawler" else Models.humanoid(look)
-
-## Poses any monster body from the enemy state (see `_pose`).
-static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
-	if r.has_meta("feral"):
-		Feral.pose(r, st, height)
-	elif r.has_meta("lion"):
-		Lion.pose(r, st, height)
-	elif r.has_meta("bear"):
-		Bear.pose(r, st, height)
-	elif r.has_meta("sloth"):
-		Sloth.pose(r, st, height)
-	elif r.has_meta("static_prop"):
-		var b := r.get_node_or_null("body") as Node3D
-		if b != null:
-			# the breathing pulse round its own size, kept from the first pose: scaling from the current scale every
-			# frame compounded (~1% a frame) and grew the hermit's mushrooms past the camera within minutes, one
-			# giant cap's shadow over the map (Blaine, 2026-11-06)
-			if not b.has_meta("base_scale"):
-				b.set_meta("base_scale", b.scale)
-			var t := float(st.get("time", 0.0))
-			var k := 1.0 + sin(t * 2.6) * 0.04
-			b.scale = (b.get_meta("base_scale") as Vector3) * Vector3(k, 2.0 - k, k)
-	else:
-		Anim.pose(r, st)
+	Monsters.pose_rig(rig, st, height)
 
 ## A heavy boss's footfall: a puff of dust under the planted foot, and the ground shakes a
 ## little if you're close.
@@ -954,16 +832,9 @@ func _think_combat(delta: float, hero: Node3D, to: Vector3, dist: float) -> Vect
 		var v: Variant = hoard.steer(self, delta)
 		if v != null:
 			return v
-	if ai == "feral":
-		return FeralBrain.combat(self, delta, hero, to, dist)
-	if ai == "skirmisher":
-		return FallenBrain.skirmisher(self, delta, hero, to, dist)
-	if ai == "reaver":
-		return FallenBrain.reaver(self, delta, hero, to, dist)
-	if ai == "stalker":
-		return FallenBrain.stalker(self, delta, hero, to, dist)
-	if ai == "bear":
-		return BearBrain.combat(self, delta, hero, to, dist)
+	var own: Variant = Monsters.combat(self, delta, hero, to, dist)
+	if own != null:
+		return own      # (a monster with its own brain: game/monsters/<monster>/)
 	var rng_atk: float = def["range"]
 	if boss:
 		if not enraged and life < max_life * 0.35 and hoard == null:
