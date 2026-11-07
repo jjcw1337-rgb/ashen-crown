@@ -325,7 +325,7 @@ static func build(kind: String) -> Node3D:
 static func _build_mutant() -> Node3D:
 	if not ResourceLoader.exists(MUTANT["glb"]):
 		return null
-	var root := imported_rig(MUTANT["layout"], MUTANT["glb"], "mutant")
+	var root := MeshyRig.build(MUTANT["layout"], MUTANT["glb"], "mutant")
 	var J: Dictionary = root.get_meta("j")
 	J["grip_r"] = Models.N(J["hand_r"], "grip_r", Vector3(0, -0.1, -0.02), Vector3(-28, 0, 0))
 	J["grip_l"] = Models.N(J["hand_l"], "grip_l", Vector3(0, -0.1, -0.02))
@@ -347,68 +347,6 @@ static func _build_mutant() -> Node3D:
 	root.set_meta("pers", "boss")
 	# the key is part of his mesh, held low and forward: no raised "ready" carry
 	root.set_meta("held", true)
-	return root
-
-## A rig for an imported, skinned model (a .glb rigged in Blender with bones named like our joints):
-## joint nodes from a layout {joint: [parent, model-space position (Godot axes)]}, a Skeleton3D that
-## mirrors them (knight_rig.gd copies the joints onto the bones each frame) and the glb's mesh re-bound
-## to it by bone name. aim {joint: other joint}: the joint's rest turns its -Y toward the other (an
-## A-pose arm), so Anim's zero pose hangs that limb straight down; "=joint" copies that joint's rest
-## orientation (a hand lined up with its forearm). key caches the mesh and skin.
-static func imported_rig(layout: Dictionary, glb: String, key: String, aim := {}) -> Node3D:
-	var root := Node3D.new()
-	root.name = "Rig"
-	root.set_script(load("res://scripts/knight_rig.gd"))
-	var J := {}
-	var G := {}
-	for n in layout.keys():
-		var at: Vector3 = layout[n][1]
-		var b := Basis()
-		if aim.has(n) and String(aim[n]).begins_with("="):
-			b = (G[String(aim[n]).substr(1)] as Transform3D).basis
-		elif aim.has(n):
-			var y := -((layout[aim[n]][1] as Vector3) - at).normalized()
-			var x := (Vector3.RIGHT - y * Vector3.RIGHT.dot(y)).normalized()
-			b = Basis(x, y, x.cross(y))
-		G[n] = Transform3D(b, at)
-	for n in layout.keys():
-		var par: String = layout[n][0]
-		var nd := Node3D.new()
-		nd.name = n
-		nd.transform = G[n] if par == "" else (G[par] as Transform3D).affine_inverse() * (G[n] as Transform3D)
-		(J[par] if par != "" else root).add_child(nd)
-		J[n] = nd
-	J["hips_y"] = (layout["hips"][1] as Vector3).y
-	var skel := Skeleton3D.new()
-	skel.name = "Skeleton"
-	root.add_child(skel)
-	var bones: Array = layout.keys()
-	var bi := {}
-	for i in bones.size():
-		skel.add_bone(bones[i])
-		bi[bones[i]] = i
-	var proxies := {}
-	for i in bones.size():
-		var n: Node3D = J[bones[i]]
-		var par := n.get_parent()
-		if par != root:
-			skel.set_bone_parent(i, bi[String(par.name)])
-		skel.set_bone_rest(i, n.transform)
-		skel.set_bone_pose_position(i, n.position)
-		skel.set_bone_pose_rotation(i, n.quaternion)
-		proxies[i] = n
-	if not _bodies.has(key):
-		_bodies[key] = _imported(glb, bi)
-		_skins[key] = skel.create_skin_from_rest_transforms()
-	var mi := MeshInstance3D.new()
-	mi.name = "Body"
-	mi.mesh = _bodies[key]
-	skel.add_child(mi)
-	mi.skeleton = NodePath("..")
-	mi.skin = _skins[key]
-	root.set("skel", skel)
-	root.set("proxy_of", proxies)
-	root.set_meta("j", J)
 	return root
 
 ## The bones of the sculpted skin, parents first; each mirrors the joint of the same name.

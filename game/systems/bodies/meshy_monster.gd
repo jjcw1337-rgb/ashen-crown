@@ -1,7 +1,7 @@
 class_name MeshyMonster
 ## Act I monsters made with Meshy (a concept image, then image-to-3D), decimated and rigged in Blender by
 ## tools/blender/act1/rig_monster.py, which measures each model's joints; layout_to_gd.py writes them
-## here. They stay in their A-pose: Goblin.imported_rig's aim turns each arm's rest down the limb so
+## here. They stay in their A-pose: MeshyRig.build's aim turns each arm's rest down the limb so
 ## the shared animation (Anim.pose) hangs them naturally. A monster in Data.ENEMIES with "mesh" uses
 ## its model when the glb is there (and its old procedural body otherwise).
 
@@ -34,7 +34,7 @@ static func ok(kind: String) -> bool:
 
 static func build(kind: String, look: Dictionary) -> Node3D:
 	var m: Dictionary = MODELS[kind]
-	var root := Goblin.imported_rig(m["layout"], m["glb"], "monster_" + kind, AIM)
+	var root := MeshyRig.build(m["layout"], m["glb"], "monster_" + kind, AIM)
 	var J: Dictionary = root.get_meta("j")
 	var mh: float = m["height"]
 	# grips and mounts in the model's units, sized to its hands

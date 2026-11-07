@@ -38,7 +38,7 @@ func _initialize():
 	root3.add_child(cam)
 	var cpos := Vector3(5.0, 1.1, 0.0) if view == "side" else Vector3(3.5, 2.0, -3.5)
 	cam.transform = Transform3D(Basis(), cpos).looking_at(Vector3(0, 0.8, 0))
-	var MM = load("res://scripts/meshy_monster.gd")
+	var MM = load("res://game/systems/bodies/meshy_monster.gd")
 	var styles := {"fallen_skirmisher": "skirm_lunge", "fallen_reaver": "reaver_cleave", "fallen_stalker": "stalk_hook"}
 	var rows := []
 	for k in KINDS:
