@@ -2,8 +2,8 @@ class_name Doug
 extends RefCounted
 ## Doug (Blaine's tier-1 character and the pilot of the character workflow): the stubby circus brawler, a roast
 ## drumstick and a bag of tricks. Every one of his skills (Data.SKILLS "cls": "doug") is an object in Hero.kit
-## (skills/<skill>/), holding its own state and reading its numbers from his codex (data/codex/heroes/doug.json "k"):
-##   attack     Drumstick Smack: his drumstick blows (Hero's swing; its hits are his skill's)
+## (skills/<skill>/), holding its own state and reading its numbers from his codex (data/codex/heroes/doug.json "k";
+## his drumstick's blows are Hero's plain melee swing, every melee hero's):
 ##   pie        Cream Pie: a lobbed pie; the first foe near where it lands takes the hit and is Pied
 ##   peels      Banana Peels: three on the ground ahead, each a slip for the first to step on it
 ##   slide      Pratfall Slide: a belly-slide, striking and shoving the foes in the way
@@ -21,8 +21,6 @@ extends RefCounted
 const ACCENT := Color(1.0, 0.82, 0.2)          # his colour: the suit's mustard yellow
 ## His skills' attack styles (no weapon trail on a throw or a trick; partners see the style, not the skill)
 const SKILL_STYLES := ["pie", "peels", "slide", "doppel", "juggle", "bounce", "car"]
-## The drumstick's blows (Hero's right-click combo and its free swing): his Drumstick Smack lands them.
-const SWING_STYLES := ["swipe1", "swipe2", "swipe3", "over", "back", "thrust"]
 
 # ---------------------------------------------------------------- his kit
 ## His skill objects (docs/content/skills.md): one per skill id, made the first time it's needed, kept in Hero.kit.
@@ -36,7 +34,6 @@ static func skill(h: Hero, id: String) -> Skill:
 
 static func _make(h: Hero, id: String) -> Skill:
 	match id:
-		"attack": return DrumstickSmack.new(h, id)
 		"pie": return CreamPie.new(h, id)
 		"peels": return BananaPeels.new(h, id)
 		"slide": return PratfallSlide.new(h, id)
@@ -77,48 +74,31 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 	if s != null:
 		s.cast(aim)
 
-## The impact frame (Hero._impact): a skill of his, or a blow of his drumstick. True when it was his.
+## The impact frame (Hero._impact): true when it was one of his skills (a plain swing is Hero's).
 static func impact(h: Hero) -> bool:
-	if not h.is_doug():
+	if not h.is_doug() or h.atk_skill == "":
 		return false
-	var id := h.atk_skill
-	if id == "":
-		if not SWING_STYLES.has(h.atk_style):
-			return false
-		id = "attack"
-	var s := skill(h, id)
+	var s := skill(h, h.atk_skill)
 	if s == null:
 		return false
 	s.impact()
 	return true
 
-## Every frame on his own game: his skills' pies, peels, slides, doubles, pins and rides.
-static func update(h: Hero, delta: float) -> void:
-	if h.puppet or not h.is_doug():
-		return
-	for sk in h.kit.values():
-		sk.update(delta)
+## (His skill objects' every frame, their holding him in place mid-slide and mid-bounce, their clearing and what ends
+## when he dies are ClassSkills', which runs every hero's Hero.kit.)
+static func update(_h: Hero, _delta: float) -> void:
+	pass
 
-## Mid-slide and mid-bounce his feet are the skill's.
-static func rooted(h: Hero) -> bool:
-	if not h.is_doug():
-		return false
-	for sk in h.kit.values():
-		if sk.rooted():
-			return true
+static func rooted(_h: Hero) -> bool:
 	return false
 
+## Unseen no more.
 static func clear(h: Hero) -> void:
-	for sk in h.kit.values():
-		sk.clear()
-	h.kit.clear()
 	h.hidden_t = 0.0
 
-## His ride, his slide, his leap and the pins still to come end with him (the pies, peels and the double stay).
+## Unseen no more (his ride, his slide, his leap and the pins still to come end with him: their `died`; the pies,
+## peels and the double stay).
 static func died(h: Hero) -> void:
-	if h.is_doug():
-		for sk in h.kit.values():
-			sk.died()
 	h.hidden_t = 0.0
 
 static func sound(_h: Hero, skill_id: String, at: float) -> bool:

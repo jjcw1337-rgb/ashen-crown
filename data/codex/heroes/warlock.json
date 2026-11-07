@@ -30,7 +30,21 @@
 			"mana": 6,
 			"cd": 0.0,
 			"range": 11.0,
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"leash": 13,
+				"fork_r": 5.5,
+				"forks": 3,
+				"min_s": 1,
+				"first": 0.1,
+				"beat": 0.3,
+				"mana": 2,
+				"fork_dmg": 60,
+				"heal": 30,
+				"fork_heal": 15,
+				"gorge_at": 30,
+				"drag": 0.25
+			}
 		},
 		{
 			"id": "blight",
@@ -44,7 +58,17 @@
 			"use": 1.0,
 			"power": 0.59,
 			"range": 15.0,
-			"lvl": 3
+			"lvl": 3,
+			"k": {
+				"speed": 16,
+				"radius": 3,
+				"pool_s": 4,
+				"beat": 0.5,
+				"twin": 0.14,
+				"near": 1,
+				"knock": 0.8,
+				"cast_s": 0.45
+			}
 		},
 		{
 			"id": "shackles",
@@ -58,7 +82,13 @@
 			"tags": [
 				"cc"
 			],
-			"lvl": 5
+			"lvl": 5,
+			"k": {
+				"reach": 7,
+				"bind_s": 2.5,
+				"dmg": 80,
+				"cast_s": 0.5
+			}
 		},
 		{
 			"id": "covenant",
@@ -72,7 +102,13 @@
 			"tags": [
 				"buff"
 			],
-			"lvl": 9
+			"lvl": 9,
+			"k": {
+				"secs": 12,
+				"forks": 5,
+				"heal_k": 2,
+				"cast_s": 0.6
+			}
 		},
 		{
 			"id": "w_corruption",
@@ -91,7 +127,12 @@
 				"dot",
 				"curse"
 			],
-			"lvl": 2
+			"lvl": 2,
+			"k": {
+				"dmg": 240,
+				"secs": 10,
+				"tick": 0.5
+			}
 		},
 		{
 			"id": "w_malediction",
@@ -109,7 +150,12 @@
 				"spell",
 				"projectile"
 			],
-			"lvl": 7
+			"lvl": 7,
+			"k": {
+				"dmg": 90,
+				"per": 50,
+				"max": 5
+			}
 		},
 		{
 			"id": "w_unending",
@@ -128,7 +174,14 @@
 				"dot",
 				"curse"
 			],
-			"lvl": 11
+			"lvl": 11,
+			"k": {
+				"dmg": 180,
+				"secs": 12,
+				"tick": 0.5,
+				"ramp": 15,
+				"cap": 4
+			}
 		},
 		{
 			"id": "w_festering",
@@ -148,7 +201,15 @@
 				"curse",
 				"cc"
 			],
-			"lvl": 13
+			"lvl": 13,
+			"k": {
+				"secs": 15,
+				"tick": 0.5,
+				"every": 5,
+				"burst": 120,
+				"stun_s": 0.5,
+				"pvp_stun_s": 0.5
+			}
 		},
 		{
 			"id": "w_leeching",
@@ -168,7 +229,13 @@
 				"curse",
 				"sustain"
 			],
-			"lvl": 11
+			"lvl": 11,
+			"k": {
+				"dmg": 160,
+				"secs": 8,
+				"tick": 0.5,
+				"heal": 50
+			}
 		},
 		{
 			"id": "w_reckoning",
@@ -187,7 +254,11 @@
 				"dot",
 				"curse"
 			],
-			"lvl": 16
+			"lvl": 16,
+			"k": {
+				"secs": 6,
+				"tick": 0.5
+			}
 		},
 		{
 			"id": "w_terrify",
@@ -205,7 +276,13 @@
 				"spell",
 				"cc"
 			],
-			"lvl": 4
+			"lvl": 4,
+			"k": {
+				"secs": 1.5,
+				"feared_more": 20,
+				"pvp_k": 70,
+				"pvp_max": 1.2
+			}
 		},
 		{
 			"id": "w_effigy",
@@ -223,7 +300,16 @@
 				"trap",
 				"cc"
 			],
-			"lvl": 12
+			"lvl": 12,
+			"k": {
+				"secs": 8,
+				"rite_s": 4,
+				"radius": 4,
+				"charges": 3,
+				"fear_s": 1,
+				"first": 0.3,
+				"beat": 0.2
+			}
 		},
 		{
 			"id": "w_darkwind",
@@ -243,7 +329,17 @@
 				"chain",
 				"cc"
 			],
-			"lvl": 8
+			"lvl": 8,
+			"k": {
+				"hops": 5,
+				"hop_r": 6,
+				"gap": 0.14,
+				"dmg": 90,
+				"feared_k": 2,
+				"slow_s": 1,
+				"slow": 35,
+				"pvp_slow": 30
+			}
 		},
 		{
 			"id": "w_crowstorm",
@@ -262,7 +358,16 @@
 				"cc",
 				"movement"
 			],
-			"lvl": 20
+			"lvl": 20,
+			"k": {
+				"blink": 8,
+				"radius": 5,
+				"secs": 5,
+				"dmg": 80,
+				"first": 0.25,
+				"beat": 0.5,
+				"fear_s": 1
+			}
 		},
 		{
 			"id": "w_leechbolt",
@@ -281,7 +386,11 @@
 				"projectile",
 				"sustain"
 			],
-			"lvl": 2
+			"lvl": 2,
+			"k": {
+				"dmg": 140,
+				"heal": 30
+			}
 		},
 		{
 			"id": "w_harvest",
@@ -299,7 +408,12 @@
 				"area",
 				"sustain"
 			],
-			"lvl": 7
+			"lvl": 7,
+			"k": {
+				"radius": 5,
+				"dmg": 180,
+				"heal": 4
+			}
 		},
 		{
 			"id": "w_soulfeast",
@@ -317,7 +431,17 @@
 				"channel",
 				"sustain"
 			],
-			"lvl": 20
+			"lvl": 20,
+			"k": {
+				"radius": 7,
+				"dps": 80,
+				"heal": 25,
+				"shield": 30,
+				"first": 0.15,
+				"beat": 0.3,
+				"shield_fade": 5,
+				"shield_melt": 10
+			}
 		}
 	],
 	"rites": [

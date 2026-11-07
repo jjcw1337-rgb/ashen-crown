@@ -9,13 +9,16 @@ extends SceneTree
 ## (RunBuild, the multiplayer overhaul: fresh at level 0, each given its class's first skill here); b's saved
 ## character is untouched by the fall. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
 ## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, then he
-## bounces onto b (Big Top Bounce) and swings his drumstick at them, and b checks it was Pied, then launched (the
-## crowd control crossing to another player: Doug.cc -> Net.send_pvp_effect). His skills run on the server
-## (ServerRules), as the Archer's do: the server checks it made the pie, the flop and the swing; a checks its own game
-## holds no pie.
+## bounces onto b (Big Top Bounce), and b checks it was Pied, then launched (the crowd control crossing to another
+## player: Doug.cc -> Net.send_pvp_effect). His skills run on the server (ServerRules), as the Archer's do: the server
+## checks it made the pie and the flop; a checks its own game holds no pie.
 ## With "archer" instead, a plays the Archer and drops Thunderstep's sigil on b, and b checks it was stunned for its
 ## three seconds (Thunderstep -> PvpStatus "stagger" -> the server -> b). His skills, his wolf and his rites run on
 ## the server (ServerRules): the server checks it made them; a checks its own game holds none.
+## With "warlock" instead, a plays the Warlock: Drain Life (her first skill) on b, then Corruption and Terrify. Her
+## skills run on the server: the server checks it made them and that her curse ticks there; a checks its own game holds
+## no curse, fright or drain and that the drain's life came back to it from the server; b checks it was hurt and
+## frightened through the server, and that her spells were aimed at it on its screen.
 
 var g
 var role := "a"
@@ -30,7 +33,7 @@ func _initialize():
 		if a[i].is_valid_int() and int(a[i]) > 1024:
 			port = int(a[i])
 	if role != "server":
-		Battlegrounds.id_path = "user://bg_pvp_%s_id.txt" % role
+		Battlegrounds.id_path = "user://bg_pvp_%s_%d_id.txt" % [role, port]      # (per port: other runs at once don't collide)
 		DirAccess.remove_absolute(Battlegrounds.id_path)
 		var ai := a.find("addr")
 		if ai >= 0 and ai + 1 < a.size():
@@ -79,11 +82,25 @@ func _server() -> void:
 	check(await until(func(): return g.net.players.size() == 2, 60.0), "both players are in the crypt")
 	check(await until(func(): return g.bg.last_hit.size() > 0, 60.0), "a player struck another (through the server)")
 	if OS.get_cmdline_user_args().has("archer"):
-		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "the Archer's skills ran here: the server made his arrow and his sigil (%d)" % ServerRules.made_count)
+		check(await until(func(): return ServerRules.made_count >= 3, 30.0), "the Archer's skills ran here: the server made his arrow, his sigil and his flask's burst (%d)" % ServerRules.made_count)
 		var arch = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "archer")
 		check(not arch.is_empty() and arch[0].decides() and await until(func(): return arch[0].beasts.any(func(w): return is_instance_valid(w) and w._deals()), 10.0), "his wolf runs here too, the one that bites, and his rites fire here (Hero.decides)")
+		# thorns: a server-run hero's game can only claim a blow the server sent it, once
+		var vic: int = int(g.net.players.keys().filter(func(pid): return g.net.players[pid]["hero"].cls != "archer")[0])
+		await until(func(): return not g.net._blows_sent.get(vic, []).is_empty(), 30.0)
+		check(g.net.took_blow(vic, 1.0) and not g.net.took_blow(vic, 1e9), "a blow the server sent counts for thorns, a made-up one doesn't")
+	if OS.get_cmdline_user_args().has("warlock"):
+		var wl = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "warlock")
+		check(not wl.is_empty() and wl[0].decides(), "the Warlock's copy here decides her hits (Hero.decides)")
+		var cursed := false
+		var t_end := Time.get_ticks_msec() + 40000
+		while Time.get_ticks_msec() < t_end and not cursed:
+			cursed = not wl.is_empty() and is_instance_valid(wl[0]) and wl[0].kit.has("hex") and not wl[0].kit["hex"].dots.is_empty()
+			await process_frame
+		check(cursed, "her curse ticks here, on the other player's stand-in")
+		check(await until(func(): return ServerRules.made_count >= 3, 30.0), "the Warlock's skills ran here: the server made her drain's latch, her curse and her fright (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
 	if OS.get_cmdline_user_args().has("doug"):
-		check(await until(func(): return ServerRules.made_count >= 3, 30.0), "Doug's skills ran here: the server made his pie, his belly-flop and his drumstick's blow (%d)" % ServerRules.made_count)
+		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "Doug's skills ran here: the server made his pie and his belly-flop (%d)" % ServerRules.made_count)
 		var dougs = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "doug")
 		check(not dougs.is_empty() and dougs[0].decides(), "and his hits and rites are decided here (Hero.decides)")
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
@@ -93,13 +110,14 @@ func _player() -> void:
 	while g._busy:
 		await wait(5)
 	await secs(2.0 if role == "a" else 4.0)
-	g.char_dir = "user://bg_pvp_%s_chars/" % role
+	g.char_dir = "user://bg_pvp_%s_%d_chars/" % [role, port]
 	DirAccess.make_dir_recursive_absolute(g.char_dir)
 	for fn in DirAccess.get_files_at(g.char_dir):
 		DirAccess.remove_absolute(g.char_dir + fn)
 	var doug := OS.get_cmdline_user_args().has("doug")
 	var archer := OS.get_cmdline_user_args().has("archer")
-	g.hero.set_class(("doug" if doug else ("archer" if archer else "knight")) if role == "a" else "wraith")
+	var warlock := OS.get_cmdline_user_args().has("warlock")
+	g.hero.set_class(("doug" if doug else ("archer" if archer else ("warlock" if warlock else "knight"))) if role == "a" else "wraith")
 	g.hero.new_character()
 	g.hero.set_level(8)
 	g.char_id = g.new_char_id()
@@ -127,6 +145,10 @@ func _player() -> void:
 		check(await until(func(): return _proxy() != null, 10.0), "they are a target for my blows (a stand-in)")
 		# a skill first: its effects go to the other player through the server (Net.pl_fx, relayed)
 		g.hero.mana = g.hero.max_mana
+		if warlock:
+			# (Drain Life, her first skill, needs them within its reach)
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(4.0, 0, 0), 0.5)
+			await secs(0.6)
 		var sk: String = str(g.hero.skill_list()[0]["id"])
 		check(g.hero.use_skill(sk, foe.global_position), "cast %s at them" % sk)
 		if archer:
@@ -141,11 +163,30 @@ func _player() -> void:
 			await secs(0.3)
 			check(Archer.skill(g.hero, "snare").sigils.is_empty() and Archer.skill(g.hero, "pierce").shots.is_empty(), "my game keeps no sigil or arrow of its own: the server's copy of me deals them")
 			check(not g.hero.decides() and not g.hero.beasts.is_empty() and not g.hero.beasts[0]._deals(), "and my wolf here is only seen (the server's bites)")
+			RunTalents.throw_flask(g.hero, "flask_fire", foe.global_position)      # (its burst is the server's too)
 			await secs(1.7)
+		if warlock:
+			# Drain Life (above) lets go after its least time (no key held); then a curse and a fright from near them
+			await secs(1.4)
+			g.test_allskills = true
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(4.0, 0, 0), 0.5)
+			await secs(0.6)      # (the server hears where I am: it checks every spell against it)
+			for id in ["w_corruption", "w_terrify"]:
+				g.hero.mana = g.hero.max_mana
+				g.hero.cds.erase(id)
+				check(g.hero.use_skill(id, foe.global_position), "%s on them" % id)
+				await secs(1.0)
+			# (her classes aren't named here: this script compiles before the Sfx autoload they need)
+			var hx = g.hero.kit.get("hex")
+			var dr = g.hero.kit.get("drain")
+			check(hx != null and hx.dots.is_empty() and hx.feared.is_empty() and dr != null and not dr.latched, "my game keeps no curse, fright or drain of its own: the server's copy of me deals them")
+			check(not g.hero.decides(), "and my game doesn't decide my hits (Hero.decides)")
+			check(await until(func(): return ServerRules.given_count > 0, 5.0), "the server's Drain Life gave me life back through my own game (%d)" % ServerRules.given_count)
 		if doug:
 			# the pie leaves my hands on its impact frame and is in the air on the server's copy of me
 			await secs(0.6)
-			check(Doug.skill(g.hero, "pie").pies.is_empty() and not g.hero.decides(), "my game keeps no pie of its own: the server's copy of me throws it")
+			var pie = g.hero.kit.get("pie")      # (his classes aren't named here: this script compiles before the Sfx autoload)
+			check(pie != null and pie.pies.is_empty() and not g.hero.decides(), "my game keeps no pie of its own: the server's copy of me throws it")
 			await secs(1.0)
 			# Big Top Bounce onto them: the server's copy of me lands the belly-flop
 			g.test_allskills = true
@@ -155,11 +196,6 @@ func _player() -> void:
 			await secs(0.6)      # (the server hears where I am before I leap: it checks the landing against it)
 			check(g.hero.use_skill("bounce", foe.global_position), "Big Top Bounce onto them")
 			await secs(1.6)
-			# a blow of the drumstick: the server's copy of me lands it too
-			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.2, 0, 0), 0.5)
-			await secs(0.5)
-			g.hero.swipe_attack(foe.global_position)
-			await secs(0.8)
 		var life_seen: Array = []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
@@ -202,6 +238,10 @@ func _player() -> void:
 		if archer:
 			check(await until(func(): return g.hero.daze_t > 2.0, 60.0), "Thunderstep stunned me through the server (%.1f s)" % g.hero.daze_t)
 			check(await until(func(): return SkillFx.aimed_at_me > 0, 10.0), "and its blast was aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
+		if warlock:
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "fear"), 60.0), "the Warlock's Terrify frightened me through the server (%s)" % str(PvpStatus.landed))
+			check(g.hero.life < l0, "her drain and curse hurt me through the server before any blow (%d of %d)" % [int(g.hero.life), int(l0)])
+			check(SkillFx.aimed_at_me > 0, "and her spells were aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		# fallen, I watch the one still alive (Game.spectate_*), until they leave too

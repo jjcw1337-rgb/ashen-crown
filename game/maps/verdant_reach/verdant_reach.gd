@@ -13,6 +13,8 @@ extends RefCounted
 ## camps' encounters in CAMPS (swap the foes without touching the place).
 
 const TITLE := "The Verdant Reach"
+const PROPS := "res://game/maps/verdant_reach/props/"
+const LANTERN_AT := Vector3(-0.6, 1.5, 0.0)     # where the lantern hangs on lantern_post.glb (its own frame)
 const HALF := 105.0
 ## The four starting glades, the four extraction portals
 const SPAWNS := [Vector2(-88, 88), Vector2(88, 88), Vector2(88, -88), Vector2(-88, -88)]
@@ -469,14 +471,14 @@ static func _put(w: World, path: String, p: Vector2, yaw: float, s: float, foot 
 	return root
 
 static func _lantern_post(w: World, p: Vector2) -> void:
-	var n := ForestCamp.piece(w, "lantern_post", p, randf() * TAU)
+	var n := MapKit.piece(w, PROPS + "lantern_post.glb", Vector2(0.26, 0.18), p, randf() * TAU)
 	if n != null:
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.78, 0.45)
 		l.light_energy = 1.1
 		l.omni_range = 7.0
 		l.shadow_enabled = false
-		l.position = ForestCamp.LANTERN_AT
+		l.position = LANTERN_AT
 		n.add_child(l)
 
 static func _ring(c: Vector2, r: float, k: int, n: int, ofs := 0.0) -> Vector2:
@@ -491,13 +493,13 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 			# a dark elf encampment: tents round a fire, carved totems, a timber lookout over the way in
 			for k in 3:
 				var tp := _ring(at, r * 0.75, k, 3, rng.randf() * TAU)
-				_put(w, "res://game/maps/camp/props/camp/tent.glb", tp, ForestCamp.face(tp, at), 0.9, 1.6)
+				_put(w, PROPS + "tent.glb", tp, MapKit.face(tp, at), 0.9, 1.6)
 			for k in 4:
 				var q := _ring(at, r * 1.02, k, 4, 0.3)
 				_totem(w, q, rng)
 			_put(w, "res://game/maps/verdant_reach/props/tower.glb", at + (at - ELF_C).normalized().rotated(0.6) * (r + 3.0), rng.randf() * TAU, 0.55, 1.8)
-			ForestCamp.piece(w, "cookfire", at + Vector2(1.5, 1.5), 0.0)
-			ForestCamp.piece(w, "weapon_rack", at + Vector2(-3.5, -1.0), rng.randf() * TAU)
+			MapKit.piece(w, PROPS + "cookfire.glb", Vector2(0.9, 0.9), at + Vector2(1.5, 1.5), 0.0)
+			MapKit.piece(w, PROPS + "weapon_rack.glb", Vector2(1.15, 0.45), at + Vector2(-3.5, -1.0), rng.randf() * TAU)
 			_light(w, at, Color(0.7, 0.4, 1.0), 2.2, 13.0)
 		"mush":
 			for k in 7:
@@ -539,7 +541,7 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 
 ## A carved dark elf totem: a runestone with its runes lit violet.
 static func _totem(w: World, p: Vector2, rng: RandomNumberGenerator) -> void:
-	var n := _put(w, "res://game/maps/camp/props/camp/runestone.glb", p, rng.randf() * TAU, rng.randf_range(0.9, 1.3), 0.6)
+	var n := _put(w, PROPS + "runestone.glb", p, rng.randf() * TAU, rng.randf_range(0.9, 1.3), 0.6)
 	if n == null:
 		w._standing_stone(Vector3(p.x, 0, p.y), 2.6)
 

@@ -674,6 +674,13 @@ static func struck(h: Hero, dmg: float, from: Vector3) -> void:
 	var list := _active(h, "thorns")
 	if list.is_empty():
 		return
+	if not h.decides():
+		# a hero whose hits are the match server's: its copy there strikes back (server_made "struck")
+		h.game.net.send_skill_make("run", "struck", {"dmg": dmg, "from": from})
+		return
+	_thorns(h, list, dmg, from)
+
+static func _thorns(h: Hero, list: Array, dmg: float, from: Vector3) -> void:
 	var best = null
 	var bd := 4.0
 	for e in h.game.enemies_near(from, 4.0):
@@ -940,12 +947,22 @@ static func throw_flask(h: Hero, base: String, at: Vector3) -> void:
 	h.fx("run", "toss", {"p": h.global_position + Vector3(0, 1.6, 0), "q": land, "n": kind, "r": r})
 	if h.puppet:
 		return
+	if not h.decides():
+		h.game.net.send_skill_make("run", "flask", {"base": base, "at": land})      # (its burst is the server's)
+		return
+	_flask_burst(h, base, land)
+
+## A thrown flask bursts where it lands, on the game that decides its thrower's hits.
+static func _flask_burst(h: Hero, base: String, land: Vector3) -> void:
+	var b: Dictionary = Data.BASES[base]
+	var r := float(b["bomb_r"])
+	var kind := int(b["bomb"])
 	var amount := _weapon(h) * float(b["bomb_pct"]) / 100.0
 	h.get_tree().create_timer(TOSS_T).timeout.connect(func():
 		if not is_instance_valid(h) or h.game == null or h.game.world == null:
 			return
 		for e in h.game.enemies_near(land, r):
-			if e.dead:
+			if e.dead or ServerRules.friend(h, e):
 				continue
 			_deal(h, e, amount * (1.0 if _monster(e) else 0.5), ["fire", "frost", "storm"][kind])
 			if e.dead:
@@ -960,6 +977,30 @@ static func throw_flask(h: Hero, base: String, at: Vector3) -> void:
 	)
 
 const TOSS_T := 0.55
+
+## Match server: a server-run hero's game sent what its run did (ServerRules.received, id "run"): a flask thrown
+## (within its reach of where the server has them) or a blow taken with thorns on (only a blow the server sent them,
+## Net.took_blow). False when it doesn't add up.
+static func server_made(h: Hero, kind: String, d: Dictionary) -> bool:
+	if h.run == null:
+		return false
+	match kind:
+		"flask":
+			var base := str(d.get("base", ""))
+			if not (Data.BASES.has(base) and Data.BASES[base].has("bomb")) or not d.get("at") is Vector3:
+				return false
+			if (d["at"] as Vector3).distance_to(h.global_position) > 13.0 + 4.0:
+				return false
+			_flask_burst(h, base, d["at"])
+			return true
+		"struck":
+			var dmg := float(d.get("dmg", 0.0))
+			var list := _active(h, "thorns")
+			if list.is_empty() or not d.get("from") is Vector3 or not h.game.net.took_blow(int(h.peer_id), dmg):
+				return false
+			_thorns(h, list, dmg, d["from"])
+			return true
+	return false
 
 # ---------------------------------------------------------------- what is seen (every peer: "run" fx events)
 

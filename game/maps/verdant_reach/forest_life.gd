@@ -287,7 +287,7 @@ static func _lilies(w: World, rng: RandomNumberGenerator) -> void:
 
 ## The dark elves' banners: the waypoint's Meshy banner on its stone foot, its red cloth dyed violet and its sigil lit
 ## (BANNER_SHADER), beside the totems round their three camps (on the totems' ring, never in the fight).
-const BANNER_GLB := "res://game/maps/camp/props/waypoint/banner.glb"
+const BANNER_GLB := "res://game/maps/verdant_reach/props/banner.glb"
 static func _banners(w: World, rng: RandomNumberGenerator) -> void:
 	for c in BgForest.CAMPS:
 		if c["region"] != "elf":
@@ -328,7 +328,7 @@ static func _ruins(w: World, rng: RandomNumberGenerator) -> void:
 				continue
 			var pick := rng.randi_range(0, 2)
 			if not arch and not BgForest.open_at(p, 3.5):
-				_glb(w, "res://game/maps/verdant_reach/props/arch.glb", p, ForestCamp.face(p, at) + PI * 0.5, 3.4, 0.0)
+				_glb(w, "res://game/maps/verdant_reach/props/arch.glb", p, MapKit.face(p, at) + PI * 0.5, 3.4, 0.0)
 				arch = true
 			elif pick == 0:
 				_glb(w, "res://game/maps/verdant_reach/props/broken.glb", p, rng.randf() * TAU, rng.randf_range(2.2, 3.2), 0.0)
@@ -359,7 +359,7 @@ static func _glb(w: World, path: String, p: Vector2, yaw: float, s: float, dy: f
 ## just off a trail (on its grass, clear of the dirt), out from under the oaks' crowns, away from the camps and the
 ## stream, spread out across the map. `shrines` keeps them (the screenshots go there).
 const SHRINE_LIGHT := Color(0.45, 0.8, 1.0)
-const CRYSTAL_GLB := "res://game/maps/camp/props/waypoint/crystal_rune.glb"
+const CRYSTAL_GLB := "res://game/maps/verdant_reach/props/crystal_rune.glb"
 static var shrines: Array = []
 
 static func shrine_spots(w: World) -> Array:

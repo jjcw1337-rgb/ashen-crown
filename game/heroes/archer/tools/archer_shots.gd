@@ -27,14 +27,14 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "archer")
 	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "bg", "start")
 	g.ui.close_all()
 	g.test_immortal = true
 	g.test_allskills = true
 	g.hero.set_level(14)
 	for e in g.world.enemies_root.get_children():
 		e.queue_free()
-	var p0: Vector3 = g.world.spawns["road"]
+	var p0: Vector3 = g.world.spawns["start"]
 	g.hero.global_position = Vector3(p0.x, g.world.height_at(p0.x, p0.z), p0.z)
 	g.zoom = 0.7
 	await create_timer(1.5).timeout
