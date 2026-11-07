@@ -548,7 +548,7 @@ static func on_hit(h: Hero, e, dealt: float, crit: bool, src: String) -> void:
 				if _src_ok(k, src) and not e.dead and foe_ok:
 					e.ignite(dealt * float(k["pct"]) / 100.0, float(k["secs"]), "" if h.cls != "archer" else "fire")
 					if h.cls == "archer":
-						ArrowFx.burn(h.game, e, "fire", float(k["secs"]))
+						FlameFx.burn(h.game, e, "fire", float(k["secs"]))
 			"ignite_on_crit":
 				if crit and not e.dead and foe_ok:
 					e.ignite(dealt * float(k["pct"]) / 100.0, float(k["secs"]))
@@ -626,7 +626,7 @@ static func on_death(e) -> void:
 						if o != e and _monster(o):
 							o.ignite(dps, maxf(2.5, e.burn_t), e.burn_look)
 							if e.burn_look != "":
-								ArrowFx.burn(h.game, o, e.burn_look, 2.5)
+								FlameFx.burn(h.game, o, e.burn_look, 2.5)
 							hit += 1
 					h.fx("run", "flare", {"p": e.global_position, "r": float(k["r"]), "n": 0})
 			"shards_on_death":

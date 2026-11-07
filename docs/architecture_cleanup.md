@@ -213,8 +213,10 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   body and bow in `body/`, his arrow models in `weapon/`; `hero.gd`, `ui.gd` and `run_talents.gd` reach him through
   `ClassSkills`' optional hooks (`archer.gd`: 957 lines to about 190). The shared lightning is
   `game/systems/fx/lightning/` (ArcFx) and the frost toolkit `game/systems/fx/frost/` (FrostFx), with Frost Volley's
-  own look in his folder. Left: the fire in `arrow_fx.gd` split into `game/systems/fx/fire/` and his arrows' look; the
-  burn's look chosen by class in `RunTalents` and `Enemy.ignite` (with the statuses work).
+  own look in his folder. The body fire every burn shows and the simulated-flame
+  building blocks are `game/systems/fx/fire/flame_fx.gd` (FlameFx), the game clock `game/systems/game_clock.gd`, and
+  his arrows' look `shared/arrow_fx.gd`. Left: the burn's look chosen by class in `RunTalents` and `Enemy.ignite` (with
+  the statuses work); joining FlameFx and the older FireFx (torches, campfires).
 - [ ] 3. Reference recordings
 - [ ] 4. Damage and effect system
 - [ ] 5. One data source

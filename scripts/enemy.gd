@@ -324,7 +324,7 @@ func set_frost(v: float) -> void:
 		_set_flash(0.0)
 
 ## `look` names who draws the burn: "" = the Demon's ember flames (DemonFx.ignite, here and as it ticks);
-## an arrow kind (ArrowFx.burn, the archer's own body flames) draws its own and these are skipped.
+## an arrow kind (FlameFx.burn, the archer's own body flames) draws its own and these are skipped.
 func ignite(dps: float, t: float, look := "") -> void:
 	if dead:
 		return

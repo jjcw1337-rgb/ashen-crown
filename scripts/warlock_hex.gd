@@ -64,9 +64,9 @@ const SHADOW_TINT := Color(0.78, 0.6, 1.0)
 static func has(id: String) -> bool:
 	return id in IDS
 
-## Game seconds (ArrowFx.now: frame deltas added up), so fears and "cursed for N s" follow the game's clock.
+## Game seconds (GameClock.now: frame deltas added up), so fears and "cursed for N s" follow the game's clock.
 static func _now() -> float:
-	return ArrowFx.now()
+	return GameClock.now()
 
 static func _st(h: Hero) -> Dictionary:
 	if h.wl.is_empty():

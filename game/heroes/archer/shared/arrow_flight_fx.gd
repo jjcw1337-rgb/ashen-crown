@@ -77,7 +77,7 @@ static func _struck(h: Hero, a: Dictionary, e) -> void:
 	if bool(a["pierce"]) and kind == "fire":
 		var k = Data.skill_def(str(a["src"])).get("k", {})
 		var secs: float = float(k.get("burn_s", 3.0)) if k is Dictionary else 3.0
-		ArrowFx.burn(h.game, e, kind, secs * (1.0 + h.talent("burn_dmg") / 100.0))
+		FlameFx.burn(h.game, e, kind, secs * (1.0 + h.talent("burn_dmg") / 100.0))
 
 static func clear(h: Hero) -> void:
 	for a in h.arrows:

@@ -192,7 +192,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 static func update(h: Hero, delta: float) -> void:
 	if h.fxs.is_empty():
 		return
-	var now := ArrowFx.now()
+	var now := GameClock.now()
 	for k in h.fxs.keys():
 		var key := str(k)
 		if not key.begins_with("hx_"):
@@ -539,7 +539,7 @@ static func _curse_mark(h: Hero, e, id: String, dur: float) -> void:
 		return
 	var m := _mark(h, e)
 	var rings: Dictionary = m["rings"]
-	var now := ArrowFx.now()
+	var now := GameClock.now()
 	if not rings.has(id):
 		var ring := MeshInstance3D.new()
 		var r: float = float(e.get("radius")) + 0.3 + rings.size() * 0.12
@@ -574,7 +574,7 @@ static func _terror_mark(h: Hero, e, dur: float) -> void:
 	if e == null or not is_instance_valid(e):
 		return
 	var m := _mark(h, e)
-	var now := ArrowFx.now()
+	var now := GameClock.now()
 	m["terror_until"] = maxf(float(m["terror_until"]), now + dur)
 	if m["terror"] == null or not is_instance_valid(m["terror"]):
 		var t := Node3D.new()
@@ -665,7 +665,7 @@ static func _thorns(root: Node3D, e) -> void:
 # ---------------------------------------------------------------- bolts, bursts, the scream, the sweep
 static func _streak(root: Node3D, from: Vector3, to: Vector3, col: Color, life: float, w: float) -> void:
 	var b := WarlockFx.beam(root, w)
-	var t0 := ArrowFx.now()
+	var t0 := GameClock.now()
 	b.draw(from, to, t0)
 	var tw := b.create_tween()
 	tw.tween_method(func(t: float): if is_instance_valid(b): b.draw(from.lerp(to, t), to, t0 + t), 0.0, 1.0, life)

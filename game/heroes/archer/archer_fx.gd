@@ -50,7 +50,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			Fx.ring(root, Vector3(bp.x, h.game.world.height_at(bp.x, bp.z), bp.z), float(ev.get("r", 3.5)), Color(1.0, 0.5, 0.15), 0.45)
 			for e in ev.get("t", []):
 				if is_instance_valid(e):
-					ArrowFx.burn(h.game, e, "fire", float(ev.get("x", 3.0)))
+					FlameFx.burn(h.game, e, "fire", float(ev.get("x", 3.0)))
 			Sfx.play_at("blast_arrow", bp, 0.0)
 			SkillFx.shake(h, 0.25)
 		["beast", "impact"]:
