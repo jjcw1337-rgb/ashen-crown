@@ -21,8 +21,6 @@ dressing: `mush`, `elf`, `frost`, `ruins`, `barrow`, `forest`) and foes (kind, c
 spawns them and the chest. To add a camp, add a row; a boss camp names its `boss` (a kind with a brain in `game/monsters/`).
 
 Still borrowed from outside, to move with their owners:
-- the other monsters (`game/systems/data/data.gd` `ENEMIES`, their brains in `enemy.gd`, bodies in `goblin.gd`): they go to
-  `game/monsters/<name>/` like the bosses;
-- the camp's models: `game/maps/camp/props/camp/` tent and runestone, `props/waypoint/` banner and crystal rune;
+- the monsters' stats (`game/systems/data/data.gd` `ENEMIES`) and the shared monster code (`enemy.gd`);
 - the PvP checks in `battlegrounds.gd` (`pvp_pair`, statuses), which the Arena shares, go to `game/systems/` with the
   damage and effect system.
