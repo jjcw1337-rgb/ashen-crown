@@ -29,14 +29,32 @@ func impact() -> void:
 	h.buff_t = val("buff_s", 12.0) + h.talent("buff_dur")
 	command(h, target, home, aim)
 	h.fx(id, "impact", {"p": aim, "t": [target] if target != null else [], "x": home})
-	# his wolf runs on every game, but the hunt's +damage counts where his skills deal their hits
+	# his wolf runs on every game, but the one that bites, and the hunt's +damage, are where his skills deal their
+	# hits: the server's copy of him hears the command too
 	if not deals():
-		h.game.net.send_skill_make(id, "rouse", {})
+		var ids: PackedInt64Array = SkillFx.encode(h.game.net, {"t": [target] if target != null else []})["t"]
+		h.game.net.send_skill_make(id, "rouse", {"p": aim, "t": ids, "x": home})
 
-## The server's copy of him is roused too, so its arrows hit as hard as his.
-func made(kind: String, _d: Dictionary) -> void:
-	if kind == "rouse":
-		hero.buff_t = val("buff_s", 12.0) + hero.talent("buff_dur")
+## Server: the command is near where it has him.
+func server_ok(kind: String, d: Dictionary) -> bool:
+	return kind == "rouse" and d.get("p") is Vector3 and (d["p"] as Vector3).distance_to(hero.global_position) <= float(Data.skill_def(id).get("range", 20.0)) + 6.0
+
+## The server's copy of him is roused too, so its arrows hit as hard as his, and its wolf takes the command.
+func made(kind: String, d: Dictionary) -> void:
+	if kind != "rouse":
+		return
+	var h := hero
+	h.buff_t = val("buff_s", 12.0) + h.talent("buff_dur")
+	var target = null
+	var ids = d.get("t", [])
+	if (ids is PackedInt64Array or ids is Array) and ids.size() > 0:
+		target = ServerRules.foe_of(h.game, int(ids[0]))
+	if target != null and not foe(target):
+		target = null
+	if target != null:
+		h.mark = target
+		h.mark_t = val("mark_s", 8.0)
+	command(h, target, bool(d.get("x", false)), d.get("p", h.global_position))
 
 ## Each of his beasts takes the command (his own here; a partner's copy, in ArcherFx).
 static func command(h: Hero, target, home: bool, aim: Vector3) -> void:

@@ -51,9 +51,10 @@ static func received(game, pid: int, id: String, kind: String, data: Dictionary)
 	made_count += 1
 	s.made(kind, data)
 
-## Server: what a player's skill's rules gave its own hero here (Skill.give) goes to that player's game.
+## Server: what a player's skill's rules gave its own hero here (Skill.give) goes to that player's game
+## (Net.tell_self: "give").
 static func give(h, id: String, kind: String, data: Dictionary) -> void:
-	h.game.net.send_skill_given(int(h.peer_id), id, kind, data)
+	h.game.net.tell_self(h, {"give": [id, kind, data]})
 
 ## A player's game: the server's rules gave its hero something (life back, mana); the skill takes it (Skill.given).
 static func got(game, id: String, kind: String, data: Dictionary) -> void:
@@ -69,13 +70,46 @@ static func got(game, id: String, kind: String, data: Dictionary) -> void:
 	given_count += 1
 	s.given(kind, data)
 
-## Server, every frame: the copies' skills fly, beat and blow.
+## Server, every frame: the copies' skills fly, beat and blow, and what else of theirs acts here (the class's
+## `server_update`: the Archer's wolf).
 static func update(h, delta: float) -> void:
-	if h.dead or not on(h):
+	if not on(h):
+		return
+	var m = ClassSkills.of(h.cls)
+	if m != null and m.has_method("server_update"):
+		m.server_update(h, delta)
+	if h.dead:
 		return
 	Hero.striker = h
 	for sk in h.kit.values():
 		sk.update(delta)
+
+## A stand-in for this player or someone on their side (a duo's pair, an arena teammate): their skills pass it by.
+## (A player's own game makes stand-ins only for foes: Battlegrounds.sync_proxies.)
+static func friend(h, e) -> bool:
+	var pid := int(e.get("pvp_pid")) if e is Enemy else 0
+	if pid <= 0:
+		return false
+	var me := int(h.peer_id)
+	if pid == me:
+		return true
+	var bg = h.game.bg if h.game.net.server else null
+	if bg == null:
+		return false
+	if bg.has_method("team"):
+		return int(bg.team(pid)) == int(bg.team(me))
+	return int(bg.team_of(pid)) == int(bg.team_of(me))
+
+## Server: the foe a player's game named (SkillFx.encode's ids: a monster's net id, or minus a player's id for the
+## server's stand-in of them), or null.
+static func foe_of(game, id: int):
+	if id < 0:
+		for e in game.world.enemies_root.get_children():
+			if e is Enemy and int(e.pvp_pid) == -id and not e.dead:
+				return e
+		return null
+	var e = game.net.enemies.get(id)
+	return e if e != null and is_instance_valid(e) and not e.dead else null
 
 # ---------------------------------------------------------------- the build
 ## What the server needs to work out a player's damage: level, attributes and the run's skills, rites and gems.

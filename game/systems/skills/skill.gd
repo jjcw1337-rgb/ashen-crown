@@ -45,8 +45,9 @@ func server_ok(_kind: String, _data: Dictionary) -> bool:
 	return true
 
 ## What its rules give its own hero (life back, mana, a cooldown cut): at once where the hero is played; from the
-## match server's copy of a player, it goes to that player's game (ServerRules.give), whose own copy of the skill
-## takes it (`given`). The rules never touch the life or mana of the server's copy: the player's game owns them.
+## match server's copy of a player, it goes to that player's game (ServerRules.give, through Net.tell_self), whose own
+## copy of the skill takes it (`given`). The rules never touch the life or mana of the server's copy: the player's
+## game owns them. (A plain heal from a hero's blows is Hero.gain_life; this is for a skill's own ways with it.)
 func give(kind: String, data: Dictionary) -> void:
 	if hero.puppet and hero.game != null and hero.game.net != null and hero.game.net.server:
 		ServerRules.give(hero, id, kind, data)
@@ -57,9 +58,10 @@ func give(kind: String, data: Dictionary) -> void:
 func given(_kind: String, _data: Dictionary) -> void:
 	pass
 
-## A foe its rules may strike: alive, and not its own player's stand-in (the server keeps one for every player).
+## A foe its rules may strike: alive, and not a stand-in for its own player or their side (the server keeps one for
+## every player: ServerRules.friend).
 func foe(e) -> bool:
-	return not e.dead and not (int(e.get("pvp_pid")) > 0 and int(e.pvp_pid) == hero.peer_id)
+	return not e.dead and not ServerRules.friend(hero, e)
 
 ## Checks before the mana and the cooldown are spent (shows its own message on false).
 func can_cast(_aim: Vector3) -> bool:

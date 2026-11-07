@@ -214,9 +214,14 @@ func _topbar() -> Control:
 	codex_btn.tooltip_text = "Every hero's skills, rites, gems and consumables"
 	codex_btn.pressed.connect(func(): CodexBook.open(ui.run_ui))
 	hb.add_child(codex_btn)
-	var back := MpStyle.button("Back")
+	# (the multiplayer page is the home screen: with no game behind it, Back is Quit)
+	var back := MpStyle.button("Back" if game.playing else "Quit")
 	back.name = "back"
-	back.pressed.connect(func(): hide())
+	back.pressed.connect(func():
+		if game.playing:
+			hide()
+		else:
+			get_tree().quit())
 	hb.add_child(back)
 	return hb
 
@@ -260,7 +265,7 @@ func render() -> void:
 		b.disabled = not lc.room.is_empty() and not on
 	var n := Survivors.list().size()
 	survivors_btn.text = "Survivors  ·  %d" % n
-	lc.lan_row.visible = not game.playing
+	lc.lan_row.visible = false      # (LAN hosted a character's world: gone with Enter World)
 	for c in left.get_children():
 		left.remove_child(c)
 		c.queue_free()
@@ -335,12 +340,15 @@ func _left_browse(mode: String) -> void:
 	var host := HBoxContainer.new()
 	host.add_theme_constant_override("separation", 12)
 	left.add_child(host)
-	if mode == "arena":
+	if mode in ["arena", "battlegrounds"]:
 		var seg := HBoxContainer.new()
 		seg.add_theme_constant_override("separation", 4)
-		for n in [1, 2, 3]:
-			var b := MpStyle.button("%dv%d" % [n, n], n == lc.team_size)
-			b.text = "%dv%d" % [n, n]      # (not upper-cased like a primary action)
+		if mode == "battlegrounds" and lc.team_size > 2:
+			lc.team_size = 1
+		for n in ([1, 2, 3] if mode == "arena" else [1, 2]):
+			var lbl := ("%dv%d" % [n, n]) if mode == "arena" else ("Solo" if n == 1 else "Duo")
+			var b := MpStyle.button(lbl, n == lc.team_size)
+			b.text = lbl      # (not upper-cased like a primary action)
 			b.name = "size_%d" % n
 			b.custom_minimum_size.x = 64
 			b.pressed.connect(func():
@@ -631,6 +639,8 @@ func _right_prep(mode: String) -> void:
 		right.add_child(MpStyle.para("Everyone in the lobby goes in together.", 15, MpStyle.DIM))
 	if str(room.state) == "waiting":
 		if mode in ["battlegrounds", "sandbox"]:
+			if mode == "battlegrounds" and int(room.get("team_size", 1)) == 2:
+				right.add_child(_pair_picker(room))
 			right.add_child(MpStyle.eyebrow("Choose your class"))
 			right.add_child(_class_tiles())
 		elif mode == "arena":
@@ -698,6 +708,8 @@ func _member_row(uid: String, m: Dictionary, mode: String, room: Dictionary) -> 
 		what = str(Data.CLASSES.get(cls, {}).get("name", cls)) + ("  ·  practice" if mode == "sandbox" else "  ·  level 0")
 	elif mode == "arena":
 		what = "Survivor  ·  " + ("Ember" if int(m.get("team", 0)) == 0 else "Frost")
+	if mode == "battlegrounds" and int(room.get("team_size", 1)) == 2:
+		what += "  ·  Pair %d" % (int(m.get("team", 0)) + 1)
 	col.add_child(MpStyle.label(what, 13, MpStyle.DIM))
 	var rd: bool = m.get("ready", false)
 	var tag := MpStyle.tag("Ready" if rd else "Not ready", MpStyle.OK if rd else MpStyle.FAINT)
@@ -762,3 +774,39 @@ func _tile(cls: String) -> Control:
 		Sfx.play("click")
 		lc.action("pick", {"id": str(lc.room.id)}))
 	return b
+
+## A duo Battlegrounds lobby's pairs: who is with whom, and a button to move to a pair with room (the lobby service's
+## "team" op; a pair is two players who spawn together and can't hurt each other).
+func _pair_picker(room: Dictionary) -> Control:
+	var box := VBoxContainer.new()
+	box.name = "pairs"
+	box.add_theme_constant_override("separation", 4)
+	box.add_child(MpStyle.eyebrow("Pairs"))
+	var by := {}
+	for uid in room.members:
+		var m: Dictionary = room.members[uid]
+		if m.get("departed", false):
+			continue
+		var t := int(m.get("team", 0))
+		if not by.has(t):
+			by[t] = []
+		(by[t] as Array).append(str(m.get("name", "Adventurer")))
+	var mine := int(room.members.get(lc.identity, {}).get("team", -1))
+	var row := HFlowContainer.new()
+	row.add_theme_constant_override("h_separation", 6)
+	row.add_theme_constant_override("v_separation", 6)
+	box.add_child(row)
+	for t in int(room.get("capacity", 16)) / 2:
+		var names: Array = by.get(t, [])
+		if names.is_empty() and t > (by.keys().max() if not by.is_empty() else 0) + 1:
+			break      # (one empty pair past the last filled one is enough to move into)
+		var full := names.size() >= 2
+		var txt := "Pair %d: %s" % [t + 1, ", ".join(names) if not names.is_empty() else "open"]
+		var b := MpStyle.button(txt, t == mine)
+		b.text = txt
+		b.disabled = full or t == mine
+		var team: int = t
+		b.pressed.connect(func(): lc.action("team", {"team": team}))
+		row.add_child(b)
+	return box
+

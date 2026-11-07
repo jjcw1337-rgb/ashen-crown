@@ -4093,7 +4093,7 @@ func _title_hover(which: String) -> void:
 ## A choice made (card or dais): the camera moves into it, then Continue loads the character shown and
 ## New Character opens the class picker.
 func _title_choose(which: String) -> void:
-	if _title_busy or game._intro_playing:
+	if _title_busy or game._intro_playing or (game.lobby_client != null and game.lobby_client.panel.visible):
 		return
 	if which == "continue" and (_title_cards["continue"] as Button).disabled:
 		return
@@ -4808,6 +4808,13 @@ func show_title() -> void:
 	_title_hover("")
 	_title_fade.color = Color(0, 0, 0, 0)
 	_title_busy = false
+	# the home screen is the multiplayer page (Blaine, 2026-11-06): no title, Enter World or characters; the 3D stage
+	# stays as its backdrop (the lobby's class preview stands on it)
+	for c in title_panel.get_children():
+		if c != title_stage and not str(c.name) in ["build_rev", "env_badge"]:
+			(c as CanvasItem).visible = false
+	if game.lobby_client != null:
+		game.lobby_client.open("battlegrounds")
 	# the camp keeps building behind; it isn't drawn while the title's own world is up
 	get_viewport().disable_3d = true
 	game.zone_music()
@@ -5119,7 +5126,7 @@ func show_victory(diff: int) -> void:
 	victory_panel.visible = true
 
 func _unhandled_key_input(ev: InputEvent) -> void:
-	if game and game.lobby_client != null and game.lobby_client.panel.visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
+	if game and game.playing and game.lobby_client != null and game.lobby_client.panel.visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
 		game.lobby_client.panel.hide()
 		get_viewport().set_input_as_handled()
 		return
@@ -6064,10 +6071,10 @@ class Minimap extends Control:
 					var pulse := 0.75 + 0.25 * sin(Time.get_ticks_msec() * 0.006)
 					ci.draw_circle(ssp, 7.5, Color(0, 0, 0, 0.75))
 					ci.draw_circle(ssp, 5.5 * pulse, Color(0.95, 0.15, 0.1))
-		# co-op partners
+		# co-op partners (in the Battlegrounds only a duo's teammate: the other raiders are hidden)
 		if g.net and g.net.active:
 			for a in g.net.puppets():
-				if not a.visible:
+				if not a.visible or (g.bg_mode and not Battlegrounds.is_teammate(g, int(a.peer_id))):
 					continue
 				var ap := _to_screen(a.global_position, hp)
 				if _inside(ap):

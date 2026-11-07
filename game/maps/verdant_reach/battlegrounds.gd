@@ -138,14 +138,36 @@ func park_hero() -> void:
 	game.hero.visible = false
 	game.hero.phased = true
 
-## A spot for a player arriving: the corner room farthest from everyone already in.
-func spawn_point() -> Vector3:
+## A player's team (the lobby's: a duo's pair; in a solo lobby everyone is their own), or -pid without a lobby.
+func team_of(pid: int) -> int:
+	if game.match_instance != null and game.match_instance.members.has(pid):
+		return int(game.match_instance.members[pid].get("team", -pid))
+	return -pid
+
+## Every player's team, for the clients (Net.cl_bg_teams): teammates are no target and show on each other's map.
+func teams() -> Dictionary:
+	var out := {}
+	for pid in game.net.players:
+		out[str(pid)] = team_of(int(pid))
+	return out
+
+## A spot for a player arriving: next to their teammate if one is already in, else the starting glade farthest from
+## everyone else.
+func spawn_point(pid := 0) -> Vector3:
+	if pid > 0:
+		for other in game.net.players:
+			var oh = game.net.players[other]["hero"]
+			if int(other) != pid and team_of(int(other)) == team_of(pid) and is_instance_valid(oh) and oh.net_has and not oh.dead:
+				return game.world.free_spot_near(oh.global_position + Vector3(randf_range(-2.0, 2.0), 0, randf_range(-2.0, 2.0)), 1.5)
 	var pts: Array = game.world.get_meta("bg_spawns", [Vector3.ZERO])
 	var best: Vector3 = pts[randi() % pts.size()]
 	var bd := -1.0
 	for p in pts:
 		var d := 1e6
-		for h in game.net.puppets():
+		for other in game.net.players:
+			var h = game.net.players[other]["hero"]
+			if int(other) == pid or not is_instance_valid(h) or (pid > 0 and team_of(int(other)) == team_of(pid)):
+				continue
 			d = minf(d, (h.global_position - p).length())
 		d += randf() * 4.0
 		if d > bd:
@@ -163,8 +185,10 @@ func broadcast(pid := 0) -> void:
 	var args := [st, raid_t, open, secs(RAID_SECS), secs(PORTALS_AT)]
 	if pid > 0:
 		game.net.rpc_id(pid, "cl_bg_raid", args[0], args[1], args[2], args[3], args[4])
+		game.net.rpc_id(pid, "cl_bg_teams", teams())
 	elif not game.net.players.is_empty():
 		game.net.rpc("cl_bg_raid", args[0], args[1], args[2], args[3], args[4])
+		game.net.rpc("cl_bg_teams", teams())
 
 func _process(delta: float) -> void:
 	if game == null or not game.net.server or game.world == null or game._busy:
@@ -351,6 +375,8 @@ func picked(pid: int, it: Dictionary) -> void:
 func pvp_pair(attacker: int, target: int) -> Array:
 	if state != "raid" or attacker == target or not game.net.players.has(attacker) or not game.net.players.has(target):
 		return []
+	if team_of(attacker) == team_of(target):
+		return []      # (a duo's pair: teammates never hurt each other)
 	var a = game.net.players[attacker]["hero"]
 	var t = game.net.players[target]["hero"]
 	if not is_instance_valid(a) or not is_instance_valid(t) or a.dead or t.dead:
@@ -505,6 +531,12 @@ static func parse_address(txt: String) -> Array:
 		txt = txt.substr(0, i)
 	return [txt if txt != "" else "127.0.0.1", port]
 
+## Client: whether player `pid` is on our team (a duo's pair: Net.cl_bg_teams).
+static func is_teammate(g: Node, pid: int) -> bool:
+	var t: Dictionary = g.get_meta("bg_teams", {})
+	var mine = t.get(str(g.net.multiplayer.get_unique_id()), null)
+	return mine != null and t.get(str(pid), null) == mine
+
 ## Client: every other player is an invisible target the local hero's attacks can hit (PvP), kept on their puppet.
 static func sync_proxies(g: Node) -> void:
 	if g.world == null or g._busy:
@@ -514,6 +546,7 @@ static func sync_proxies(g: Node) -> void:
 		var h = g.net.players[pid]["hero"]
 		if is_instance_valid(h) and h.net_has and not h.dead:
 			if g.arena_mode and g.arena_state.get("teams", {}).get(str(pid), -1) == g.arena_state.get("teams", {}).get(str(g.net.multiplayer.get_unique_id()), -2): continue
+			if g.bg_mode and is_teammate(g, int(pid)): continue
 			want[pid] = h
 	PvpObjects.prune(g, want)
 	for e in g.world.enemies_root.get_children():

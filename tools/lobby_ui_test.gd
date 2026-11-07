@@ -34,7 +34,7 @@ func run():
   g.ui.home._mp.pressed.emit()
   await wait_s(0.5)
   check(c.panel.visible and not g.ui.home.visible,"Multiplayer opens from post-intro home")
-  check(c.lan_row.visible,"LAN remains inside Multiplayer (Local network)")
+  check(not c.lan_row.visible,"no LAN on the multiplayer page (it hosted a character's world)")
   c.room={};c.rooms=[{"id":"l1","name":"Aldric's Battlegrounds","mode":"battlegrounds","team_size":1,"capacity":16,"state":"waiting","owner":"o1","members":{"o1":{"name":"Aldric"}},"joined":3,"joinable":true},
    {"id":"l2","name":"Mira's Arena","mode":"arena","team_size":2,"capacity":4,"state":"waiting","owner":"o2","members":{"o2":{"name":"Mira"}},"joined":1,"joinable":true,"wager":true},
    {"id":"l3","name":"Doug's Endless Waves","mode":"waves","team_size":1,"capacity":4,"state":"playing","owner":"o3","members":{"o3":{"name":"Doug"}},"joined":4,"joinable":false}]
@@ -56,6 +56,9 @@ func run():
   check(on_screen,"a full 3v3 lobby keeps every control on screen "+str(size.x))
   c.room={"id":"bgs","name":"Raid","mode":"battlegrounds","capacity":16,"state":"waiting","owner":"a","members":{"a":{"name":"Archer","character":"run_archer"}}}
   c.draw();await shot("prep-bg-"+str(size.x))
+  c.room={"id":"duo","name":"Duo Raid","mode":"battlegrounds","team_size":2,"capacity":16,"state":"waiting","owner":"a","members":{"a":{"name":"Archer","character":"run_archer","team":0},"b":{"name":"Plague","character":"run_plague","team":0},"d":{"name":"Demon","character":"run_demon","team":1}}}
+  c.draw();await shot("prep-duo-"+str(size.x))
+  check(c.view.find_child("pairs",true,false)!=null and root.get_visible_rect().grow(1).encloses(c.view.find_child("ready",true,false).get_global_rect()),"a duo lobby shows its pairs, Ready still on screen "+str(size.x))
   var tiles=c.view.find_child("class_tiles",true,false)
   check(tiles!=null and root.get_visible_rect().grow(1).encloses(tiles.get_global_rect()) and root.get_visible_rect().grow(1).encloses(c.view.find_child("ready",true,false).get_global_rect()),"the class tiles and Ready fit "+str(size.x))
   c.room={};c.panel.hide()

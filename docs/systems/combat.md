@@ -42,7 +42,8 @@ hit (`hit_mult`, `on_hit`), on a kill, when struck, on a cooldown, every frame, 
 **The Archer's skills run on the match server** (`game/systems/skills/server_rules.gd`). In a Battlegrounds, Arena
 or Sandbox match his game sends what a skill makes (an arrow, a rain, a sigil); the server's copy of him makes it,
 decides who it hits with its own positions and its own stand-ins for players, and deals the damage from the build his
-game sends it (level, attributes, the run's skills, rites and gems). His wolf still bites from his own game.
+game sends it (level, attributes, the run's skills, rites and gems). His wolf bites there and his rites fire there
+(`Hero.decides`); what they do to him (life back, a buff, a cooldown) goes back to his game (`Net.tell_self`).
 
 Every other hero's game still decides its own damage, cooldowns and mana, and the server trusts it (PvP numbers are
 clamped). The host or match server decides monsters, deaths and loot. Each hero moves onto the server as it moves

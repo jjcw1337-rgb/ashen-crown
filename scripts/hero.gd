@@ -730,6 +730,21 @@ static var striker: Hero = null
 func _mine() -> bool:
 	return not puppet and not bot
 
+## This hero's hits are decided on this game: its own game, or the match server's copy of it when its skills run
+## there (ServerRules). Its rites' procs (RunTalents.on_hit, on_death) fire only here.
+func decides() -> bool:
+	return game.net.server if ServerRules.on(self) else not puppet
+
+## Life back from its own blows (leech, a rite): on the match server's copy of a player it goes to their game, which
+## keeps their life.
+func gain_life(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	if puppet and game.net.server:
+		game.net.tell_self(self, {"life": amount})
+		return
+	life = minf(max_life, life + amount)
+
 ## The Battlegrounds' rules for gear (recalc): on while this game is in a raid (Game.bg_mode); `pvp_force` for tools.
 var pvp_force := false
 func pvp_scaled() -> bool:
@@ -1567,7 +1582,7 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 		if is_instance_valid(e) and e.has_meta("deathmark") and e.get_meta("deathmark").get("h") == self:
 			e.get_meta("deathmark")["stored"] = float(e.get_meta("deathmark")["stored"]) + dealt      # (Death Mark's store)
 	if ls > 0.0:
-		life = minf(max_life, life + dealt * ls / 100.0)
+		gain_life(dealt * ls / 100.0)
 	_item_effects(e, dealt, src)
 	if _mine():
 		if r["crit"]:
@@ -1594,7 +1609,7 @@ func _item_effects(e, dealt: float, src: String) -> void:
 			e.chill(chill / 100.0, 2.0)
 	var kh := float(stats.get("kill_heal", 0))
 	if kh > 0.0 and e.dead:
-		life = minf(max_life, life + max_life * kh / 100.0)
+		gain_life(max_life * kh / 100.0)
 
 func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String = "phys") -> void:
 	stop_chop()

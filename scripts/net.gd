@@ -424,7 +424,7 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", chara
 	if game.match_instance != null:
 		at = game.match_instance.spawn(pid)
 	elif server:
-		at = game.bg.spawn_point() if game.bg != null else at
+		at = game.bg.spawn_point(pid) if game.bg != null else at
 	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, at, game.tp_link, game.boss_killed, roster, game.difficulty)
 	if server:
 		print("[BG] %s joined (%d playing)" % [nm, players.size()])
@@ -957,6 +957,11 @@ func bg_refuse(pid: int, why: String) -> void:
 func cl_bg_roster(r: Array) -> void:
 	game.bg_roster = r
 
+## Every raider's team (Battlegrounds.teams): a duo's pair is no target and shows on its teammate's map.
+@rpc("authority", "call_remote", "reliable")
+func cl_bg_teams(t: Dictionary) -> void:
+	game.set_meta("bg_teams", t)
+
 ## The round: "raid" or "reset", seconds into it, the open portals, its length, when the portals open.
 @rpc("authority", "call_remote", "reliable")
 func cl_bg_raid(state: String, t: float, open: Array, length: float, portals_at: float) -> void:
@@ -1000,16 +1005,6 @@ func sv_skill_make(id: String, kind: String, data: Dictionary) -> void:
 	if server:
 		ServerRules.received(game, multiplayer.get_remote_sender_id(), id, kind, data)
 
-## Server: what a player's skill's rules gave its hero here (Skill.give: life back, mana) goes to that player's game.
-func send_skill_given(pid: int, id: String, kind: String, data: Dictionary) -> void:
-	if server and active and pid > 0 and multiplayer.get_peers().has(pid):
-		rpc_id(pid, "cl_skill_given", id, kind, data)
-
-@rpc("authority", "call_remote", "reliable")
-func cl_skill_given(id: String, kind: String, data: Dictionary) -> void:
-	if not loading and game.world != null:
-		ServerRules.got(game, id, kind, data)
-
 ## A player's game: its build (level, attributes, the run's skills, rites and gems) for the server's copy of it.
 func send_build(d: Dictionary) -> void:
 	if active and not server:
@@ -1044,6 +1039,29 @@ func tell_dealt(h: Hero, at: Vector3, amount: float, crit: bool) -> void:
 func cl_dealt(at: Vector3, amount: float, crit: bool) -> void:
 	if not loading and game.world != null and amount > 0.0:
 		Fx.number(game.world.fx_root, at + Vector3(0, 2.2, 0), str(int(amount)) + ("!" if crit else ""), Color(1.0, 0.85, 0.4), crit)
+
+## Server: what a player's own blows did to them here (life leeched, a rite's buff, a cooldown back, Hunger, what a
+## skill's rules gave them: "give", Skill.give), for their game, which keeps their life, cooldowns and run
+## (Hero.gain_life, RunTalents._tell_owner, ServerRules.got).
+func tell_self(h: Hero, d: Dictionary) -> void:
+	if server and active and int(h.peer_id) > 0 and multiplayer.get_peers().has(int(h.peer_id)):
+		rpc_id(int(h.peer_id), "cl_self", d)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_self(d: Dictionary) -> void:
+	var h = game.hero
+	if loading or h == null or h.dead:
+		return
+	h.gain_life(float(d.get("life", 0.0)))
+	if d.get("give") is Array and (d["give"] as Array).size() == 3 and d["give"][2] is Dictionary:
+		ServerRules.got(game, str(d["give"][0]), str(d["give"][1]), d["give"][2])
+	if d.has("cd"):
+		h.cds[str(d["cd"])] = 0.0
+	if h.run != null:
+		if d.get("buff") is Array and (d["buff"] as Array).size() == 3:
+			RunTalents.buff(h, str(d["buff"][0]), d["buff"][1] if d["buff"][1] is Dictionary else {}, float(d["buff"][2]))
+		if d.get("hunger") is Array and (d["hunger"] as Array).size() == 2:
+			h.run.hunger = minf(float(d["hunger"][1]), h.run.hunger + float(d["hunger"][0]))
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
@@ -1125,15 +1143,17 @@ func sv_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
 		return
 	game.bg.pvp_burn(by, target_pid, dps, from)
 
-## War Cry (SharedSkills): the battle buff for the teammates near the one who roared. Co-op partners only: the
-## Battlegrounds has no teams yet (everyone there is an enemy), so nobody else gets it there.
+## War Cry (SharedSkills): the battle buff for the teammates near the one who roared: co-op partners, the Arena's
+## team, a Battlegrounds duo's pair (never another raider).
 func send_team_buff(secs: float, at: Vector3) -> void:
-	if active and not players.is_empty() and not game.bg_mode:
+	if active and not players.is_empty():
 		rpc("cl_team_buff", secs, at)
 
 @rpc("any_peer", "call_remote", "reliable")
 func cl_team_buff(secs: float, at: Vector3) -> void:
-	if server or game.bg_mode or game.world == null or game.hero == null or game.hero.dead or loading:
+	if server or game.world == null or game.hero == null or game.hero.dead or loading:
+		return
+	if game.bg_mode and not Battlegrounds.is_teammate(game, multiplayer.get_remote_sender_id()):
 		return
 	if game.arena_mode:
 		var teams: Dictionary = game.arena_state.get("teams", {})

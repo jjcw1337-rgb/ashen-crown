@@ -402,7 +402,7 @@ static func talents_for(cls: String) -> Array:
 ## This hero struck `e` now: its death is theirs for the next 4 s (on_death). Every way a hero hurts a monster marks
 ## it: a blow (hit_mult), poison (Plague._damage), a burn set (Enemy.ignite), a proc (_deal).
 static func mark(h: Hero, e) -> void:
-	if h != null and h.run != null and not h.puppet and e != null and is_instance_valid(e):
+	if h != null and h.run != null and h.decides() and e != null and is_instance_valid(e):
 		e.set_meta("run_hit", [h, Time.get_ticks_msec()])
 
 ## A gem's painted icon (Meshy, tools/skill_icons.py grids "gems", "gems2", "potions"), or null.
@@ -533,7 +533,7 @@ static func hit_mult(h: Hero, e, src: String) -> float:
 
 ## After one of this hero's hits landed on `e`.
 static func on_hit(h: Hero, e, dealt: float, crit: bool, src: String) -> void:
-	if h.run == null or h.puppet or _in_proc or e == null or not is_instance_valid(e):
+	if h.run == null or not h.decides() or _in_proc or e == null or not is_instance_valid(e):
 		return
 	e.set_meta("run_hit", [h, Time.get_ticks_msec()])
 	var list := procs(h)
@@ -583,7 +583,7 @@ static func on_hit(h: Hero, e, dealt: float, crit: bool, src: String) -> void:
 					buff(h, "frenzy", {"ias": float(k["ias"])}, float(k["secs"]))
 			"bloodlust":
 				if h.life < h.max_life * float(k["below"]) / 100.0:
-					h.life = minf(h.max_life, h.life + dealt * float(k["pct"]) / 100.0)
+					h.gain_life(dealt * float(k["pct"]) / 100.0)
 			"spread_on_hit":
 				if _src_ok(k, src) and poisoned(h, e):
 					_spread_poison(h, e, int(k["n"]), float(k["r"]))
@@ -594,7 +594,7 @@ static func on_death(e) -> void:
 		return
 	var rec: Array = e.get_meta("run_hit")
 	var h = rec[0]
-	if not is_instance_valid(h) or h.run == null or h.puppet or h.dead:
+	if not is_instance_valid(h) or h.run == null or not h.decides() or h.dead:
 		return
 	if Time.get_ticks_msec() - int(rec[1]) > 4000 or not (e.pvp_pid == 0 and e.pvp_obj == 0 and e.sandbox_hero == null):
 		return
@@ -611,7 +611,7 @@ static func on_death(e) -> void:
 				buff(h, "momentum", {"dmg": float(k["dmg"]) * n}, float(k["secs"]), "momentum")
 			"heal_on_kill":
 				if int(k.get("poisoned", 0)) == 0 or was_poisoned:
-					h.life = minf(h.max_life, h.life + h.max_life * float(k["pct"]) / 100.0)
+					h.gain_life(h.max_life * float(k["pct"]) / 100.0)
 					if int(k.get("poisoned", 0)) == 1:
 						buff(h, "rotfeast", {"frw": 15.0}, 3.0)
 			"explode_on_kill":
@@ -640,11 +640,13 @@ static func on_death(e) -> void:
 					_area(h, e.global_position, float(k["r"]), _weapon(h) * float(k["pct"]) / 100.0, "plague", e)
 			"hunger":
 				h.run.hunger = minf(float(k["most"]), h.run.hunger + float(k["per"]))
+				_tell_owner(h, {"hunger": [float(k["per"]), float(k["most"])]})
 			"speed_on_kill":
 				buff(h, "adrenaline", {"frw": float(k["frw"])}, float(k["secs"]))
 			"mark_reset":
 				if e.has_meta("hunted_until") and Time.get_ticks_msec() < int(e.get_meta("hunted_until")):
 					h.cds["a_mark"] = 0.0
+					_tell_owner(h, {"cd": "a_mark"})
 					buff(h, "marked_death", {"dmg": float(k["dmg"])}, float(k["secs"]))
 
 ## Poison ticking on `e`: Necrosis's growth (Plague._update_poison multiplies the tick by this).
@@ -659,11 +661,11 @@ static func poison_mult(h: Hero, age: float) -> float:
 
 ## Poison (or another damage over time of his) dealt `amount` to `e`.
 static func on_dot(h: Hero, _e, amount: float) -> void:
-	if h.run == null or h.puppet or amount <= 0.0:
+	if h.run == null or not h.decides() or amount <= 0.0:
 		return
 	for p in _active(h, "heal_on_dot"):
 		var k := k_at(p[0], int(p[1]))
-		h.life = minf(h.max_life, h.life + amount * float(k["pct"]) / 100.0)
+		h.gain_life(amount * float(k["pct"]) / 100.0)
 
 ## This hero was struck for `dmg` from `from` (after armour): Retribution's blow back.
 static func struck(h: Hero, dmg: float, from: Vector3) -> void:
@@ -761,6 +763,13 @@ static func buff(h: Hero, key: String, fx: Dictionary, secs: float, _kind := "")
 	h.run.buffs[key] = {"t": secs, "fx": fx}
 	if not same:
 		h.refresh_run()
+	_tell_owner(h, {"buff": [key, fx, secs]})
+
+## A proc on the match server's copy of a player (its rules run there: ServerRules) that changes the player
+## themselves (a buff, a cooldown back, Hunger): their own game gets it too (Net.cl_self).
+static func _tell_owner(h: Hero, d: Dictionary) -> void:
+	if h.puppet and h.game.net.server:
+		h.game.net.tell_self(h, d)
 
 # ---------------------------------------------------------------- what procs do
 
@@ -785,8 +794,10 @@ static func _deal(h: Hero, e, amount: float, kind: String) -> void:
 	var dealt: float = e.take_damage(0.0, amount, h.global_position, 0.0, false)
 	e.dmg_tint = Color(0, 0, 0, 0)
 	e.soft_hit = false
+	if h.puppet and h.game.net.server:
+		h.game.net.tell_dealt(h, e.global_position, dealt, false)
 	if h.ls > 0.0:
-		h.life = minf(h.max_life, h.life + dealt * h.ls / 200.0)
+		h.gain_life(dealt * h.ls / 200.0)
 	_in_proc = was
 
 ## Damage in a circle (the explosions, shards and plague clouds), the dead excluded; its own kills may set off

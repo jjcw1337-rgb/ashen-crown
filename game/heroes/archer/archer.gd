@@ -77,6 +77,10 @@ static func posed(h: Hero, st: Dictionary) -> void:
 static func puppet_update(h: Hero, delta: float) -> void:
 	update(h, delta)
 
+## The match server's copy of him (ServerRules.update) runs the wolf that bites.
+static func server_update(h: Hero, delta: float) -> void:
+	SpiritBeast.keep(h, delta)
+
 static func weapon_hand(h: Hero, J: Dictionary) -> Node3D:
 	return ArcherBody.weapon_hand(h, J)
 
