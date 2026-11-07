@@ -12,11 +12,21 @@ const MAX_LEN := 160              # (Net.CHAT_MAX: the server cuts longer lines)
 const TEAM_COL := Color(0.55, 0.95, 0.6)
 const ALL_COL := Color(0.95, 0.92, 0.85)
 const NAME_COL := Color(1.0, 0.8, 0.45)
+## While you type, the line glows neon (jj, 2026-11-07: "neon green and blue to type"): its border and glow drift
+## between these two, and a TYPING tag sits at its right end, so it's plain your keys are typing, not casting.
+const NEON_GREEN := Color(0.25, 1.0, 0.45)
+const NEON_BLUE := Color(0.2, 0.7, 1.0)
+const NEON_PULSE := 2.6           # radians a second: one green -> blue -> green sweep every ~2.4 s
+const FADE := 0.12                # seconds the line takes to light up or fade out
 
 var game: Node
 var log_box: VBoxContainer
 var input: LineEdit
 var typing := false
+var neon: StyleBoxFlat           # the line's lit style (its border and glow pulse while typing)
+var tag: Label                   # "TYPING", over the line
+var _neon_t := 0.0
+var _fade: Tween
 var _lines: Array = []           # [RichTextLabel, arrived (msec)]
 
 static func attach(ui: Node) -> ChatBox:
@@ -48,22 +58,48 @@ func _build() -> void:
 	input.placeholder_text = "Say something  (/t: your team)  ·  Enter sends, Esc closes"
 	input.visible = false
 	input.add_theme_font_size_override("font_size", 15)
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.04, 0.035, 0.03, 0.82)
-	sb.border_color = Color(0.55, 0.45, 0.3, 0.8)
-	sb.set_border_width_all(1)
-	sb.set_corner_radius_all(4)
-	sb.content_margin_left = 8
-	sb.content_margin_right = 8
-	input.add_theme_stylebox_override("normal", sb)
-	input.add_theme_stylebox_override("focus", sb)
+	neon = StyleBoxFlat.new()
+	neon.bg_color = Color(0.02, 0.05, 0.06, 0.88)
+	neon.border_color = NEON_GREEN
+	neon.set_border_width_all(2)
+	neon.set_corner_radius_all(5)
+	neon.content_margin_left = 10
+	neon.content_margin_right = 88       # (room for the TYPING tag)
+	neon.shadow_color = Color(NEON_GREEN.r, NEON_GREEN.g, NEON_GREEN.b, 0.55)
+	neon.shadow_size = 10
+	input.add_theme_stylebox_override("normal", neon)
+	input.add_theme_stylebox_override("focus", neon)
+	input.add_theme_color_override("font_color", Color(0.9, 1.0, 0.95))
+	input.add_theme_color_override("caret_color", NEON_GREEN)
+	input.add_theme_color_override("font_placeholder_color", Color(0.45, 0.85, 0.75, 0.75))
+	input.add_theme_color_override("selection_color", Color(NEON_BLUE.r, NEON_BLUE.g, NEON_BLUE.b, 0.45))
+	input.add_theme_constant_override("caret_width", 2)
+	tag = Label.new()
+	tag.text = "TYPING"
+	tag.visible = false
+	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)      # (inside the line's right end, clear of the log)
+	tag.offset_left = -84
+	tag.offset_right = -10
+	tag.offset_top = -28
+	tag.offset_bottom = -2
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	tag.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	tag.add_theme_font_size_override("font_size", 13)
+	tag.add_theme_color_override("font_color", NEON_GREEN)
+	tag.add_theme_color_override("font_outline_color", Color(NEON_BLUE.r, NEON_BLUE.g, NEON_BLUE.b, 0.8))
+	tag.add_theme_constant_override("outline_size", 4)
 	input.text_submitted.connect(_submit)
 	input.gui_input.connect(_input_key)
 	add_child(input)
+	add_child(tag)
+
+## Tools and tests can open it outside a match (nothing is sent: there's no server to send to).
+var allow_offline := false
 
 ## Whether chat can open here: in a match with other players (a server's world), not on a menu or the title.
 func can_chat() -> bool:
-	return game != null and game.playing and game.net.active and not game.net.server and not game._busy
+	return game != null and game.playing and (allow_offline or (game.net.active and not game.net.server)) and not game._busy
 
 func _unhandled_key_input(ev: InputEvent) -> void:
 	if typing or not (ev is InputEventKey) or not ev.pressed or ev.echo:
@@ -75,15 +111,37 @@ func _unhandled_key_input(ev: InputEvent) -> void:
 func open() -> void:
 	typing = true
 	input.visible = true
+	tag.visible = true
 	input.text = ""
 	input.grab_focus()
+	_neon_t = 0.0
+	_glow(1.0)
 	for l in _lines:
 		(l[0] as CanvasItem).modulate.a = 1.0
 
 func close() -> void:
 	typing = false
 	input.release_focus()
-	input.visible = false
+	_glow(0.0)
+
+## Lights the line up (1) or fades it out and hides it (0).
+func _glow(to: float) -> void:
+	if _fade != null and _fade.is_valid():
+		_fade.kill()
+	if not is_inside_tree():
+		input.modulate.a = to
+		tag.modulate.a = to
+		input.visible = to > 0.0
+		tag.visible = to > 0.0
+		return
+	_fade = create_tween().set_parallel(true)
+	_fade.tween_property(input, "modulate:a", to, FADE)
+	_fade.tween_property(tag, "modulate:a", to, FADE)
+	if to <= 0.0:
+		_fade.chain().tween_callback(func():
+			if not typing:
+				input.visible = false
+				tag.visible = false)
 
 func _input_key(ev: InputEvent) -> void:
 	if ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:
@@ -128,11 +186,23 @@ func clear() -> void:
 	_lines.clear()
 	close()
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	visible = game != null and game.playing
 	if typing and not can_chat():
 		close()
+	if typing:
+		_neon_t += delta
+		_pulse()
 	var now := Time.get_ticks_msec()
 	for l in _lines:
 		var age := (now - int(l[1])) / 1000.0
 		(l[0] as CanvasItem).modulate.a = 1.0 if typing else clampf((SHOW_SECS - age) / 1.5, 0.0, 1.0)
+
+## The neon's drift: the border and glow sweep green -> blue -> green, the glow breathing a little with it.
+func _pulse() -> void:
+	var k := 0.5 - 0.5 * cos(_neon_t * NEON_PULSE)      # (0 at the open: it lights up green)
+	var c := NEON_GREEN.lerp(NEON_BLUE, k)
+	neon.border_color = c
+	neon.shadow_color = Color(c.r, c.g, c.b, 0.4 + 0.25 * (1.0 - absf(k - 0.5) * 2.0))
+	tag.add_theme_color_override("font_color", NEON_GREEN.lerp(NEON_BLUE, 1.0 - k))
+	input.add_theme_color_override("caret_color", c)
