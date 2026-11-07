@@ -9,6 +9,7 @@ folder is the template for every map: the map, its pieces, the modes played on i
 | `arena_props.gd`, `props/`, `textures/` | `ArenaProps`: the hall's Meshy pieces (pillar, sconce, candles, bones), its wall stone and the see-through on tall pieces |
 | `arena_match.gd` | The Arena's rules on its match server: Ember against Frost, rounds of 3 minutes, first to two |
 | `sandbox.gd` | `Sandbox`: practice. Solo with bots and monster packs; the temporary hero, its meters and panel |
+| `bot_brain.gd` | `BotBrain`: the Sandbox's computer players, playing a hero's real skills the way a decent player would |
 | `sandbox_match.gd` | Sandbox online: free-for-all on a match server, automatic respawns, nothing saved |
 | `tests/` | `arena_round_test`, `arena_survivor_test`, `lobby_team_test`, `sandbox_test`, `sandbox_entry_test`, `sandbox_lobby_test` |
 | `tools/` | `sandbox_shot` (screenshots) |

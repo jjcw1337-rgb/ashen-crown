@@ -1504,3 +1504,51 @@ func cl_arena_state(data: Dictionary) -> void:
 @rpc("authority", "call_remote", "reliable")
 func cl_match_end(reason: String) -> void:
 	if game.lobby_client!=null:game.lobby_client.finished(reason)
+
+# ---------------------------------------------------------------- chat (game/ui/chat/chat_box.gd)
+const CHAT_MAX := 160            # characters a line may have (the server cuts the rest)
+const CHAT_RATE := 5             # lines a player may send in CHAT_WINDOW seconds
+const CHAT_WINDOW := 8.0
+var _chat_sent := {}             # server: peer id -> the times (msec) of its last lines
+
+## A line typed in the chat box: to the server, which checks it and passes it on.
+func send_chat(text: String, team: bool) -> void:
+	if active and not server:
+		rpc_id(1, "sv_chat", text.substr(0, CHAT_MAX), team)
+
+## Server: a player's line. Its name is the server's own record of them; the text is cut to CHAT_MAX, a flood past
+## CHAT_RATE in CHAT_WINDOW s is dropped; a team line goes to the sender's team only (Battlegrounds.team_of: a duo's
+## pair, an Arena team), every other line to everyone in the match.
+@rpc("any_peer", "call_remote", "reliable")
+func sv_chat(text: String, team: bool) -> void:
+	if not server:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	if not players.has(pid):
+		return
+	var t := text.strip_edges().substr(0, CHAT_MAX)
+	if t == "":
+		return
+	var now := Time.get_ticks_msec()
+	var sent: Array = (_chat_sent.get(pid, []) as Array).filter(func(x): return now - int(x) < int(CHAT_WINDOW * 1000.0))
+	if sent.size() >= CHAT_RATE:
+		rpc_id(pid, "cl_chat", "", "You're sending messages too fast.", false)
+		return
+	sent.append(now)
+	_chat_sent[pid] = sent
+	var who := _name_of(pid)
+	var mine: int = game.bg.team_of(pid) if game.bg != null and game.bg.has_method("team_of") else -pid
+	for other in players.keys():
+		if team and (game.bg == null or not game.bg.has_method("team_of") or int(game.bg.team_of(int(other))) != mine):
+			continue
+		rpc_id(int(other), "cl_chat", who, t, team)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_chat(who: String, text: String, team: bool) -> void:
+	if game.ui.chat == null:
+		return
+	if who == "":
+		game.ui.message(text, Color(1.0, 0.6, 0.4))
+	else:
+		game.ui.chat.add(who, text, team)
+
