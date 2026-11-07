@@ -34,9 +34,11 @@ func _walk(dir: Vector3, speed: float, secs: float) -> void:
 		await create_timer(1.0 / 15.0).timeout
 		await _frame()
 
-## Walks along the road (World.path_poly) at speed for secs.
+## Walks a line across the start glade (the moor's road is cut) at speed for secs.
 func _road(speed: float, secs: float) -> void:
-	var pp: PackedVector2Array = g.world.path_poly
+	var st: Vector3 = g.world.spawns["start"]
+	var far: Vector3 = g.world.free_spot_near(st + Vector3(24, 0, 8), 3.0)
+	var pp := PackedVector2Array([Vector2(st.x, st.z), Vector2(far.x, far.z)])
 	var hp: Vector3 = g.hero.global_position
 	var k := 0
 	var bd := 1e9
@@ -75,18 +77,18 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "archer")
 	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "bg", "start")
 	g.ui.close_all()
 	g.test_immortal = true
 	g.hero.set_level(12)
 	for e in g.world.enemies_root.get_children():
 		e.queue_free()
-	var road: Vector3 = g.world.spawns["road"]
+	var road: Vector3 = g.world.spawns["start"]
 	_place(road)
 	await create_timer(1.0).timeout
 	g.hero.beasts[0]._reset_to_side()
 	g.zoom = 0.6
-	var dir: Vector3 = g.world.spawns["road2"] - road
+	var dir: Vector3 = g.world.free_spot_near(road + Vector3(24, 0, 8), 3.0) - road
 	dir.y = 0
 	dir = dir.normalized()
 	await _idle(2.0)

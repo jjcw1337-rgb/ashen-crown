@@ -9,7 +9,7 @@ func check(ok: bool,label: String):
  checks+=1;print("[ESCROW] ","ok " if ok else "FAIL ",label)
  if not ok:fails+=1
 func run():
- var store=load("res://scripts/lobby_stakes.gd")
+ var store=load("res://game/ui/lobby/lobby_stakes.gd")
  var path:="user://lobby_escrow_test/"
  DirAccess.make_dir_recursive_absolute(path)
  var cloud=CloudSpy.new()

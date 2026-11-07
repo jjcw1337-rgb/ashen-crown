@@ -31,7 +31,7 @@ func _initialize():
 		if a[i].is_valid_int() and int(a[i]) > 1024:
 			port = int(a[i])
 	if role != "server":
-		Battlegrounds.id_path = "user://bg_pvp_%s_id.txt" % role
+		Battlegrounds.id_path = "user://bg_pvp_%s_%d_id.txt" % [role, port]      # (per port: other runs at once don't collide)
 		DirAccess.remove_absolute(Battlegrounds.id_path)
 		var ai := a.find("addr")
 		if ai >= 0 and ai + 1 < a.size():
@@ -80,9 +80,13 @@ func _server() -> void:
 	check(await until(func(): return g.net.players.size() == 2, 60.0), "both players are in the crypt")
 	check(await until(func(): return g.bg.last_hit.size() > 0, 60.0), "a player struck another (through the server)")
 	if OS.get_cmdline_user_args().has("archer"):
-		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "the Archer's skills ran here: the server made his arrow and his sigil (%d)" % ServerRules.made_count)
+		check(await until(func(): return ServerRules.made_count >= 3, 30.0), "the Archer's skills ran here: the server made his arrow, his sigil and his flask's burst (%d)" % ServerRules.made_count)
 		var arch = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "archer")
 		check(not arch.is_empty() and arch[0].decides() and await until(func(): return arch[0].beasts.any(func(w): return is_instance_valid(w) and w._deals()), 10.0), "his wolf runs here too, the one that bites, and his rites fire here (Hero.decides)")
+		# thorns: a server-run hero's game can only claim a blow the server sent it, once
+		var vic: int = int(g.net.players.keys().filter(func(pid): return g.net.players[pid]["hero"].cls != "archer")[0])
+		await until(func(): return not g.net._blows_sent.get(vic, []).is_empty(), 30.0)
+		check(g.net.took_blow(vic, 1.0) and not g.net.took_blow(vic, 1e9), "a blow the server sent counts for thorns, a made-up one doesn't")
 	if OS.get_cmdline_user_args().has("warlock"):
 		var wl = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "warlock")
 		check(not wl.is_empty() and wl[0].decides(), "the Warlock's copy here decides her hits (Hero.decides)")
@@ -100,7 +104,7 @@ func _player() -> void:
 	while g._busy:
 		await wait(5)
 	await secs(2.0 if role == "a" else 4.0)
-	g.char_dir = "user://bg_pvp_%s_chars/" % role
+	g.char_dir = "user://bg_pvp_%s_%d_chars/" % [role, port]
 	DirAccess.make_dir_recursive_absolute(g.char_dir)
 	for fn in DirAccess.get_files_at(g.char_dir):
 		DirAccess.remove_absolute(g.char_dir + fn)
@@ -153,6 +157,7 @@ func _player() -> void:
 			await secs(0.3)
 			check(Archer.skill(g.hero, "snare").sigils.is_empty() and Archer.skill(g.hero, "pierce").shots.is_empty(), "my game keeps no sigil or arrow of its own: the server's copy of me deals them")
 			check(not g.hero.decides() and not g.hero.beasts.is_empty() and not g.hero.beasts[0]._deals(), "and my wolf here is only seen (the server's bites)")
+			RunTalents.throw_flask(g.hero, "flask_fire", foe.global_position)      # (its burst is the server's too)
 			await secs(1.7)
 		if warlock:
 			# Drain Life (above) lets go after its least time (no key held); then a curse and a fright from near them

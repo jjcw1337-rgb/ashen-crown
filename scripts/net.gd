@@ -741,7 +741,25 @@ func cl_gold(amount: int) -> void:
 
 ## Host: a monster struck a partner's knight; that player's game works out blocking.
 func hit_player(pid: int, dmg: float, from: Vector3, kind: String, element: String) -> void:
+	if server:
+		var log: Array = _blows_sent.get(pid, [])
+		log.append([Time.get_ticks_msec(), dmg])
+		_blows_sent[pid] = log.slice(-8)
 	rpc_id(pid, "cl_take_hit", dmg, from, kind, element)
+
+## Server: the blows it sent each player lately ([msec, damage]), so a server-run hero's game can only claim a blow it
+## really took (RunTalents' thorns: ServerRules.received "run" "struck").
+var _blows_sent := {}
+
+## Server: was `pid` sent a blow of at least `dmg` in the last 1.5 s? (It's used up.)
+func took_blow(pid: int, dmg: float) -> bool:
+	var log: Array = _blows_sent.get(pid, [])
+	var now := Time.get_ticks_msec()
+	for i in log.size():
+		if now - int(log[i][0]) <= 1500 and float(log[i][1]) >= dmg - 0.5:
+			log.remove_at(i)
+			return true
+	return false
 
 @rpc("authority", "call_remote", "reliable")
 func cl_take_hit(dmg: float, from: Vector3, kind: String, element: String) -> void:
