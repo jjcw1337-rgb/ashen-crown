@@ -33,7 +33,7 @@ goes there.
 |---|---|---|
 | Heroes | `game/heroes/<hero>/` (the Archer is the example) | most heroes: `scripts/<hero>*.gd` |
 | Monsters | `game/monsters/<monster>/` (Hrimgar is the example) | stats in `data.gd` `ENEMIES`; the shared monster code in `scripts/enemy.gd` |
-| Maps and camps | `game/maps/<map>/`: `arena/` (the example), `verdant_reach/`, `camp/` | the old story zones (being cut) in `scripts/world.gd` and their own scripts |
+| Maps and camps | `game/maps/<map>/`: `arena/` (the example), `verdant_reach/`, `camp/` | shared world code: `game/systems/world/` (`World`, props, grass, weather) |
 | Items: rites, gems, consumables | `game/items/` | all in one file still: `run_talents.gd` |
 | Screens | `game/ui/<screen>/` | `scripts/ui.gd`, `title_*.gd`, `class_stage.gd`, `mp_lobby_view.gd`, `run_ui.gd` |
 | Shared systems | `game/systems/<system>/` | most of `scripts/` |
