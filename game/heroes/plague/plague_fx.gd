@@ -1,16 +1,213 @@
 class_name PlagueFx
 extends RefCounted
-## The Plague Doctor's visual language (visual overhaul): glass, liquid and contagion, in place of the generic soft-dot
-## bursts, rings and flashes his skills were drawn with (the Fx.burst / ring / flash calls in plague.gd):
-##   - glass: real slivers of the flask (thin shards, glossy, catching the light at their edges) tumbling out, glitter;
-##   - liquid: glossy gobbets of the poison flung on arcs (each a little lit sphere), a wet stain splashed over the
-##     ground with rays and droplets past its edge, bubbles rising off it and popping;
-##   - fumes: the poison's gas as noise-eroded smoke (ElementalFx._dust) that rolls, jets and rushes;
-##   - spores: pale motes of the contagion drifting off the infected;
-##   - alchemist's fire for Volatile Mixture: InfernalFx's flames in an orange-to-green-white palette, sparks, soot and
-##     the bottle's glass, an air ripple, a burning stain.
-## Draws only: plague.gd calls these where it called the generic ones, on the caster and on his puppet's ghost alike.
+## The Plague Doctor's effects (SkillFx events: Hero.fx; the rules are his skills', skills/): every game draws them,
+## his own and his partners', on his hero or their copy of him, and nothing here deals, heals or sets a status.
+## Each skill's look is its own script (skills/<skill>/plague_*_fx.gd), handed its events here; what lingers (a vial in
+## the air, a pool, the swarm, a bloom, the fog, the apparatus, the vat) is kept in `state(h)`, moved by `update` and
+## ended by its events or its own time. That state is not Hero.fxs: his pools and blooms outlive him, as his rules'
+## do, so a death's SkillFx.clear leaves them; a class change or a new character ends them (Plague.clear -> `clear`).
+## On a match server nothing is drawn (Enemy.server_nopose); only where his fog is (`PlagueFogFx.seen`) is kept, so
+## its monsters lose him in it.
+##  Pestilence Vial / Leech Jar: "throw"; Miasma: "miasma" (PlagueVialFx)
+##  his poison, Blight and Fever on monsters (PlagueAffliction): "poisoned", "cured" {x: the marks too}, "blight"
+##    {n: stacks}, "fever" {p, x: seconds} (the haze, PlagueSmoke; the marks, PlagueFever)
+##  his cane: "cane" {n, p, d, t, r, x} (PlagueCane); Contagion: "curse", "spread", "burst"
+##  Swarmcraft: PlagueSwarmFx; Corpse Bloom: PlagueBloomFx; Fog of the Forgotten: PlagueFogFx; Transfusion:
+##    PlagueTransfusionFx; The Last Experiment: PlagueExperimentFx
+## (The constants and pieces further down are an older visual pass's, kept for reference: nothing calls them.)
 
+## This game's look of him: what his skills left lingering here (see above). A new zone starts it afresh (what was
+## left went with the old zone's nodes).
+static func state(h: Hero) -> Dictionary:
+	var wid: int = h.game.world.get_instance_id() if h.game != null and h.game.world != null else 0
+	if h.has_meta("plague_fx"):
+		var st: Dictionary = h.get_meta("plague_fx")
+		if int(st.get("world", wid)) == wid:
+			return st
+		_drop(h, st)
+	var fresh := {"world": wid}
+	h.set_meta("plague_fx", fresh)
+	return fresh
+
+static func play(h: Hero, ev: Dictionary) -> bool:
+	var s := str(ev["s"])
+	var e := str(ev["e"])
+	if e == "cast":
+		return false          # the default cast puff (SkillFx._default), as it always was
+	if s == "attack":
+		if e != "cane":
+			return false      # the swing's own hit and finisher (SkillFx._common)
+		if not Enemy.server_nopose:
+			_cane(h, ev)
+		return true
+	if Enemy.server_nopose:
+		if s == "fog":
+			PlagueFogFx.seen(h, ev)
+		return true
+	var root: Node3D = h.game.world.fx_root
+	match s:
+		"toxic", "p_leech", "p_miasma":
+			match e:
+				"poisoned":
+					for m in ev.get("t", []):
+						_haze(m, true)
+				"cured":
+					for m in ev.get("t", []):
+						_haze(m, false)
+						if int(ev.get("x", 0)) > 0 and is_instance_valid(m):
+							PlagueFever.stacks(m, 0)
+				"blight":
+					for m in ev.get("t", []):
+						if is_instance_valid(m):
+							PlagueFever.stacks(m, int(ev.get("n", 0)))
+				"fever":
+					for m in ev.get("t", []):
+						if is_instance_valid(m):
+							PlagueFever.stacks(m, 0)      # the marks are spent: they burst into the Fever
+							PlagueFever.fever(m, float(ev.get("x", 4.0)))
+					Sfx.play_at("blight_burst", ev.get("p", h.global_position), -6.0, 0.7)
+				"throw":
+					PlagueVialFx.throw(h, ev)
+				"miasma":
+					PlagueVialFx.miasma(h, ev)
+				_:
+					return false
+		"p_spread":
+			match e:
+				"curse":
+					var from: Vector3 = ev["p"]
+					var to: Vector3 = ev["q"]
+					Fx.bolt(root, from, to + Vector3(0, 1.0, 0), Plague.TOXIC, 0.3)
+					Fx.burst(root, to + Vector3(0, 1.0, 0), Plague.TOXIC, 16, 2.5, 0.1, 0.5, true, -2.0)
+					for m in ev.get("t", []):
+						if is_instance_valid(m) and not m.has_node("pd_curse"):
+							var a := PlagueSmoke.vapour(m, Color(0.62, 0.85, 0.22, 0.32), 6, 0.42, 1.1, 0.5, 0.3 * float(m.radius) + 0.15, Vector3(0, float(m.height) * 1.1, 0), Plague.TOXIC * 0.1)
+							a.name = "pd_curse"
+							Fx._free_later(a, float(ev.get("x", 6.0)))
+					Sfx.play_at("curse_leap", to, -3.0)
+				"spread":
+					var p: Vector3 = ev["p"]
+					for o in ev.get("t", []):
+						if is_instance_valid(o):
+							Fx.bolt(root, p + Vector3(0, 1.0, 0), o.global_position + Vector3(0, 1.0, 0), Plague.TOXIC, 0.2)
+				"burst":
+					Fx.burst(root, (ev["p"] as Vector3) + Vector3(0, 1.0, 0), Plague.TOXIC, 30, 4.0, 0.14, 0.7, true, -1.0)
+				_:
+					return false
+		"swarm":
+			return PlagueSwarmFx.play(h, ev)
+		"bloom":
+			return PlagueBloomFx.play(h, ev)
+		"fog":
+			return PlagueFogFx.play(h, ev)
+		"transfusion":
+			return PlagueTransfusionFx.play(h, ev)
+		"experiment":
+			return PlagueExperimentFx.play(h, ev)
+		_:
+			return false
+	return true
+
+## Every frame, on him and on every copy of him (SkillFx.update): what lingers moves on and ends.
+static func update(h: Hero, delta: float) -> void:
+	if not h.has_meta("plague_fx") or h.game == null or h.game.world == null:
+		return
+	var st := state(h)
+	PlagueVialFx.update(h, st, delta)
+	PlagueSwarmFx.update(h, st, delta)
+	PlagueBloomFx.update(h, st, delta)
+	PlagueFogFx.update(h, st, delta)
+	PlagueExperimentFx.update(h, st, delta)
+	for c in (st.get("clouds", []) as Array).duplicate():
+		c["t"] = float(c["t"]) - delta
+		if float(c["t"]) <= 0.0:
+			(st["clouds"] as Array).erase(c)
+			var n = c["node"]
+			if is_instance_valid(n):
+				for ch in (n as Node3D).get_children():
+					if ch is GPUParticles3D:
+						(ch as GPUParticles3D).emitting = false
+
+## Everything of his here goes (a class change, a new character): the vials, pools, swarm, blooms, fog, apparatus,
+## vat, what his hand holds, and the stand-ins other players struck.
+static func clear(h: Hero) -> void:
+	if h.has_meta("plague_fx"):
+		_drop(h, h.get_meta("plague_fx"))
+		h.remove_meta("plague_fx")
+
+static func _drop(h: Hero, st: Dictionary) -> void:
+	PlagueVialFx.clear(h, st)
+	PlagueSwarmFx.clear(h, st)
+	PlagueBloomFx.clear(h, st)
+	PlagueFogFx.clear(h, st)
+	PlagueTransfusionFx.clear(h, st)
+	PlagueExperimentFx.clear(h, st)
+	for c in st.get("clouds", []):
+		if is_instance_valid(c["node"]):
+			(c["node"] as Node).queue_free()
+	var held = st.get("held")
+	if held != null and is_instance_valid(held):
+		(held as Node).queue_free()
+	st.clear()
+
+## A poisoned monster trails a thin green haze (the Mantaflow vapour; its own child: it goes when the monster does).
+static func _haze(e, on: bool) -> void:
+	if e == null or not is_instance_valid(e):
+		return
+	var f: Node = e.get_node_or_null("pd_poison")
+	if on and f == null and not e.dead:
+		var a := PlagueSmoke.vapour(e, Color(Plague.TOXIC.r, Plague.TOXIC.g, Plague.TOXIC.b, 0.4), 7, 0.55, 1.1, 0.45, 0.25 * float(e.radius) + 0.12, Vector3(0, float(e.height) * 0.9, 0), Plague.TOXIC * 0.15)
+		a.name = "pd_poison"
+	elif not on and f != null:
+		e.remove_child(f)      # at once, so a haze put back this frame takes the name
+		f.queue_free()
+
+## His cane's marks: the peck's flecks on what it struck, the flick's fan of poison, the slam's cracked vial and
+## its little cloud (a ring of fog particles that thins away when the rules' cloud ends).
+static func _cane(h: Hero, ev: Dictionary) -> void:
+	var root: Node3D = h.game.world.fx_root
+	var fwd: Vector3 = ev.get("d", h.aim_dir())
+	match int(ev.get("n", 0)):
+		1:
+			for e in ev.get("t", []):
+				if is_instance_valid(e) and not e.dead:
+					Fx.burst(root, e.global_position + Vector3(0, 1.1 * float(e.height), 0), Plague.TOXIC, 6, 1.6, 0.06, 0.4, true, -2.0)
+		2:
+			for k in 5:
+				var d := fwd.rotated(Vector3.UP, (k - 2) * 0.32)
+				Fx.burst(root, h.global_position + Vector3(0, 1.2, 0) + d * 0.7, Plague.TOXIC, 5, 4.5, 0.05, 0.45, true, -9.0, 8.0, d + Vector3(0, 0.25, 0))
+			Sfx.play_at("drip", h.global_position, -6.0, 1.3)
+		3:
+			var at: Vector3 = ev["p"]
+			Fx.burst(root, at + Vector3(0, 0.15, 0), Color(0.8, 1.0, 0.85), 10, 3.0, 0.04, 0.35, true, -9.0)
+			Fx.burst(root, at + Vector3(0, 0.3, 0), Plague.TOXIC, 18, 2.5, 0.14, 0.6, true, 0.3, 70.0)
+			Sfx.play_at("ice_shatter", at, -6.0, 1.5)
+			var r := float(ev.get("r", PlagueCane.SLAM_R))
+			var dur := float(ev.get("x", PlagueCane.SLAM_S))
+			var node := Node3D.new()
+			root.add_child(node)
+			node.global_position = at
+			var p := Fx.aura(node, Color(Plague.TOXIC.r * 0.6, Plague.TOXIC.g * 0.75, Plague.TOXIC.b * 0.45, 0.6), int(clampf(r * r * 6.0, 24.0, 120.0)), 0.3, 0.6, 1.6, 0.15, r * 0.8, 80.0, Vector3(0, 0.35, 0), false)
+			p.name = "fog"
+			Fx._free_later(node, dur + 2.0)
+			var st := state(h)
+			if not st.has("clouds"):
+				st["clouds"] = []
+			(st["clouds"] as Array).append({"node": node, "t": dur})
+
+## The effect budget by the graphics preset (0 Low .. 3 Ultra; the browser build is capped at Medium).
+static func quality(h: Hero) -> int:
+	if h.game == null:
+		return 1
+	return int(h.game.get("quality")) if h.game.get("quality") != null else 1
+
+## A player's stand-ins for his things only exist on other players' games in a match (PvpObjects.proxy decides).
+static func proxy(h: Hero, oid: int, kind: String, at: Vector3) -> Enemy:
+	if not h.puppet or oid <= 0:
+		return null
+	return PvpObjects.proxy(h.game, h, oid, kind, int(PvpObjects.HITS[kind]), at)
+
+# ---------------------------------------------------------------- an older visual pass's pieces (unused)
 const TOXIC := Color(0.45, 0.95, 0.25)
 const MIASMA := Color(0.32, 0.6, 0.18)
 const LIME := Color(0.7, 1.0, 0.3)

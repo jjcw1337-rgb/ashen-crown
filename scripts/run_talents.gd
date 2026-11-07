@@ -13,8 +13,8 @@ extends RefCounted
 ## out as "run" fx events (Hero.fx), so partners see the bursts too.
 ##
 ## Hooks: Hero._hit_enemy (hit_mult before the roll, on_hit after), Enemy.die_visual (on_death, for the hero who
-## struck it last), Enemy.ignite / chill (the striker's burn_pct, burn_dur, chill_pct), Plague._update_poison
-## (poison_mult) and Plague._damage (on_dot), Hero.take_hit (struck, save_from_death), Hero.use_skill (echo),
+## struck it last), Enemy.ignite / chill (the striker's burn_pct, burn_dur, chill_pct), PlagueAffliction
+## (poison_mult, on_dot) and PlagueSkill.damage (mark), Hero.take_hit (struck, save_from_death), Hero.use_skill (echo),
 ## Hero._process (tick), ArcherShot.impact (on_shot).
 
 ## Skills and talents come Common, Uncommon or Rare (Blaine's character structure, 2026-11-06: the rares are the
@@ -400,7 +400,7 @@ static func talents_for(cls: String) -> Array:
 	return TALENTS.filter(func(t): return t["cls"] == "any" or t["cls"] == cls or (str(t["cls"]).contains(",") and str(t["cls"]).split(",").has(cls)))
 
 ## This hero struck `e` now: its death is theirs for the next 4 s (on_death). Every way a hero hurts a monster marks
-## it: a blow (hit_mult), poison (Plague._damage), a burn set (Enemy.ignite), a proc (_deal).
+## it: a blow (hit_mult), poison (PlagueSkill.damage), a burn set (Enemy.ignite), a proc (_deal).
 static func mark(h: Hero, e) -> void:
 	if h != null and h.run != null and h.decides() and e != null and is_instance_valid(e):
 		e.set_meta("run_hit", [h, Time.get_ticks_msec()])
@@ -476,7 +476,7 @@ static func _src_ok(k: Dictionary, src: String) -> bool:
 
 ## Is a foe poisoned by this hero (the Plague Doctor's own poison)?
 static func poisoned(h: Hero, e) -> bool:
-	return h.pd != null and h.pd.poison.has(e.get_instance_id())
+	return Plague.poisoned(h, e)
 
 ## Burning or rotting (an ignite from anyone: the Fire Arrow, the Demon, a blight).
 static func burning(e) -> bool:
@@ -649,7 +649,7 @@ static func on_death(e) -> void:
 					_tell_owner(h, {"cd": "a_mark"})
 					buff(h, "marked_death", {"dmg": float(k["dmg"])}, float(k["secs"]))
 
-## Poison ticking on `e`: Necrosis's growth (Plague._update_poison multiplies the tick by this).
+## Poison ticking on `e`: Necrosis's growth (PlagueAffliction multiplies the tick by this).
 static func poison_mult(h: Hero, age: float) -> float:
 	if h.run == null:
 		return 1.0
@@ -819,8 +819,8 @@ static func _area(h: Hero, at: Vector3, r: float, amount: float, kind: String, s
 				if not e.dead:
 					e.chill(0.35, 2.5)
 			"plague":
-				if not e.dead and h.pd != null:
-					h.pd._poison(e, "toxic", 3.0)
+				if not e.dead:
+					Plague.poison(h, e, "toxic", 3.0)
 		n += 1
 	_depth -= 1
 
@@ -885,7 +885,7 @@ static func _bolt(h: Hero, at: Vector3, amount: float, r: float) -> void:
 
 ## Pass the strongest of this hero's poison on `e` to the `n` nearest others.
 static func _spread_poison(h: Hero, e, n: int, r: float) -> void:
-	if h.pd == null:
+	if not h.is_plague():
 		return
 	var near := []
 	for o in h.game.enemies_near(e.global_position, r):
@@ -894,7 +894,7 @@ static func _spread_poison(h: Hero, e, n: int, r: float) -> void:
 	near.sort_custom(func(a, b): return a.global_position.distance_to(e.global_position) < b.global_position.distance_to(e.global_position))
 	var pts := PackedVector3Array([e.global_position + Vector3(0, 1.0, 0)])
 	for i in mini(n, near.size()):
-		h.pd._poison(near[i], "toxic", 3.5)
+		Plague.poison(h, near[i], "toxic", 3.5)
 		pts.append(near[i].global_position + Vector3(0, 1.0, 0))
 	if pts.size() > 1:
 		h.fx("run", "spread", {"ps": pts})

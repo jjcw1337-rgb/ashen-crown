@@ -765,3 +765,100 @@ static func wisp_tex() -> Texture2D:
 			img.set_pixel(x, y, Color(1, 1, 1, a))
 	_wisp = ImageTexture.create_from_image(img)
 	return _wisp
+
+# ---------------------------------------------------------------- the events (PlagueFx), on every game
+## The recipe the next vial is mixed in (its colour, and the one in his hand), as this game last saw him throw.
+static func next_recipe(h: Hero) -> int:
+	return int(PlagueFx.state(h).get("recipe", 0))
+
+## "throw" {p: from, q: where it lands, r, n: recipe, x: the pool's seconds, k: 1 a leech jar, b: it bursts}: the
+## vial flies from his hand and lands on the beat the rules land it (PestilenceVial.flight_s).
+static func throw(h: Hero, ev: Dictionary) -> void:
+	var st := PlagueFx.state(h)
+	var w: World = h.game.world
+	var from: Vector3 = ev["p"]
+	var to: Vector3 = ev["q"]
+	var r := float(ev.get("r", Skill.num("toxic", "radius", 2.6)))
+	var ri := posmod(int(ev.get("n", 0)), RECIPES.size())
+	st["recipe"] = (ri + 1) % RECIPES.size()
+	var dur := PestilenceVial.flight_s(from, to)
+	var f := Flight.new(w.fx_root, from, to, ri, dur)
+	landing_ring(w.fx_root, w, to, r, ri, dur)
+	if not st.has("vials"):
+		st["vials"] = []
+	(st["vials"] as Array).append({"f": f, "from": from, "to": to, "r": r, "ri": ri, "x": float(ev.get("x", Skill.num("toxic", "pool_s", 3.5))),
+		"k": int(ev.get("k", 0)), "b": bool(ev.get("b", false))})
+	Sfx.play_at("swing_light", from, -5.0, 0.75)
+
+## "miasma" {p, r, x}: Miasma's censer burst and pool, as wide as its cloud, and its ring.
+static func miasma(h: Hero, ev: Dictionary) -> void:
+	var w: World = h.game.world
+	var root: Node3D = w.fx_root
+	var at: Vector3 = ev["p"]
+	var r := float(ev.get("r", 4.5))
+	var g := Vector3(at.x, w.height_at(at.x, at.z), at.z)
+	shatter(root, w, g, r, 0, Vector3.DOWN, true)
+	_pool(h, w, g, r, 0, float(ev.get("x", 4.0)))
+	Fx.ring(root, at, r, Plague.TOXIC, 0.5)
+	Fx.burst(root, at + Vector3(0, 0.4, 0), Color(0.8, 1.0, 0.6), 18, 4.0, 0.06, 0.4, true, -8.0)
+	Sfx.play_at("miasma_burst", at, -2.0 if h.puppet else -1.0)
+	if not h.puppet:
+		h.game.add_shake(0.1)
+
+static func _pool(h: Hero, w: World, g: Vector3, r: float, ri: int, secs: float) -> void:
+	var st := PlagueFx.state(h)
+	var pool := Pool.new()
+	w.fx_root.add_child(pool)
+	pool.global_position = g
+	pool.setup(w, g, r, ri, true)
+	if not st.has("pools"):
+		st["pools"] = []
+	(st["pools"] as Array).append({"node": pool, "t": secs})
+
+static func update(h: Hero, st: Dictionary, delta: float) -> void:
+	for v in (st.get("vials", []) as Array).duplicate():
+		var f: Flight = v["f"]
+		if f.step(delta):
+			(st["vials"] as Array).erase(v)
+			if is_instance_valid(f.node):
+				f.node.queue_free()
+			_landed(h, v)
+	for p in (st.get("pools", []) as Array).duplicate():
+		p["t"] = float(p["t"]) - delta
+		if float(p["t"]) <= 0.0 or not is_instance_valid(p["node"]):
+			(st["pools"] as Array).erase(p)
+			if is_instance_valid(p["node"]):
+				(p["node"] as Pool).end()
+
+## The vial lands: the glass bursts, the liquid splashes up, and the pool creeps out (a leech jar's blood and ring).
+static func _landed(h: Hero, v: Dictionary) -> void:
+	var w: World = h.game.world
+	var root: Node3D = w.fx_root
+	var at: Vector3 = v["to"]
+	var r := float(v["r"])
+	shatter(root, w, at, r, int(v["ri"]), at - (v["from"] as Vector3), true)
+	Sfx.play_at("ice_shatter", at, -2.0, 1.45)
+	Sfx.play_at("blight_burst", at, -7.0, 1.25)
+	Sfx.play_at("drip", at, -4.0, 0.8)
+	if not h.puppet:
+		h.game.add_shake(0.06)
+		if bool(v["b"]):
+			# Volatile Reagents: the vial bursts across the whole pool
+			Fx.burst(root, at + Vector3(0, 0.6, 0), Plague.TOXIC, 30, r * 1.6, 0.16, 0.5, true, -4.0)
+			Fx.flash(root, at + Vector3(0, 1.0, 0), Plague.TOXIC, 2.5, 0.25, r * 2.0)
+	_pool(h, w, Vector3(at.x, w.height_at(at.x, at.z), at.z), r, int(v["ri"]), float(v["x"]))
+	if int(v["k"]) == 1:
+		Fx.burst(root, at + Vector3(0, 0.4, 0), Color(0.55, 0.05, 0.08), 26, 2.5, 0.09, 0.6, false, -8.0)
+		Fx.ring(root, at, r, Color(0.75, 0.1, 0.12), 0.6)
+		Sfx.play_at("leech_jar", at, -2.0)
+
+static func clear(_h: Hero, st: Dictionary) -> void:
+	for v in st.get("vials", []):
+		var f: Flight = v["f"]
+		if is_instance_valid(f.node):
+			f.node.queue_free()
+	for p in st.get("pools", []):
+		if is_instance_valid(p["node"]):
+			(p["node"] as Node).queue_free()
+	st.erase("vials")
+	st.erase("pools")

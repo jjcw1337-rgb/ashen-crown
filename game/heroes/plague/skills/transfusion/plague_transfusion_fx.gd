@@ -230,3 +230,34 @@ void fragment() {
 }
 """
 	return _ssh
+
+# ---------------------------------------------------------------- the events (PlagueFx), on every game
+## Transfusion's events: "on" (the apparatus strapped on, the needle in), "soak" {x: how full the tanks are}, "off"
+## {x: what it heals}.
+static func play(h: Hero, ev: Dictionary) -> bool:
+	var st := PlagueFx.state(h)
+	var node = st.get("trans")
+	match str(ev["e"]):
+		"on":
+			if node != null and is_instance_valid(node):
+				(node as Node3D).queue_free()
+			st["trans"] = attach(h)
+			Sfx.play_at("drip", h.global_position, -3.0, 0.5)
+			Sfx.play_at("impact_metal", h.global_position, -9.0, 1.6)
+		"soak":
+			soak(node, float(ev.get("x", 0.0)))
+		"off":
+			var heal := float(ev.get("x", 0.0))
+			finish(node, heal > 0.5)
+			st.erase("trans")
+			if not h.puppet and heal > 0.0:
+				Sfx.play("potion", -6.0, 0.8)
+		_:
+			return false
+	return true
+
+static func clear(_h: Hero, st: Dictionary) -> void:
+	var node = st.get("trans")
+	if node != null and is_instance_valid(node):
+		finish(node, false)
+	st.erase("trans")

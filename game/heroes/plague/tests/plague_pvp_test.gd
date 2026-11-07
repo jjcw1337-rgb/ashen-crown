@@ -8,7 +8,9 @@ extends SceneTree
 ## it (PvpStatusFx); then a's swarm harries b and Blights him. b's game sends what is on him in his state packet, so
 ## a sees the roots, the flies and the Blight marks on b's puppet, and nothing doubled on the stand-in a strikes.
 ## Then b breaks a's things (PvpObjects): a second bloom with his blows on its stand-in, and a's vat while a cranks it
-## (the experiment fails).
+## (the experiment fails). a's skills run on the match server (ServerRules): its game shows them and counts the blows
+## on its things; the server's copy of a makes the bloom, the swarm and the vat and decides who they touch.
+## Both raid as run characters: a is given the three skills it uses here (as camp chests would give them).
 ## Prints [SERVER]/[A]/[B] lines.
 var role := "a"
 var host := "127.0.0.1"
@@ -93,6 +95,10 @@ func _player() -> void:
 	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 30.0), "the bell rang and the raid is on")
 	check(await until(func(): return g.net.puppets().size() == 1 and g.net.puppets()[0].net_has, 40.0), "the other player is here")
 	g.test_immortal = true
+	if role == "a" and g.hero.run != null:
+		for id in ["bloom", "swarm", "experiment"]:
+			g.hero.run.add_skill(id, g.hero.binds)
+		g.hero.run_changed()
 	if role == "a":
 		await _doctor()
 	else:
@@ -120,22 +126,25 @@ func _doctor() -> void:
 	# my things can be broken (PvpObjects): he strikes a second bloom till it dies, then my vat while I crank it
 	await secs(3.0)
 	await until(func(): return h.atk_t < 0.0, 3.0)
-	var n0: int = h.pd.next_oid
+	var n0: int = int(h.get_meta("plague_oid", 0))
+	var bloom: CorpseBloom = Plague.skill(h, "bloom")
 	check(_use(h, "bloom", foe.global_position + Vector3(-1.4, 0, 1.0)), "a second Corpse Bloom, for him to break")
-	await until(func(): return h.pd.blooms.any(func(b) -> bool: return int(b.get("oid", 0)) > n0), 3.0)
+	await until(func(): return bloom.owned.keys().any(func(k) -> bool: return int(k) > n0), 3.0)
 	var b2id: int = n0 + 1
 	var b2t := Time.get_ticks_msec()
-	check(h.pd.blooms.any(func(b) -> bool: return int(b.get("oid", 0)) == b2id), "it's planted (id %d)" % b2id)
-	check(await until(func(): return not h.pd.blooms.any(func(b) -> bool: return int(b.get("oid", 0)) == b2id), 12.0) and Time.get_ticks_msec() - b2t < int(Plague.BLOOM_GROW + Plague.BLOOM_T) * 1000,
+	check(bloom.owned.has(b2id) and bloom.blooms.is_empty(), "it's planted (id %d), and my game keeps no bloom of its own: the server's copy of me runs it" % b2id)
+	check(await until(func(): return not _shows(h, "blooms", b2id), 12.0) and Time.get_ticks_msec() - b2t < int(Skill.num("bloom", "grow_s", 1.0) + Skill.num("bloom", "active_s", 6.0)) * 1000,
 		"his blows break it (through the server) before its time (%.1f s)" % ((Time.get_ticks_msec() - b2t) / 1000.0))
 	await until(func(): return h.atk_t < 0.0, 3.0)
 	await secs(0.5)
 	check(_use(h, "experiment", foe.global_position + Vector3(2.5, 0, 0)), "The Last Experiment set down beside him")
 	var burst := [false]
+	var shown := func() -> Dictionary: return (h.get_meta("plague_fx", {}) as Dictionary).get("lab", {})
+	await until(func(): return not shown.call().is_empty(), 3.0)
 	var failed := await until(func():
-		if not h.pd.lab.is_empty() and int(h.pd.lab["stage"]) == 2:
+		if not shown.call().is_empty() and int(shown.call()["stage"]) == 2:
 			burst[0] = true
-		return h.pd.lab.is_empty(), 12.0)
+		return shown.call().is_empty(), 12.0)
 	check(failed and not burst[0], "he breaks the vat while I crank it: the experiment fails, no quarantine")
 	await secs(4.0)
 
@@ -169,6 +178,13 @@ func _strike(kind: String, min_id: int, t: float) -> bool:
 			return true
 		e.take_damage(25.0, 0.0, g.hero.global_position, 0.0, false)
 		await secs(PvpObjects.GAP + 0.15)
+	return false
+
+## His game shows his thing `oid` of this kind (PlagueFx's look of him: "blooms").
+func _shows(h: Hero, kind: String, oid: int) -> bool:
+	for b in (h.get_meta("plague_fx", {}) as Dictionary).get(kind, []):
+		if int(b["oid"]) == oid:
+			return true
 	return false
 
 func _use(h: Hero, id: String, at: Vector3) -> bool:

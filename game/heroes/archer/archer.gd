@@ -159,8 +159,8 @@ static func shatter(h: Hero, e) -> float:
 static func update(h: Hero, delta: float) -> void:
 	SpiritBeast.keep(h, delta)
 	# his skills that are objects (Hero.kit): arrows in flight, the rains, the sigils; on his own game only, since a partner's
-	# copy of him only shows them
-	if not h.puppet:
+	# copy of him only shows them (another class's kit is its own script's: ClassSkills runs every class's update)
+	if not h.puppet and h.is_archer():
 		for sk in h.kit.values():
 			sk.update(delta)
 

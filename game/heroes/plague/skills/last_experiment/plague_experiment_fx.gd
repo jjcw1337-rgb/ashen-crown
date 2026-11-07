@@ -1,6 +1,6 @@
 class_name PlagueExperimentFx
 extends RefCounted
-## The Last Experiment's look (the Plague Doctor's V, his ultimate; gameplay in plague.gd).
+## The Last Experiment's look (the Plague Doctor's V, his ultimate; its rules: LastExperiment, last_experiment.gd).
 ##
 ## Stage 1, the vat: the Meshy vat (game/heroes/plague/skills/last_experiment/vat.glb: a brass-bound glass cylinder on clawed iron feet with
 ## a crank and gauges, a pickled thing curled in green fluid) drops from his hands and slams into the ground (dust
@@ -267,12 +267,8 @@ class Vat extends Node3D:
 				best = e
 		if best != null and bd > 1.6:
 			var dir := (best.global_position - c_pos) * Vector3(1, 0, 1)
-			var step := dir.normalized() * PlagueExperimentFx.CREATURE_SPEED * delta
-			var np := c_pos + step
-			var off := (np - center) * Vector3(1, 0, 1)
-			if off.length() > radius * 0.9:
-				np = center + off.normalized() * radius * 0.9
-			c_pos = Vector3(np.x, w.height_at(np.x, np.z), np.z)
+			# the same walk as the rules' creature (LastExperiment.creature_walk)
+			c_pos = LastExperiment.creature_walk(w, c_pos, burst_t, delta, foes, center, radius, Skill.num("experiment", "creature_speed", PlagueExperimentFx.CREATURE_SPEED))
 			c_yaw = lerp_angle(c_yaw, atan2(-dir.x, -dir.z), clampf(delta * 5.0, 0.0, 1.0))
 			_play("Slow_Orc_Walk")
 		else:
@@ -380,10 +376,10 @@ class Vat extends Node3D:
 ## A spew: a ghost of the bile-spray painting on the ground, the cone it covers, filling from the creature's mouth
 ## over `warn` with a bright front (everyone sees where the bile will go and when), then a gout along it that leaves
 ## the painting there, wet, drying and fading.
-static func spew(lab: Dictionary, from: Vector3, toward: Vector3, warn: float, length: float, half: float) -> void:
-	if lab.is_empty() or not is_instance_valid(lab.get("node")):
+static func spew(vat: Node, from: Vector3, toward: Vector3, warn: float, length: float, half: float) -> void:
+	if vat == null or not is_instance_valid(vat) or not (vat is Vat):
 		return
-	var v: Vat = lab["node"]
+	var v: Vat = vat
 	var dir := (toward - from) * Vector3(1, 0, 1)
 	dir = dir.normalized() if dir.length() > 0.01 else Vector3.FORWARD
 	var fan := _ground_fan(v.w, from, dir, length, 2.0 * length * tan(half), 10, 12, 0.07)
@@ -582,3 +578,137 @@ void fragment() {
 }
 """
 	return _zsh
+
+# ---------------------------------------------------------------- the events (PlagueFx), on every game
+## The Last Experiment's events: "vat" {p, r, n: its id} (slammed down; it shudders harder as he cranks, by its own
+## clock), "burst" {r, n: the creature's id, x: seconds}, "spew" {p: from, q: toward}, "end", "obj" {n, x: blows left}
+## (PvP: the vat or the creature struck; at none the vat fails or the creature collapses). On another player's game
+## in a match the vat, then the creature, has a stand-in to strike (PvpObjects.proxy).
+static func play(h: Hero, ev: Dictionary) -> bool:
+	var st := PlagueFx.state(h)
+	var lab: Dictionary = st.get("lab", {})
+	match str(ev["e"]):
+		"vat":
+			_end(st)
+			var w: World = h.game.world
+			var g: Vector3 = ev["p"]
+			var r := float(ev.get("r", Skill.num("experiment", "radius", 8.0)))
+			var oid := int(ev.get("n", 0))
+			var node := Vat.new()
+			w.fx_root.add_child(node)
+			node.global_position = g
+			node.setup(w, g, r)
+			st["lab"] = {"stage": 1, "node": node, "pos": g, "r": r, "t": 0.0, "oid": oid, "proxy": PlagueFx.proxy(h, oid, "vat", g)}
+			h.game.add_shake(0.25 if not h.puppet else 0.08)
+			Sfx.play_at("slam", g, -2.0, 0.85)
+			Sfx.play_at("impact_metal", g, -4.0, 0.6)
+		"burst":
+			if lab.is_empty() or int(lab["stage"]) != 1:
+				return true
+			var r := float(ev.get("r", lab["r"]))
+			var coid := int(ev.get("n", 0))
+			lab["stage"] = 2
+			lab["r"] = r
+			lab["t"] = float(ev.get("x", Skill.num("experiment", "secs", 7.0))) + 2.0
+			# the vat is gone: the creature out of it is what can be struck now
+			PvpObjects.drop(lab.get("proxy"))
+			lab.erase("proxy")
+			lab["coid"] = coid
+			var node: Vat = lab["node"]
+			if is_instance_valid(node):
+				node.burst(r)
+				lab["cproxy"] = PlagueFx.proxy(h, coid, "creature", node.c_pos)
+			h.game.add_shake(0.45 if not h.puppet else 0.12)
+			Sfx.play_at("ice_shatter", lab["pos"], 0.0, 0.7)
+			Sfx.play_at("phase_erupt", lab["pos"], -2.0, 0.6)
+			Sfx.duck(-8.0, 1.4)
+		"spew":
+			if not lab.is_empty():
+				spew(lab["node"], ev["p"], ev["q"], Skill.num("experiment", "spew_warn", 1.0), Skill.num("experiment", "spew_len", 4.0), Skill.num("experiment", "spew_half", 0.45))
+		"end":
+			_end(st)
+		"obj":
+			if lab.is_empty():
+				return true
+			var oid := int(ev.get("n", 0))
+			var left := int(ev.get("x", 0))
+			var vat = lab["node"]
+			if int(lab["stage"]) == 1 and int(lab.get("oid", 0)) == oid:
+				PvpObjects.set_left(lab.get("proxy"), left)
+				if left > 0:
+					if is_instance_valid(vat):
+						(vat as Vat).hurt_vat()
+				else:
+					# broken while he cranks it: the experiment fails
+					PvpObjects.drop(lab.get("proxy"))
+					st.erase("lab")
+					if is_instance_valid(vat):
+						(vat as Vat).fail()
+					Sfx.play_at("ice_shatter", lab["pos"], -2.0, 0.9)
+			elif int(lab["stage"]) == 2 and int(lab.get("coid", 0)) == oid:
+				PvpObjects.set_left(lab.get("cproxy"), left)
+				if left > 0:
+					if is_instance_valid(vat):
+						(vat as Vat).hurt_creature()
+				else:
+					_end(st)
+		_:
+			return false
+	return true
+
+## The quarantine over (or the vat cleared away): the creature falls dead, the stain dries.
+static func _end(st: Dictionary) -> void:
+	var lab: Dictionary = st.get("lab", {})
+	if lab.is_empty():
+		return
+	PvpObjects.drop(lab.get("proxy"))
+	PvpObjects.drop(lab.get("cproxy"))
+	st.erase("lab")
+	if is_instance_valid(lab["node"]):
+		(lab["node"] as Vat).collapse()
+
+## The vat shudders as he cranks; the creature walks its own copy of the rules' walk, after the foes this game
+## sees (and, on another player's screen in the Battlegrounds, that player: it comes for him there as it does on its
+## owner's); the stand-ins stay on what they stand for.
+static func update(h: Hero, st: Dictionary, delta: float) -> void:
+	var lab: Dictionary = st.get("lab", {})
+	if lab.is_empty():
+		return
+	if not is_instance_valid(lab["node"]):
+		PvpObjects.drop(lab.get("proxy"))
+		PvpObjects.drop(lab.get("cproxy"))
+		st.erase("lab")
+		return
+	var node: Vat = lab["node"]
+	if int(lab["stage"]) == 1:
+		lab["t"] = float(lab["t"]) + delta
+		var crank := Skill.num("experiment", "crank_s", 2.5)
+		node.charge(clampf(float(lab["t"]) / crank, 0.0, 1.0))
+		PvpObjects.keep_on(lab.get("proxy"), lab["pos"])
+		if float(lab["t"]) > crank + 6.0:
+			_end(st)      # (its burst never came)
+		return
+	lab["t"] = float(lab["t"]) - delta
+	if float(lab["t"]) <= 0.0:
+		_end(st)      # (its end never came)
+		return
+	var pos: Vector3 = lab["pos"]
+	var r: float = lab["r"]
+	node.creature_step(delta, _creature_foes(h, pos, r), pos, r)
+	PvpObjects.keep_on(lab.get("cproxy"), node.c_pos)
+
+static func _creature_foes(h: Hero, pos: Vector3, r: float) -> Array:
+	var out: Array = h.game.enemies_near(pos, r).filter(func(e) -> bool: return e.pvp_obj <= 0 and not ServerRules.friend(h, e))
+	if h.puppet and bool(h.game.get("bg_mode")) and h.game.hero != null and is_instance_valid(h.game.hero) \
+			and not h.game.hero.dead and h.game.hero.global_position.distance_to(pos) <= r:
+		out.append(h.game.hero)
+	return out
+
+static func clear(_h: Hero, st: Dictionary) -> void:
+	var lab: Dictionary = st.get("lab", {})
+	if not lab.is_empty():
+		if is_instance_valid(lab["node"]):
+			(lab["node"] as Node).queue_free()
+		PvpObjects.drop(lab.get("proxy"))
+		PvpObjects.drop(lab.get("cproxy"))
+	st.erase("lab")

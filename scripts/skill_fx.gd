@@ -48,6 +48,7 @@ static func _play(h: Hero, ev: Dictionary) -> void:
 		"demon": done = DemonFx.play(h, ev)
 		"warlock": done = WarlockFx.play(h, ev)
 		"archer": done = ArcherFx.play(h, ev)
+		"plague": done = PlagueFx.play(h, ev)
 		"doug": done = DougFx.play(h, ev)
 		"wyrm", "serpent", "wyvern": done = DragonRunFx.play(h, ev) or DragonRunFx.storm_arc(h, ev) or SerpentFx.play(h, ev)
 	if not done:
@@ -97,7 +98,8 @@ static func update(h: Hero, delta: float) -> void:
 	t1 = FxTiming.t()
 	WarlockFx.update(h, delta)
 	ArcherFx.update(h, delta)
-	FxTiming.done(t1, "update archer/warlock")
+	PlagueFx.update(h, delta)
+	FxTiming.done(t1, "update archer/warlock/plague")
 	SerpentFx.update(h, delta)
 	DragonRunFx.update(h, delta)
 	DougFx.update(h, delta)

@@ -199,3 +199,88 @@ void fragment() {
 }
 """
 	return _bsh
+
+# ---------------------------------------------------------------- the events (PlagueFx), on every game
+## Fog of the Forgotten's events: "fog" {p, r, x: seconds} (the censer down and the fog billowing out), "reveal" (he
+## struck from it: seen for a moment). Where each of his fogs is and when it lifts is kept here (`zones`, by the game's
+## clock) on every game, a match server's too (`seen`), for who is hidden from whom (FogOfTheForgotten.hidden_from).
+static func play(h: Hero, ev: Dictionary) -> bool:
+	var node: Fog = null
+	if str(ev["e"]) == "fog":
+		var w: World = h.game.world
+		var g: Vector3 = ev["p"]
+		var r := float(ev.get("r", Skill.num("fog", "radius", 6.0)))
+		node = Fog.new()
+		w.fx_root.add_child(node)
+		node.global_position = g
+		node.setup(w, g, r, float(ev.get("x", Skill.num("fog", "secs", 6.0))), PlagueFx.quality(h))
+		Sfx.play_at("impact_metal", g, -6.0, 0.6)
+		Sfx.play_at("phase_erupt", g, -9.0, 1.3)
+	return seen(h, ev, node)
+
+## Where his fog is, and when he showed himself in it (on every game; a match server keeps only this).
+static func seen(h: Hero, ev: Dictionary, node: Fog = null) -> bool:
+	var st := PlagueFx.state(h)
+	match str(ev["e"]):
+		"fog":
+			if not st.has("fogs"):
+				st["fogs"] = []
+			(st["fogs"] as Array).append({"pos": ev["p"], "r": float(ev.get("r", Skill.num("fog", "radius", 6.0))),
+				"until": GameClock.now() + float(ev.get("x", Skill.num("fog", "secs", 6.0))), "node": node})
+			st["fog_reveal"] = 0.0
+		"reveal":
+			st["fog_reveal"] = GameClock.now() + Skill.num("fog", "reveal_s", 1.0)
+		_:
+			return false
+	return true
+
+## Is `p` in one of his fogs as this game shows them, and is he not showing himself? (FogOfTheForgotten's hiding)
+static func covers(h: Hero, p: Vector3) -> bool:
+	if not h.has_meta("plague_fx"):
+		return false
+	var st := PlagueFx.state(h)
+	var now := GameClock.now()
+	if float(st.get("fog_reveal", 0.0)) > now:
+		return false
+	for f in st.get("fogs", []):
+		var c: Vector3 = f["pos"]
+		if float(f["until"]) > now and Vector2(p.x - c.x, p.z - c.z).length() < float(f["r"]) * 0.92:
+			return true
+	return false
+
+## Each fog thins away when its time is up; a copy of him in it is hidden from this game's player (the
+## Battlegrounds) or drawn faded (co-op).
+static func update(h: Hero, st: Dictionary, _delta: float) -> void:
+	var now := GameClock.now()
+	for f in (st.get("fogs", []) as Array).duplicate():
+		if float(f["until"]) <= now:
+			(st["fogs"] as Array).erase(f)
+			if f["node"] != null and is_instance_valid(f["node"]):
+				(f["node"] as Fog).end()
+	if not h.puppet or h.rig == null or h.game == null:
+		return
+	var hide := false
+	var fade := false
+	if covers(h, h.global_position):
+		if h.game.bg_mode:
+			hide = FogOfTheForgotten.hidden_from(h, h.game.hero)
+		else:
+			fade = true
+	h.fog_hidden = hide       # Hero._puppet_process: the whole puppet (body, name tag, minimap dot) goes
+	if h.rig.has_meta("fog_fade") != fade:
+		if fade:
+			h.rig.set_meta("fog_fade", true)
+		else:
+			h.rig.remove_meta("fog_fade")
+		ghostly(h.rig, fade)
+
+static func clear(h: Hero, st: Dictionary) -> void:
+	for f in st.get("fogs", []):
+		if f["node"] != null and is_instance_valid(f["node"]):
+			(f["node"] as Node).queue_free()
+	st.erase("fogs")
+	st.erase("fog_reveal")
+	h.fog_hidden = false
+	if h.rig != null and is_instance_valid(h.rig) and h.rig.has_meta("fog_fade"):
+		h.rig.remove_meta("fog_fade")
+		ghostly(h.rig, false)

@@ -776,10 +776,10 @@ func _process(delta: float) -> void:
 	var vel := Vector3.ZERO
 	# a Demon phased into the Underworld cannot be seen, nor a partner under a Shadow Phial (his state's bit,
 	# Net._hero_packet), nor a hero gone unseen (Hero.hidden_t), nor a Plague Doctor in his fog from beyond its reach
-	# (Plague.hidden_from_monster; bosses and the Sloths see through the fog)
+	# (ClassSkills.hidden_from_monster; bosses and the Sloths see through the fog)
 	var hero_dead: bool = hero.dead or hero.get("phased") == true or hero.get("net_invis") == true or float(hero.get("hidden_t") if hero.get("hidden_t") != null else 0.0) > 0.0
-	if not hero_dead and not boss and sloth == null and hero is Hero and hero.get("pd") != null:
-		hero_dead = hero.pd.hidden_from_monster(global_position)
+	if not hero_dead and not boss and sloth == null and hero is Hero:
+		hero_dead = ClassSkills.hidden_from_monster(hero, global_position)
 	if sloth != null:
 		vel = sloth.update(delta, hero, to, dist, hero_dead)
 	elif brain != null:

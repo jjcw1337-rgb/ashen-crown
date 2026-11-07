@@ -149,8 +149,8 @@ func _run() -> void:
 			h.blights.clear()
 			DemonSkills.clear(h)        # his lava on the ground would burn the fresh pack
 			DragonSkills.clear(h)       # (the Storm Wyvern's Thunderhead goes on striking where he cast it)
-			if h.pd != null:
-				h.pd.clear()  # the Plague Doctor's clouds and dome linger where he cast them, over the fresh pack
+			if h.is_plague():
+				Plague.clear(h)  # the Plague Doctor's clouds and dome linger where he cast them, over the fresh pack
 			var en2: Array = await pack(far + OFF + Vector3(0, 0, -2.5), 3)
 			var l0 := lives(en2)
 			puppet.life = 50.0

@@ -177,7 +177,7 @@ func _plague(h) -> void:
 	# Necrosis grows the poison; Septic more vs poisoned; Contagion passes poison on death; Pandemic's cloud
 	await _fresh(h, "plague", {"p_necrosis": 1, "p_septic": 2})
 	var e = _foe(h, Vector3(3, 0, 0), "zombie", 100000.0)
-	h.pd._poison(e, "toxic", 5.0)
+	Plague.poison(h, e, "toxic", 5.0)
 	check(RT.poisoned(h, e) and is_equal_approx(RT.hit_mult(h, e, "attack"), 1.3), "Septic Wounds x2: +30% on a poisoned foe")
 	check(RT.poison_mult(h, 0.0) == 1.0 and is_equal_approx(RT.poison_mult(h, 3.0), 1.6) and is_equal_approx(RT.poison_mult(h, 30.0), 2.6),
 		"Necrosis: poison grows 20%% a second to +160%% (%.2f, %.2f)" % [RT.poison_mult(h, 3.0), RT.poison_mult(h, 30.0)])
@@ -185,14 +185,14 @@ func _plague(h) -> void:
 	e = _foe(h, Vector3(3, 0, 0), "zombie", 30.0)
 	var o1 = _foe(h, Vector3(5, 0, 1))
 	var o2 = _foe(h, Vector3(3, 0, 3))
-	h.pd._poison(e, "toxic", 5.0)
+	Plague.poison(h, e, "toxic", 5.0)
 	_hit(h, e, 50.0)
 	await process_frame
 	check(e.dead and RT.poisoned(h, o1) and RT.poisoned(h, o2), "Contagion: the poisoned foe's death passes its poison to its neighbours")
 	await _fresh(h, "plague", {"p_pandemic": 1})
 	e = _foe(h, Vector3(3, 0, 0), "zombie", 30.0)
 	o1 = _foe(h, Vector3(4.5, 0, 1))
-	h.pd._poison(e, "toxic", 5.0)
+	Plague.poison(h, e, "toxic", 5.0)
 	var l0: float = o1.life
 	_hit(h, e, 50.0)
 	await process_frame
@@ -200,7 +200,7 @@ func _plague(h) -> void:
 	await _fresh(h, "plague", {"p_carrier": 1})
 	e = _foe(h, Vector3(3, 0, 0), "zombie", 100000.0)
 	o1 = _foe(h, Vector3(5, 0, 1))
-	h.pd._poison(e, "toxic", 5.0)
+	Plague.poison(h, e, "toxic", 5.0)
 	_hit(h, e)
 	check(RT.poisoned(h, o1), "Plague Carrier: a cane blow passes the poison on")
 	await _fresh(h, "plague", {"p_toxblood": 1})
@@ -211,9 +211,11 @@ func _plague(h) -> void:
 	await _fresh(h, "plague", {"p_double": 1, "p_volatile": 1})
 	h.run.skills.append("toxic")
 	check(h.talent("vial_twin") == 1.0 and h.talent("vial_burst") == 80.0, "Double Dose and Volatile Reagents reach the vial's code")
-	var n0: int = h.pd.vial_flights.size()
-	h.pd._throw(h.global_position + Vector3(6, 0, 0))
-	check(h.pd.vial_flights.size() == n0 + 2, "Double Dose: two vials fly")
+	var vial := Plague.skill(h, "toxic") as PestilenceVial
+	var n0: int = vial.flights.size()
+	h.atk_aim = h.global_position + Vector3(6, 0, 0)
+	vial.impact()
+	check(vial.flights.size() == n0 + 2, "Double Dose: two vials fly")
 
 func _generic(h) -> void:
 	await _fresh(h, "archer", {"x_execute": 1, "x_giant": 2})
@@ -468,7 +470,7 @@ func _skills(h) -> void:
 	await _cast(h, "p_spread", e1.global_position, 0.6)
 	h._hit_enemy(e1, 80.0, 0.0, "attack")
 	await create_timer(0.3).timeout
-	check(e1.dead and h.pd.curses.has(e2.get_instance_id()), "Epidemic: the curse leaps to the next foe when its host dies")
+	check(e1.dead and (Plague.skill(h, "p_spread") as Contagion).curses.has(e2.get_instance_id()), "Epidemic: the curse leaps to the next foe when its host dies")
 	# the knight's
 	await _fresh(h, "knight", {})
 	var spin := [_foe(h, Vector3(2, 0, 0), "zombie", 5000.0), _foe(h, Vector3(-2, 0, 1), "zombie", 5000.0)]

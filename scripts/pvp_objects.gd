@@ -95,9 +95,9 @@ static func allow(last: Dictionary, attacker: int, owner_pid: int, oid: int, now
 
 ## Server: where `owner`'s thing `oid` is in the server's own ghost of him, or null if he has none such.
 static func where(owner: Hero, oid: int) -> Variant:
-	if owner == null or owner.pd == null:
+	if owner == null or not is_instance_valid(owner):
 		return null
-	return owner.pd.obj_pos(oid)
+	return ClassSkills.obj_pos(owner, oid)
 
 ## Client (every frame in the Battlegrounds): drops stand-ins whose owner is gone or dead, or that outlived MAX_LIFE.
 static func prune(g: Node, alive: Dictionary) -> void:
