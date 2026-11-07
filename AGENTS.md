@@ -12,7 +12,7 @@ listed under "Read before you start". Open only the ones your task needs.
 
 An action roguelite in Godot 4.4.1. Each run you make a fresh hero, grow it in the Battlegrounds (a PvPvE forest of
 monster camps whose chests offer skills, rites and gems) and extract to keep it. Survivors fight in the Arena; the
-Sandbox is for practice. The starting camp (Enter World) stays for now. `README.md` describes the game for players.
+Sandbox is for practice. The game opens on the multiplayer page. `README.md` describes the game for players.
 
 ## How it fits together
 

@@ -169,9 +169,9 @@ of three buckets:
 Each archived feature gets a short `REVIVE.md` listing the hooks it had in `game.gd`, `hero.gd`, `net.gd` and
 `ui.gd`, so it can be wired back in. Other features to keep this way need an admin's say-so: add them here.
 
-**Not cut yet: the starting camp** (Blaine: "we don't want to get rid of that quite yet"). That covers the camp and
-the World-Tree Island, its people (traders, guards, the smith, ravens), day and night, the waypoint, quests and
-Enter World. It stays live as it is until an admin decides.
+**The starting camp and Enter World go** (Blaine, 2026-11-06: "we are dropping the enter world... archive all the
+world stuff"). The game opens on the multiplayer page; the camp, the World-Tree Island, its people, the waypoint,
+quests and the character saves are archived.
 
 Order for each old system:
 1. Move what the live game borrows (below).

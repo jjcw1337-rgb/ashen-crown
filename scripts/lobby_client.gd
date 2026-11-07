@@ -132,7 +132,7 @@ func open(mode := "") -> void:
  if room.get("members",{}).has(identity):character=str(room.members[identity].character)
  if mode!="":selected_mode=mode
  if not MpMode.mode_on(selected_mode):selected_mode=MpMode.MODES[0]
- lan_row.visible=not game.playing
+ lan_row.visible=false
  game.ui.close_all();panel.show();draw();refresh()
  if not game.playing:recover_stakes()
 

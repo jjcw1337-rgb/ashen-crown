@@ -214,9 +214,14 @@ func _topbar() -> Control:
 	codex_btn.tooltip_text = "Every hero's skills, rites, gems and consumables"
 	codex_btn.pressed.connect(func(): CodexBook.open(ui.run_ui))
 	hb.add_child(codex_btn)
-	var back := MpStyle.button("Back")
+	# (the multiplayer page is the home screen: with no game behind it, Back is Quit)
+	var back := MpStyle.button("Back" if game.playing else "Quit")
 	back.name = "back"
-	back.pressed.connect(func(): hide())
+	back.pressed.connect(func():
+		if game.playing:
+			hide()
+		else:
+			get_tree().quit())
 	hb.add_child(back)
 	return hb
 
@@ -260,7 +265,7 @@ func render() -> void:
 		b.disabled = not lc.room.is_empty() and not on
 	var n := Survivors.list().size()
 	survivors_btn.text = "Survivors  ·  %d" % n
-	lc.lan_row.visible = not game.playing
+	lc.lan_row.visible = false      # (LAN hosted a character's world: gone with Enter World)
 	for c in left.get_children():
 		left.remove_child(c)
 		c.queue_free()
