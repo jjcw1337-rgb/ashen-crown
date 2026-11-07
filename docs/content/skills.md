@@ -40,11 +40,11 @@ The Archer is the example to copy. Most other heroes still keep every skill in o
 
 ## Designing a skill
 
-- **Make it cool.** A skill should be something a player wants to press again: one strong idea, a big readable
-  moment, a sound that lands. If it looks like a placeholder, it isn't done.
 - **It builds toward a direction.** Each hero has a few directions, the build themes in `RunTalents.THEMES` (the
   Archer: Flame, Frost, Storm and Hunt). Every skill feeds one of them, and its rites and gems make that direction
-  stronger, so a run grows into a build. A skill that serves no direction doesn't belong on the hero.
+  stronger, so a run grows into a build. Together, a direction's skills should make the hero play in a way nothing
+  else does: a Frost Archer and a Storm Archer should feel like different characters. A skill that serves no
+  direction doesn't belong on the hero.
 - **Good models.** Whatever a skill puts in the world (an arrow, a totem, a summon, a weapon) is a real model made
   for it ([assets](../pipeline/assets.md)), never a stack of primitives, and its look meets the bar in
   [effects](../systems/effects.md).
