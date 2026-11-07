@@ -131,12 +131,16 @@ func _run() -> void:
 	var w0: float = h.ward
 	check(ok and w0 > h.max_life * 0.3 and e6.taunt == h, "Aegis: a ward of a third of his life (%.0f of %.0f) and the foe turns on him" % [w0, h.max_life])
 	var l6: float = e6.life
-	g.test_immortal = false       # (a real blow, past the ward: his life is full and the ward takes most of it)
-	h.life = h.max_life
-	h.take_hit(w0 * 1.6 + 20.0, e6.global_position, "melee")
+	g.test_immortal = false       # (real blows, past the ward: his life is full and the ward takes most of each)
+	for i in 6:
+		if h.ward <= 0.5:
+			break
+		h.life = h.max_life
+		h.take_hit(w0 * 1.6 + 20.0, e6.global_position, "melee")     # (his shield may block one)
+		await process_frame
 	g.test_immortal = true
 	await wait(0.3)
-	check(h.kit["k_aegis"].held.is_empty() and e6.life < l6, "broken, it bursts on the foe for what it soaked (%.0f)" % (l6 - e6.life))
+	check(h.kit["k_aegis"].held.is_empty() and e6.life < l6, "broken, it bursts on the foe for what it soaked (%.0f; ward %.0f, held %s, life %.0f)" % [l6 - e6.life, h.ward, str(h.kit["k_aegis"].held), h.life])
 	# Last Rites: a kill readies it again
 	await _clear()
 	var e7 := _foe(h, Vector3(4, 0, 0), 30.0)
