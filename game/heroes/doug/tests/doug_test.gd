@@ -1,15 +1,15 @@
 extends SceneTree
-var DS = null      # DougSkills, loaded at run time (a static reference compiles its Sfx before the autoload)
-## Doug's skills (doug_skills.gd), one by one beside a pack of zombies: the pie flies, lands on the nearest and Pies
+var DS = null      # Doug (his kit), loaded at run time (a static reference compiles its Sfx before the autoload)
+## Doug's skills (game/heroes/doug/, his skill objects), one by one beside a pack of zombies: the pie flies, lands on the nearest and Pies
 ## it (stunned and slowed); peels land and a monster that walks onto one slips (stunned); the slide carries him ~7 m
 ## and strikes what's in the way; Doppel-Doug hides him (hidden_t) and a double runs off; the pins strike several;
 ## the bounce lands him at the cursor and launches those round him; the clown car speeds him up, rams, and its six
 ## mini clowns pie the nearest. Every skill's data follows the PoE rules (skill_spec_test checks those).
-## Run with --fixed-fps 60.
+## Run: godot --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://game/heroes/doug/tests/doug_test.gd
 var g
 var fails := 0
 func _initialize():
-	DS = load("res://scripts/doug_skills.gd")
+	DS = load("res://game/heroes/doug/doug.gd")
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
 	_run()
@@ -73,17 +73,17 @@ func _run() -> void:
 	h._face(Vector3(0, 0, -1))
 	await cast("peels", h.global_position + Vector3(0, 0, -5))
 	await secs(1.0)
-	var st: Dictionary = DS.st(h)
-	check((st["peels"] as Array).size() == 3, "three peels down")
-	if (st["peels"] as Array).is_empty():
+	var peels: Array = DS.skill(h, "peels").peels
+	check(peels.size() == 3, "three peels down")
+	if peels.is_empty():
 		print("[D] done, %d failed" % fails)
 		quit()
 		return
-	var p0: Vector3 = st["peels"][0]["p"]
+	var p0: Vector3 = peels[0]["p"]
 	en[0].global_position = p0 + Vector3(0.3, 0, 0)
 	en[0].stun_t = 0.0
 	await secs(0.3)
-	check(en[0].stun_t > 0.0 and (st["peels"] as Array).size() == 2, "a monster stepped on one and slipped")
+	check(en[0].stun_t > 0.0 and peels.size() == 2, "a monster stepped on one and slipped")
 	# slide
 	en = await pack(h.global_position + Vector3(0, 0, -4), 1)
 	var start: Vector3 = h.global_position
@@ -100,7 +100,7 @@ func _run() -> void:
 	await cast("doppel", h.global_position + Vector3(8, 0, 0))
 	await secs(0.6)
 	check(h.hidden_t > 0.0, "Doppel-Doug: hidden (%.1f s)" % h.hidden_t)
-	check(st.has("double") or h.fxs.has("double"), "and a double runs off")
+	check(not DS.skill(h, "doppel").double.is_empty() or h.fxs.has("double"), "and a double runs off")
 	await secs(1.0)
 	check(not en[0].aggro or not en[1].aggro, "the monsters lost him")
 	await secs(1.5)
@@ -125,9 +125,9 @@ func _run() -> void:
 	en = await pack(h.global_position + Vector3(0, 0, -5), 6)
 	await cast("car", h.global_position)
 	await secs(0.8)
-	check(DS.driving(h) and DS.car_mult(h) > 1.5, "driving the clown car (x%.1f)" % DS.car_mult(h))
+	check(DS.unstoppable(h) and DS.pace(h) > 1.5, "driving the clown car (x%.1f)" % DS.pace(h))
 	await secs(5.0)
-	check(not DS.driving(h), "it ended")
+	check(not DS.unstoppable(h), "it ended")
 	check(en.filter(func(e): return e.life < 5000.0).size() >= 4, "the mini clowns pied the nearest (%d hit)" % en.filter(func(e): return e.life < 5000.0).size())
 	print("[D] done, %d failed" % fails)
 	quit()

@@ -174,7 +174,7 @@ var stamina := 100.0
 var max_stamina := 100.0
 var stamina_rest := 0.0
 var hidden_t := 0.0            # Doug's Doppel-Doug: monsters can't see him while it runs (Enemy's hero_dead)
-var pied_t := 0.0              # a cream pie in the face (DougSkills, PvP): aim assist off, the screen creamed
+var pied_t := 0.0              # a cream pie in the face (Doug's Cream Pie, PvP): aim assist off, the screen creamed
 ## seconds since this hero last fought (struck, was struck, attacked or cast; jj, 2026-11-02): out of combat
 ## stamina lasts and refills better and better, up to CALM_MAX times after CALM_RAMP more seconds (calm())
 var combat_t := 999.0
@@ -431,7 +431,7 @@ func _build_rig() -> void:
 	elif is_archer():
 		rig = ArcherBody.build()
 	elif is_doug():
-		rig = Doug.build_body()
+		rig = DougBody.build()
 	elif is_plague():
 		rig = Plague.build_body()
 		if pd == null:
@@ -1714,7 +1714,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if _mine():
 		game.ui.flash_damage()
 	# Doug in his clown car is unstoppable: blows land, their stuns and slows don't
-	if DougSkills.driving(self) and kind in ["sweep", "quake", "chill", "freeze", "shock", "root", "slip"]:
+	if ClassSkills.unstoppable(self) and kind in ["sweep", "quake", "chill", "freeze", "shock", "root", "slip"]:
 		kind = "melee"
 	# the Hollow Sloths' blows: thrown back, stunned, chilled, frozen solid, shocked
 	match kind:
@@ -1735,8 +1735,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
 		"slip":
-			# a banana peel (DougSkills): down for a moment, sliding on the way he was going
-			if not DougSkills.driving(self):
+			# a banana peel (Doug's): down for a moment, sliding on the way he was going
+			if not ClassSkills.unstoppable(self):
 				daze_t = maxf(daze_t, 0.7 * cc_k())
 				var dir := facing()
 				shove = dir * 6.0
@@ -1879,8 +1879,8 @@ func _process_body(delta: float) -> void:
 		exhausted = false
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
-	var speed := 4.8 * (1.0 + frw / 100.0 + (float(stats.get("dash", 0)) / 100.0 if dash_t > 0.0 else 0.0)) * (Battlegrounds.MOVE_MULT if raid_rules() else 1.0) * DougSkills.car_mult(self)
-	speed *= ClassSkills.pace(self)      # (a class's own pace: the archer beside his wolf)
+	var speed := 4.8 * (1.0 + frw / 100.0 + (float(stats.get("dash", 0)) / 100.0 if dash_t > 0.0 else 0.0)) * (Battlegrounds.MOVE_MULT if raid_rules() else 1.0)
+	speed *= ClassSkills.pace(self)      # (a class's own pace: the archer beside his wolf, Doug in his clown car)
 	if running:
 		speed *= 1.6
 	if phased:
