@@ -200,8 +200,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   - The Poison Mushroom's body is the forest's `props/fungus` (`Enemy`, its `"prop"`).
 - **The archer's wolf** runs on `lion.gd` (the Act II arena lion's skeleton and pose).
 - **Every camp chest** is built by `World._chest` (`world.gd`).
-- **`World.crypt_shell`** and its pillar, bones and sconce (`ArenaProps`) are used by the Last Flame (`vigil.gd`) and
-  Act III's crypt.
+- **`World.crypt_shell`** and its pillar, bones and sconce (`ArenaProps`) are used by Act III's crypt.
 
 ## Status
 
@@ -227,6 +226,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   slow); its models in `archive/hollow_crypt/`. The old raid page, server screen, raids on the clock and the
   waypoint's walk down go too: the lobby browser is the only way in (2026-11-06).
 - [ ] Monsters into `game/monsters/<monster>/`: done: Hrimgar and Old Mossbeard (on a shared `BossBrain`).
+- [x] The Last Flame archived whole: `archive/last_flame/` with its REVIVE.md (2026-11-06).
 - [x] Maps: the starting camp is `game/maps/camp/` (its builder, people, island, waypoint, models, tests; 2026-11-06).
 - [x] Maps: the Verdant Reach is `game/maps/verdant_reach/` (its builder, camps, life, the Battlegrounds' rules,
   the bosses' brains, props, tests; 2026-11-06).

@@ -40,8 +40,7 @@ func _run():
  g.max_run = 0
  g.hero.level = 1
  g.waypoints_known = ["town"]
- var retired: int = 0 if MpMode.WAVES else data.WAYPOINT_ACTIVITIES.filter(func(e): return str(e.get("id", "")) == "vigil").size()
- ok(g.waypoint_activities().size() == data.WAYPOINT_ACTIVITIES.size() - retired + load("res://scripts/isles.gd").ISLANDS.size() + data.WAYPOINT_ACTS.size(), "all live activities, islands and act dungeons listed (Endless Waves retired: MpMode)")
+ ok(g.waypoint_activities().size() == data.WAYPOINT_ACTIVITIES.size() + load("res://scripts/isles.gd").ISLANDS.size() + data.WAYPOINT_ACTS.size(), "all live activities, islands and act dungeons listed (Endless Waves retired: MpMode)")
  ok(g.waypoint_activity_lock(g.waypoint_activity("isle_verdant")) != "", "island level gate retained")
  ok(g.waypoint_activity_lock(g.waypoint_activity("lair_0")) != "", "dungeon discovery gate retained")
  ok(g.waypoint_activity_lock(g.waypoint_activity("lair_1")) != "", "sealed act cannot be entered")
@@ -54,7 +53,7 @@ func _run():
  await settle()
  ok(panel.route_box.get_child_count() == g.waypoint_activities().size(), "one styled button per PvE activity")
  await shot("pve")
- var daily := {"id": "test_daily", "name": "Daily Vigil", "group": "daily", "route": "zone", "run": 0, "zone": "vigil", "spawn": "start", "description": "A scheduled journey to the Last Flame."}
+ var daily := {"id": "test_daily", "name": "Daily Moor", "group": "daily", "route": "zone", "run": 0, "zone": "wild", "spawn": "start", "description": "A scheduled journey to the moor."}
  data.WAYPOINT_ACTIVITIES.append(daily)
  await create_timer(1.1).timeout
  panel.sel_group = "daily"
@@ -115,7 +114,7 @@ func _run():
  data.WAYPOINT_ACTIVITIES.append(daily)
  spy.dispatched.clear()
  spy.waypoint_activity_go("test_daily")
- ok(spy.dispatched == [["travel", 0, "vigil", "start"]], "active daily routes to its registered destination")
+ ok(spy.dispatched == [["travel", 0, "wild", "start"]], "active daily routes to its registered destination")
  daily["enabled"] = false
  ok(spy.waypoint_activity("test_daily").is_empty(), "disabled daily withdrawn")
  data.WAYPOINT_ACTIVITIES.erase(daily)

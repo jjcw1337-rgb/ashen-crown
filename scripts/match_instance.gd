@@ -104,14 +104,12 @@ func _process(delta: float) -> void:
    begun=true
    await request("state",{"state":"playing"})
    if str(config.mode) in ["arena","sandbox"]:game.bg.begin_round()
-   elif str(config.mode)=="waves":game.world.get_meta("vigil").begin()
    else:game.bg.raid_t=0;game.bg.start_prep("")
   elif elapsed>120:finish("aborted","Players did not arrive in time.")
  else:
   empty_t=empty_t+delta if game.net.players.is_empty() else 0.0
   if empty_t>10:finish("finished","Everyone has left.")
   if str(config.mode)=="battlegrounds" and game.bg.state=="reset":finish("finished","The raid has ended.")
-  elif str(config.mode)=="waves" and game.world.get_meta("vigil").state=="lost":finish("finished","The Last Flame has fallen.")
 
 func finish(state: String, reason: String, winner := -1) -> void:
  if ending:return

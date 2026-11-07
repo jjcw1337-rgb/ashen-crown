@@ -69,9 +69,6 @@ const WAYPOINT_BATTLEGROUNDS := [
 ## starts_at / ends_at (UTC Unix seconds). Scheduled entries disappear outside their window.
 ## Islands and act lairs are derived from their existing content tables by Game.
 static var WAYPOINT_ACTIVITIES: Array = [
-	{"id": "vigil", "group": "pve", "name": "The Last Flame", "kind": "Horde defence",
-		"route": "zone", "run": 0, "zone": "vigil", "spawn": "start",
-		"description": "Hold the flame against endless waves, alone or with your co-op party."},
 	{"id": "coast", "group": "pve", "name": "The Mournwater Coast", "kind": "Exploration",
 		"route": "zone", "run": 0, "zone": "coast", "spawn": "from_town",
 		"description": "Explore the coast, visit the shipwright and sail to the islands."},

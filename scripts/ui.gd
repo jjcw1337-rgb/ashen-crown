@@ -4845,7 +4845,6 @@ func show_title() -> void:
 		else "Every character has its own save. Making a new one never overwrites the others."
 	title_stage.reset()
 	home.refresh(chars)
-	home.refresh_board()
 	_title_hover("")
 	_title_fade.color = Color(0, 0, 0, 0)
 	_title_busy = false

@@ -20,7 +20,7 @@ func run():
  Engine.max_fps=20
  if not await until(func():return g.world!=null and not g._busy and not g._intro_playing):quit(1);return
  var c=g.lobby_client;c.auth="Bearer dev-modes-guest";c.identity=c.auth.sha256_text().substr(0,24)
- for mode in ["waves","battlegrounds"]:
+ for mode in ["battlegrounds"]:
   await g.start_game(false,"knight","","Late Joiner")
   c.open(mode)
   var found:=await until(func():return c.rooms.any(func(r):return r.mode==mode and r.state=="playing" and r.joinable))
@@ -28,7 +28,7 @@ func run():
   if not found:quit(1);return
   for r in c.rooms:
    if r.mode==mode and r.state=="playing" and r.joinable:await c.action("join",{"id":r.id});break
-  check(await until(func():return g.net.welcomed and not g.net.loading and not g._busy and g.cur_zone==("vigil" if mode=="waves" else "bg"),90),mode+" late admission succeeds")
+  check(await until(func():return g.net.welcomed and not g.net.loading and not g._busy and g.cur_zone=="bg",90),mode+" late admission succeeds")
   check(g.net.players.size()==1,mode+" joins the existing player's world")
   await create_timer(2).timeout
   await g.exit_to_title()

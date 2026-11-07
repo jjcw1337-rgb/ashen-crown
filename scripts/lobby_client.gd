@@ -260,14 +260,6 @@ func play_solo() -> void:
  if selected_mode=="sandbox":
   panel.hide()
   await game.open_sandbox(run_class)
- elif selected_mode=="waves":await play_solo_waves()
-
-func play_solo_waves() -> void:
- if not MpMode.WAVES or selected_mode!="waves":return
- if not room.is_empty():status.text="Leave your lobby before playing solo.";return
- panel.hide()
- if not game.playing:await game.start_game(true,"knight",character)
- game.waypoint_activity_go("vigil")
 
 func finished(reason: String) -> void:
  if _returning:return

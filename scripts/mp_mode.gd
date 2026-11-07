@@ -3,9 +3,6 @@ extends RefCounted
 ## What's live after the multiplayer overhaul (Blaine, 2026-11-06): one place for the switches, instead of
 ## visibility checks scattered round the project. docs/architecture_cleanup.md lists what is being cut.
 
-## Endless Waves (the Last Flame, vigil.gd) is retired: no lobby mode, no solo start, no waypoint activity, the camp's
-## Vigil Gate sealed.
-const WAVES := false
 ## The title's Create New Character is hidden: multiplayer makes its run characters in the Battlegrounds lobby.
 ## (The class picker and character saves stay: Enter World and single player still use them.)
 const CREATE_CHARACTER := false
@@ -22,5 +19,4 @@ static func mode_on(mode: String) -> bool:
 ## A solo action belongs to its selected mode; never leave another mode's button visible.
 static func solo_label(mode: String) -> String:
 	if mode == "sandbox": return "Play Sandbox Solo"
-	if mode == "waves" and WAVES: return "Play Waves Solo"
 	return ""

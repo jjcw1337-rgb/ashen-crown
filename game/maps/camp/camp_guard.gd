@@ -61,7 +61,7 @@ const GUARDS := [
 			{"skill": "", "clip": "strike_1", "reach": 1.6, "dmg": 0.8, "cd": 0.45},   # the left jab
 			{"skill": "", "clip": "strike_2", "reach": 1.5, "dmg": 1.1, "cd": 0.7},    # the right upper hook
 			{"skill": "", "clip": "strike_3", "reach": 2.0, "dmg": 1.3, "cd": 1.0}]},  # the roundhouse kick
-	# the ironfist: the veteran in lamellar and the horned visor, the cestus gauntlets; the waypoint and the Vigil Gate
+	# the ironfist: the veteran in lamellar and the horned visor, the cestus gauntlets; the waypoint
 	{"id": "ironfist", "name": "Ironfist Varg", "dmg": 1.1, "rim": Color(1.0, 0.62, 0.3), "fill": Color(1.0, 0.7, 0.45),
 		"lantern": Vector3(-0.3, 0.92, 0.06),       # the iron lantern at his right hip (model space, as modelled)
 		"posts": [

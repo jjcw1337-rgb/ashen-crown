@@ -23,7 +23,7 @@ func run():
  await until(func():return g.world!=null and not g._busy and not g._intro_playing)
  var client=g.lobby_client
  client.auth="Bearer dev-modes";client.identity=client.auth.sha256_text().substr(0,24)
- for mode in (["battlegrounds"] if OS.get_cmdline_user_args().has("bg") else ["waves","battlegrounds"]):
+ for mode in ["battlegrounds"]:
   await g.start_game(false,"knight","","Lobby "+mode)
   var character:String=g.char_id
   client.open(mode)
@@ -32,15 +32,12 @@ func run():
   var id:String=client.room.id
   await client.action("ready",{"ready":true})
   await client.action("start")
-  check(await until(func():return g.net.welcomed and not g.net.loading and not g._busy and g.cur_zone==("vigil" if mode=="waves" else "bg")),mode+" admission and destination")
+  check(await until(func():return g.net.welcomed and not g.net.loading and not g._busy and g.cur_zone=="bg"),mode+" admission and destination")
   if MpMode.RUNS and mode=="battlegrounds":
    check(g.hero.cls==str(client.character).trim_prefix("run_") and g.hero.run!=null,mode+" plays the lobby's run class ("+g.hero.cls+")")
   else:
    check(g.char_id==character,mode+" uses selected hero")
-  if mode=="waves":
-   check(await until(func():return g.world.has_meta("vigil") and g.world.get_meta("vigil").state in ["count","wave","break"],30),"waves kindle automatically from lobby")
-  else:
-   check(await until(func():return not g.bg_raid.is_empty(),30),"raid state reaches the client")
+  check(await until(func():return not g.bg_raid.is_empty(),30),"raid state reaches the client")
   var result:Dictionary=await client.request("get",{"id":id})
   for attempt in 15:
    if result.get("lobby",{}).get("state","")=="playing":break

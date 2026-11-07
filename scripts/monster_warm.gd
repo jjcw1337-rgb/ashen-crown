@@ -11,7 +11,7 @@ extends RefCounted
 static var _done := {}
 
 ## What can still turn up in the built zone: ambushes, the monsters' and the boss's summons, Grubb's grabbers, the
-## arena's stages, the Vigil's waves; and on a co-op client (whose monsters arrive from the host) the zone's spawns too.
+## arena's stages; and on a co-op client (whose monsters arrive from the host) the zone's spawns too.
 static func kinds(g) -> Array:
 	var w = g.world
 	var k := {}
@@ -40,12 +40,6 @@ static func kinds(g) -> Array:
 				k[str(s[0])] = true
 			if st.has("boss"):
 				k[str(st["boss"])] = true
-	if g.cur_zone == Vigil.ZONE:
-		for wv in Vigil.WAVES:
-			for f in wv.get("foes", []):
-				k[str(f[0])] = true
-			if wv.has("champ"):
-				k[str(wv["champ"])] = true
 	var out: Array = []
 	for kind in k:
 		if Data.ENEMIES.has(kind) and not _done.has(kind) and not (present.has(kind) and not g.net.is_client()):
