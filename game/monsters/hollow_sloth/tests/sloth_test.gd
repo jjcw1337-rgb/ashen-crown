@@ -70,7 +70,7 @@ func _run() -> void:
 	var kinds := ss.map(func(e): return e.kind)
 	kinds.sort()
 	check(kinds == ["sloth_fire", "sloth_ice", "sloth_storm"], "one of each element: %s (%s)" % [kinds, ", ".join(ss.map(func(e): return e.display_name))])
-	check(ss.size() > 0 and ss[0].rig.has_meta("sloth") and ss.all(func(e): return e.rig.has_meta("sloth_light")), "posed on their skeletons, lit in their colours (%s)" % ", ".join(ss.map(func(e): return "%s: %s" % [e.def["variant"], "Meshy model" if load("res://scripts/sloth.gd").ok(e.def["variant"]) else "stand-in"])))
+	check(ss.size() > 0 and ss[0].rig.has_meta("sloth") and ss.all(func(e): return e.rig.has_meta("sloth_light")), "posed on their skeletons, lit in their colours (%s)" % ", ".join(ss.map(func(e): return "%s: %s" % [e.def["variant"], "Meshy model" if load("res://game/monsters/hollow_sloth/hollow_sloth.gd").ok(e.def["variant"]) else "stand-in"])))
 	if ss.size() < 3:
 		print("[S] done, %d failed" % (fails + 1))
 		quit()

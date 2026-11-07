@@ -1,12 +1,12 @@
 extends SceneTree
 ## Contact sheet of the Forsaken Bear's motion (bear.gd): rows of the walk, the rear-and-roar and the maul.
-##   godot --path . -s tools/bear_sheet.gd -- out.png [side|34]
+##   godot --path . -s game/monsters/bear/tools/bear_sheet.gd -- out.png [side|34]
 const CELL := 300
 
 func _initialize():
 	# bear.gd reaches the Sfx autoload: load it at run time, once the tree (and its autoloads) is up
 	await process_frame
-	var Bear = load("res://scripts/bear.gd")
+	var Bear = load("res://game/monsters/bear/bear.gd")
 	var a := OS.get_cmdline_user_args()
 	var out: String = a[0]
 	var view: String = a[1] if a.size() > 1 else "side"

@@ -10,7 +10,7 @@ class_name Feral
 ## and they skitter down and come at you from all sides, one lunging at a time (Enemy._feral_combat).
 
 ## five of them (feralN.glb): different rags and skin, the same rig and animations
-const GLB := "res://assets/models/monsters/feral%d.glb"
+const GLB := "res://game/monsters/feral/feral%d.glb"
 const VARIANTS := 5
 ## the Meshy model is 1.7 m tall crouched; this makes his crouch about 1 m, well under the hero
 const SCALE := 0.6

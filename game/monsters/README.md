@@ -20,9 +20,18 @@ pose), pick one, start it (cooldown and warning) and land it; the loop, targetin
 
 | Monster | Kind | What |
 |---|---|---|
-| `hrimgar/` | `ice_troll` | Hrimgar the Frostbound: Glacial Slam, Frost Lances, Rime Roar, Avalanche |
-| `mossbeard/` | `hermit`, `spore_shroom` | Old Mossbeard and his Poison Mushrooms: Spore Bolt, Sprouting, Thorn Snare, Spore Step, Bramble Burst |
+| `hrimgar/` | `ice_troll` | Hrimgar the Frostbound (boss): Glacial Slam, Frost Lances, Rime Roar, Avalanche |
+| `mossbeard/` | `hermit`, `spore_shroom` | Old Mossbeard (boss) and his Poison Mushrooms: Spore Bolt, Sprouting, Thorn Snare, Spore Step, Bramble Burst |
+| `bear/` | `bear` | The bear: its body (`bear.gd`, the Meshy bear on its own skeleton), model, tests |
+| `feral/` | `feral` | The Feral: its body (`feral.gd`, five models), tests |
+| `hollow_sloth/` | `sloth_fire`, `sloth_ice`, `sloth_storm` | The Hollow Sloths: body and brain (`hollow_sloth.gd`), three models, tests |
+| `fallen/` | `fallen`, `fallen_skirmisher`, `fallen_reaver`, `fallen_stalker` | The Fallen: four models, tests |
+| `zombie/`, `treant/`, `dark_elf/`, `troll_shaman/`, `goblin_guard/`, `skeleton_archer/` | | The Verdant Reach's camp monsters: models |
+| `bandit/`, `gladiator/`, `champion/` | | models |
 
-Not moved yet (their brains are still in `scripts/enemy.gd`, their bodies in `goblin.gd`, `bear.gd`, `feral.gd`,
-`sloth.gd`, `lion.gd`, `skeleton.gd`, their models in `assets/models/monsters/`): the rest of the Verdant Reach's
-camps, King Grubb and his Gold Grabbers, the Hollow Sloths, the Arena's lion and gladiator.
+Still to move:
+- the brains still in `scripts/enemy.gd`: the Feral's, the Fallen's and the bear's (`_feral_*`, `_skirm_*`,
+  `_reaver_*`, `_stalk_*`, `_bear_*`), each into its folder;
+- King Grubb and his Gold Grabbers (`hoard.gd`, his part of `goblin.gd`), as a boss on `BossBrain`;
+- the lion (`lion.gd`, which the Archer's wolf also stands on: it goes to `game/systems/bodies/`);
+- the Act II and III monsters still in `assets/models/monsters/` (ashen_king, dwarf) go with their cuts.

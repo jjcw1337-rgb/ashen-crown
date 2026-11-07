@@ -9,7 +9,7 @@ class_name Bear
 ##  - "bear_maul": rears, then slams both forepaws down in front (the impact at MAUL_HIT), and settles
 ## The AI (wander, roar, charge, maul, leash) is in enemy.gd (_bear_*).
 
-const GLB := "res://assets/models/monsters/bear.glb"
+const GLB := "res://game/monsters/bear/bear.glb"
 const STRIDE := 1.9          # metres covered per walk cycle
 const ROAR_T := 2.6          # seconds: rear up, roar, come down
 const MAUL_T := 1.5
