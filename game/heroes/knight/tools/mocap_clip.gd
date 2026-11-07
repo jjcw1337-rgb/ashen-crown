@@ -32,7 +32,7 @@ func _run() -> void:
 	ground.mesh = pm
 	ground.material_override = Mats.mat(Color(0.26, 0.28, 0.21), 0.95)
 	root3.add_child(ground)
-	var k: Node3D = (load("res://assets/models/knight_mocap.glb") as PackedScene).instantiate()
+	var k: Node3D = (load("res://game/heroes/knight/body/knight_mocap.glb") as PackedScene).instantiate()
 	root3.add_child(k)
 	var ap: AnimationPlayer = k.find_children("*", "AnimationPlayer", true, false)[0]
 	print("clips: ", ap.get_animation_list())

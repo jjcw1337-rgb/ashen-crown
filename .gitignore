@@ -49,6 +49,8 @@ game/heroes/**/*_normal_*.jpg.import
 game/heroes/**/*_albedo.jpg.import
 game/heroes/**/*_metal_rough.jpg.import
 game/heroes/**/*_emission.jpg.import
+game/heroes/**/*_basecolor.jpg
+game/heroes/**/*_basecolor.jpg.import
 game/heroes/**/*_Material_*
 
 # map folders (game/maps/<name>/): Godot's import files for their models and the textures it extracts (props/), like heroes/

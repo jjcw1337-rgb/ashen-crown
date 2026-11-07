@@ -4,7 +4,7 @@
 # texture, skin by distance to each bone segment (hair rides the head + two sway bones), swing the
 # arms down and straighten the legs into the game's rest pose (linear blend skinning in numpy),
 # turn him to face +y (Godot -z after export) and export a skinned glb. layout.json gets the joint
-# positions in Godot axes (x, z, -y) for Knight.MESHY_LAYOUT.
+# positions in Godot axes (x, z, -y) for KnightBody.MESHY_LAYOUT.
 import bpy, sys, json, math
 import numpy as np
 from mathutils import Vector

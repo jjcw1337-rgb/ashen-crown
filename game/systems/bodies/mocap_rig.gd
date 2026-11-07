@@ -1,7 +1,8 @@
 extends "res://scripts/knight_rig.gd"
-## The armoured knight on his motion-captured body (assets/models/knight_mocap.glb: the Meshy crusader on
-## a 24-bone humanoid skeleton, with Meshy library clips; tools/blender/knight/prep_knight_mocap.py),
-## built by Knight.build_mocap.
+## A hero on its motion-captured body: a Meshy model on the 24-bone humanoid skeleton with Meshy library clips (the
+## Knight's crusader first: game/heroes/knight/body/knight_mocap.glb, prepared by his build/prep_knight_mocap.py),
+## built by Knight.build_mocap (game/systems/bodies/knight.gd). Every hero's mocap body runs on it (some through a
+## subclass of their own: the Demon's, the Warlock's spirit).
 ##
 ## Two layers, blended per bone every frame (sync_pose, called by Anim.pose with the same pose dictionary
 ## every other body gets, so the hero, co-op puppets and tools all drive it the same way):

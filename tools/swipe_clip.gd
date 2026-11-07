@@ -33,7 +33,7 @@ func _run() -> void:
 	ground.mesh = pm
 	ground.material_override = Mats.mat(Color(0.25, 0.27, 0.2), 0.95)
 	root3.add_child(ground)
-	var r: Node3D = Knight.build_meshy(variant != "") if Knight.meshy_ok() else Knight.build(Knight.default_gear())
+	var r: Node3D = KnightBody.build_meshy(variant != "") if KnightBody.meshy_ok() else Knight.build(Knight.default_gear())
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)

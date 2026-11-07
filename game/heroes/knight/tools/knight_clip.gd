@@ -33,7 +33,7 @@ func _run() -> void:
 	ground.mesh = pm
 	ground.material_override = Mats.mat(Color(0.25, 0.27, 0.2), 0.95)
 	root3.add_child(ground)
-	var r: Node3D = Knight.build_meshy(args.has("armored"))
+	var r: Node3D = KnightBody.build_meshy(args.has("armored"))
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)
@@ -43,7 +43,7 @@ func _run() -> void:
 	if args.has("helm"):
 		var hm := Models.item_model({"base": "great_helm", "rarity": 0})
 		(J["head"] as Node3D).add_child(hm)
-		Knight.fit_helm(hm, r)
+		KnightBody.fit_helm(hm, r)
 	var cam := Camera3D.new()
 	cam.fov = 30 if close else 38
 	root3.add_child(cam)

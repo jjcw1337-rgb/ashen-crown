@@ -432,9 +432,9 @@ func _build_rig() -> void:
 	else:
 		var body := _knight_body()
 		if body == "mocap":
-			rig = Knight.build_mocap()
+			rig = KnightBody.build_mocap()
 		else:
-			rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
+			rig = Knight.build(Knight.default_gear()) if body == "" else KnightBody.build_meshy(body == "armored")
 		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
 	radius = float(Dragon.spec(cls)["radius"]) if is_dragon() else 0.45
@@ -454,10 +454,10 @@ func _knight_body() -> String:
 	if cls != "knight":
 		return ""
 	if equipment.get("armor") == null:
-		return "plain" if Knight.meshy_ok() else ""
-	if Knight.mocap_ok():
+		return "plain" if KnightBody.meshy_ok() else ""
+	if KnightBody.mocap_ok():
 		return "mocap"
-	return "armored" if Knight.armored_ok() else ""
+	return "armored" if KnightBody.armored_ok() else ""
 
 ## Switch the character's class: new body, skills and spirit colours.
 func set_class(c: String) -> void:
@@ -867,7 +867,7 @@ func refresh_gear() -> void:
 	if h != null and cls == "knight" and not ["armored", "mocap"].has(str(rig.get_meta("meshy", ""))):
 		var hm := Models.item_model(h)
 		(J.get("at_head", J["head"]) as Node3D).add_child(hm)
-		Knight.fit_helm(hm, rig)
+		KnightBody.fit_helm(hm, rig)
 		gear_nodes.append(hm)
 	if is_wraith():
 		Wraith.rebuild_body(rig, wraith_gear())
