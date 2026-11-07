@@ -134,6 +134,20 @@ static func body_gear(g: Dictionary) -> Dictionary:
 	return g
 
 # ---------------------------------------------------------------- the bow in his hands
+## The node his bow hangs from: the ranger holds it in his left fist, turned for the bow's kind (BOW_HOLD); null on
+## a body without that grip (the placeholder holds it like any weapon).
+static func weapon_hand(h: Hero, J: Dictionary) -> Node3D:
+	var w = h.equipment.get("weapon")
+	if not (J.has("grip_bow") and w != null and h.has_bow()):
+		return null
+	var g: Node3D = J["grip_bow"]
+	var hold: Array = BOW_HOLD.get(bow_key(Data.BASES[w["base"]]["kind"]), BOW_HOLD["bow"])
+	g.position = hold[0]
+	g.rotation_degrees = hold[1]
+	var at: Node3D = J["grip_bow_at"]
+	at.position = hold[2]
+	return at
+
 ## Every frame after the pose (Hero._process and the co-op puppet's): the bow turns from hanging in his relaxed hand
 ## to upright on the line of the shot as he takes his stance (the rig's side-on weight), and its string is drawn by
 ## his right hand: from the nock, back with his fingers to the anchor at his cheek, a nocked arrow lying on the bow;

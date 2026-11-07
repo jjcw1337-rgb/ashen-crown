@@ -34,6 +34,11 @@ func cast(_aim: Vector3) -> void:
 func impact() -> void:
 	pass
 
+## A free copy of it from elsewhere (a rite: Phoenix Quiver's free Fire Arrow): no mana, no cooldown, no
+## animation. True if it has one.
+func free_cast(_aim: Vector3) -> bool:
+	return false
+
 ## Every frame on the hero's own game.
 func update(_delta: float) -> void:
 	pass

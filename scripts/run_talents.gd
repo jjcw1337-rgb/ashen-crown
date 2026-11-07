@@ -15,7 +15,7 @@ extends RefCounted
 ## Hooks: Hero._hit_enemy (hit_mult before the roll, on_hit after), Enemy.die_visual (on_death, for the hero who
 ## struck it last), Enemy.ignite / chill (the striker's burn_pct, burn_dur, chill_pct), Plague._update_poison
 ## (poison_mult) and Plague._damage (on_dot), Hero.take_hit (struck, save_from_death), Hero.use_skill (echo),
-## Hero._process (tick), Archer.impact (on_shot).
+## Hero._process (tick), ArcherShot.impact (on_shot).
 
 ## Skills and talents come Common, Uncommon or Rare (Blaine's character structure, 2026-11-06: the rares are the
 ## run-changers). A fourth colour is the gems' legendary tier (GEMS rarity 3), never a talent's.
@@ -724,7 +724,7 @@ static func on_cooldown(h: Hero, id: String) -> void:
 			h.fx("run", "echo", {"p": h.global_position})
 			return
 
-## A plain shot was loosed (Archer.impact): Phoenix Quiver's every-nth free skill.
+## A plain shot was loosed (ArcherShot.impact): Phoenix Quiver's every-nth free skill.
 static func on_shot(h: Hero) -> void:
 	if h.run == null or h.puppet:
 		return
@@ -733,8 +733,7 @@ static func on_shot(h: Hero) -> void:
 		var c := int(h.run.counters.get("shot", 0)) + 1
 		if c >= int(k["n"]):
 			c = 0
-			if str(k["skill"]) == "pierce":
-				Archer._loose(h, h.atk_aim, true, 1.3, "pierce", 0.0)
+			ClassSkills.free_cast(h, str(k["skill"]), h.atk_aim)
 		h.run.counters["shot"] = c
 
 ## Every frame on the hero's own game: the timed buffs running out.

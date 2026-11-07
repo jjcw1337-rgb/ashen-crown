@@ -82,6 +82,56 @@ static func sound(h: Hero, skill: String, at: float) -> bool:
 	var m = of(h.cls)
 	return m != null and m.sound(h, skill, at)
 
+# ---------------------------------------------------------------- optional hooks
+## A class's script may also have any of these (Hero asks; without one, nothing changes). They keep a class's
+## own ways out of hero.gd: the archer's bow shot, reach, pace and bow posing are his script's answers.
+
+## Its own basic attack in place of the weapon swing (the archer's bow shot). True when it took it.
+static func attack(h: Hero, aim: Vector3, keep_target: bool) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("attack") and m.attack(h, aim, keep_target)
+
+## A free copy of one of the hero's skills (a rite's), when the class has skill objects (Hero.kit) and that skill
+## has one. True if it was cast.
+static func free_cast(h: Hero, id: String, aim: Vector3) -> bool:
+	var m = of(h.cls)
+	if m == null or not m.has_method("skill"):
+		return false
+	var s = m.skill(h, id)
+	return s != null and s.free_cast(aim)
+
+## How far its basic attack reaches (-1: the usual melee reach).
+static func reach(h: Hero) -> float:
+	var m = of(h.cls)
+	return float(m.reach(h)) if m != null and m.has_method("reach") else -1.0
+
+## Its walking pace, times the usual (the archer's 10% beside his wolf).
+static func pace(h: Hero) -> float:
+	var m = of(h.cls)
+	return float(m.pace(h)) if m != null and m.has_method("pace") else 1.0
+
+## Its pace while attacking, times the usual (-1: everyone's slight slowing mid-swing).
+static func attack_pace(h: Hero) -> float:
+	var m = of(h.cls)
+	return float(m.attack_pace(h)) if m != null and m.has_method("attack_pace") else -1.0
+
+## After the body's pose each frame, on the hero and his partners' copies (the archer's bow and string).
+static func posed(h: Hero, st: Dictionary) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("posed"):
+		m.posed(h, st)
+
+## Every frame on a partner's copy of the hero (the archer's wolf, which every game runs).
+static func puppet_update(h: Hero, delta: float) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("puppet_update"):
+		m.puppet_update(h, delta)
+
+## The node the weapon hangs from, when the class holds it its own way (the ranger's bow in his left hand); else null.
+static func weapon_hand(h: Hero, J: Dictionary) -> Node3D:
+	var m = of(h.cls)
+	return m.weapon_hand(h, J) if m != null and m.has_method("weapon_hand") else null
+
 ## The weapon trail's colour for a class (a unique weapon's glow overrides it, Hero._start_attack).
 static func trail_color(cls: String, skill: String) -> Color:
 	match cls:

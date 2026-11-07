@@ -51,6 +51,35 @@ static func _make(h: Hero, id: String) -> Skill:
 		"a_mark": return HuntersMark.new(h, id)
 	return null
 
+# ---------------------------------------------------------------- his ways (ClassSkills' optional hooks)
+## His basic attack is the bow shot, when he has a bow.
+static func attack(h: Hero, aim: Vector3, keep_target: bool) -> bool:
+	if not h.has_bow():
+		return false
+	shoot(h, aim, keep_target)
+	return true
+
+static func reach(h: Hero) -> float:
+	return RANGE if h.has_bow() else -1.0
+
+## He runs 10% faster while his Spirit Beast is at his side.
+static func pace(h: Hero) -> float:
+	return 1.1 if h.beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead) else 1.0
+
+## Loosing arrows, he steps slowly with the bow drawn.
+static func attack_pace(h: Hero) -> float:
+	return SHOOT_MOVE if (h.has_bow() and h.atk_style == "bow") else -1.0
+
+static func posed(h: Hero, st: Dictionary) -> void:
+	ArcherBody.pose_bow(h, st)
+
+## A partner's copy of him runs his wolf too (and its commands come as fx events).
+static func puppet_update(h: Hero, delta: float) -> void:
+	update(h, delta)
+
+static func weapon_hand(h: Hero, J: Dictionary) -> Node3D:
+	return ArcherBody.weapon_hand(h, J)
+
 # ---------------------------------------------------------------- the bow
 ## Loose an arrow toward aim (an attack: the draw, the release on the pose's impact frame).
 static func shoot(h: Hero, aim: Vector3, keep_target: bool) -> void:
@@ -117,12 +146,6 @@ static func impact(h: Hero) -> bool:
 		return false
 	s.impact()
 	return true
-
-## An arrow of one of his arrow skills, loosed from elsewhere (a rite's: Phoenix Quiver's free Fire Arrow).
-static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String, yaw: float) -> void:
-	var s := skill(h, src) as ArrowSkill
-	if s != null:
-		s.shoot(at, pierce, mult, yaw)
 
 ## Shatter (Frost): the chilled take 20% more from his arrows.
 static func shatter(h: Hero, e) -> float:

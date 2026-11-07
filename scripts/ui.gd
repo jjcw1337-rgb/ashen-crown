@@ -5706,7 +5706,6 @@ class SkillGlyph extends Control:
 		draw_set_transform(c * (1.0 - fit), 0.0, Vector2(fit, fit))
 		var steel := Color(0.85, 0.87, 0.92) if not dim else Color(0.4, 0.4, 0.42)
 		var gold2 := Color(1.0, 0.8, 0.4) if not dim else Color(0.4, 0.35, 0.3)
-		var ahunt := Archer.HUNTER if not dim else Color(0.35, 0.4, 0.38)
 		match id:
 			"attack":
 				if _bow_hand():
@@ -5943,21 +5942,6 @@ class SkillGlyph extends Control:
 				draw_arc(c, 17, 0, TAU, 32, lcol, 2.0, true)
 				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -15), c + Vector2(7, -2), c + Vector2(6, 8), c + Vector2(0, 12), c + Vector2(-6, 8), c + Vector2(-7, -2)]), lcol)
 				draw_colored_polygon(PackedVector2Array([c + Vector2(0, -6), c + Vector2(3, 2), c + Vector2(0, 8), c + Vector2(-3, 2)]), lpale)
-			"pierce":
-				# an arrow through three marks
-				for k in 3:
-					draw_arc(c + Vector2(-9 + k * 9, 0), 4.0, 0, TAU, 12, Color(0.8, 0.4, 0.3) if not dim else steel, 2.0, true)
-				draw_line(c + Vector2(-17, 0), c + Vector2(13, 0), Color(0.55, 0.4, 0.25) if not dim else steel, 3.0, true)
-				draw_colored_polygon(PackedVector2Array([c + Vector2(18, 0), c + Vector2(11, -5), c + Vector2(11, 5)]), steel)
-				draw_line(c + Vector2(-17, 0), c + Vector2(-21, -5), ahunt, 2.0, true)
-				draw_line(c + Vector2(-17, 0), c + Vector2(-21, 5), ahunt, 2.0, true)
-			"volley":
-				# arrows falling on a ring
-				draw_arc(c + Vector2(0, 10), 12, 0, TAU, 24, ahunt, 2.0, true)
-				for k in 4:
-					var x := -11.0 + k * 7.3
-					draw_line(c + Vector2(x + 3, -16), c + Vector2(x, 8), Color(0.55, 0.4, 0.25) if not dim else steel, 2.5, true)
-					draw_colored_polygon(PackedVector2Array([c + Vector2(x - 0.5, 12), c + Vector2(x - 3.5, 6), c + Vector2(x + 2.5, 6)]), steel)
 			"pie":
 				# a cream pie in its tin, a cherry on the swirl
 				var cream := Color(1.0, 0.96, 0.86) if not dim else Color(0.5, 0.48, 0.44)
@@ -6076,17 +6060,6 @@ class SkillGlyph extends Control:
 					draw_rect(Rect2(c + Vector2(-13, y), Vector2(26, 3)), gvt)
 				draw_rect(Rect2(c + Vector2(-14, 12), Vector2(28, 4)), gvt.darkened(0.3))
 				draw_arc(c + Vector2(14, 0), 4.0, 0, TAU, 10, gvt, 2.0, true)
-			"snare":
-				# Thunderstep: a gold storm sigil with a bolt through it
-				var gold := Color(1.0, 0.72, 0.22) if not dim else steel
-				draw_arc(c, 13, 0, TAU, 24, gold, 2.0, true)
-				draw_arc(c, 9, 0, TAU, 20, Color(gold.r, gold.g, gold.b, 0.55), 1.2, true)
-				draw_polyline(PackedVector2Array([c + Vector2(3, -15), c + Vector2(-4, -1), c + Vector2(2, -1), c + Vector2(-3, 15)]), Color(1.0, 0.96, 0.8) if not dim else steel, 2.6, true)
-			"beast":
-				# a beast's head, ghostly
-				draw_colored_polygon(PackedVector2Array([c + Vector2(-12, -10), c + Vector2(-6, -4), c + Vector2(6, -4), c + Vector2(12, -10), c + Vector2(10, 4), c + Vector2(0, 15), c + Vector2(-10, 4)]), Color(ahunt.r, ahunt.g, ahunt.b, 0.55))
-				draw_circle(c + Vector2(-5, 2), 2.2, Color(1, 1, 1, 0.9))
-				draw_circle(c + Vector2(5, 2), 2.2, Color(1, 1, 1, 0.9))
 	func _process(_d: float) -> void:
 		queue_redraw()
 

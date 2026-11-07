@@ -18,6 +18,11 @@ func cast(aim: Vector3) -> void:
 func impact() -> void:
 	shoot(hero.atk_aim, true, val("dmg", 130.0) / 100.0, 0.0)
 
+## Phoenix Quiver's free one, straight off the bow.
+func free_cast(aim: Vector3) -> bool:
+	shoot(aim, true, val("dmg", 130.0) / 100.0, 0.0)
+	return true
+
 func hit(m: Missile, e) -> void:
 	strike(m, e)
 	var avg: float = (hero.dmg_min + hero.dmg_max) * 0.5

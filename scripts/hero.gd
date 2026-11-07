@@ -969,19 +969,10 @@ func _carry_weapon(delta: float) -> void:
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
 
-## The hand that holds the weapon: the right, except a bow on a body that holds it in the left (the ranger),
-## turned for the bow's kind (ArcherBody.BOW_HOLD).
+## The hand that holds the weapon: the right, unless the class holds it its own way (the ranger's bow, in his left).
 func _weapon_hand(J: Dictionary) -> Node3D:
-	var w = equipment.get("weapon")
-	if J.has("grip_bow") and w != null and has_bow():
-		var g: Node3D = J["grip_bow"]
-		var hold: Array = ArcherBody.BOW_HOLD.get(ArcherBody.bow_key(Data.BASES[w["base"]]["kind"]), ArcherBody.BOW_HOLD["bow"])
-		g.position = hold[0]
-		g.rotation_degrees = hold[1]
-		var at: Node3D = J["grip_bow_at"]
-		at.position = hold[2]
-		return at
-	return J["grip_r"]
+	var own := ClassSkills.weapon_hand(self, J)
+	return own if own != null else J["grip_r"]
 
 ## The storage node on the rig for "back" (made on first use: across the back, hilt over the right
 ## shoulder); "hilt" has none (the weapon model just hides).
@@ -1118,8 +1109,7 @@ func free_attack(aim: Vector3) -> void:
 	break_invis()
 	if not can_act():
 		return
-	if has_bow():
-		Archer.shoot(self, aim, false)
+	if ClassSkills.attack(self, aim, false):
 		return
 	atk_aim = aim
 	atk_target = null
@@ -1228,8 +1218,7 @@ func swipe_attack(aim: Vector3, keep_target := false) -> void:
 	break_invis()
 	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
 		return
-	if has_bow():
-		Archer.shoot(self, aim, keep_target)
+	if ClassSkills.attack(self, aim, keep_target):
 		return
 	if atk_t >= 0.0:
 		if atk_skill == "" and atk_style.begins_with("swipe") and atk_t / atk_dur > 0.3 and atk_style != "swipe3":
@@ -1531,7 +1520,8 @@ func _face(d: Vector3) -> void:
 func reach() -> float:
 	if is_dragon():
 		return Dragon.reach(cls)
-	return Archer.RANGE if has_bow() else 1.7
+	var r := ClassSkills.reach(self)
+	return r if r > 0.0 else 1.7
 
 # ---------------------------------------------------------------- damage
 func roll_damage(mult: float = 1.0) -> Dictionary:
@@ -1968,9 +1958,7 @@ func _process_body(delta: float) -> void:
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
 	var speed := 4.8 * (1.0 + frw / 100.0 + (float(stats.get("dash", 0)) / 100.0 if dash_t > 0.0 else 0.0)) * (Battlegrounds.MOVE_MULT if raid_rules() else 1.0) * DougSkills.car_mult(self)
-	# the archer runs 10% faster while his Spirit Beast is at his side
-	if is_archer() and beasts.any(func(b) -> bool: return is_instance_valid(b) and not b.dead):
-		speed *= 1.1
+	speed *= ClassSkills.pace(self)      # (a class's own pace: the archer beside his wolf)
 	if running:
 		speed *= 1.6
 	if phased:
@@ -1978,8 +1966,9 @@ func _process_body(delta: float) -> void:
 	if block_amt > 0.5:
 		speed *= 0.42
 	if atk_t >= 0.0:
-		# an archer loosing arrows steps slowly with the bow drawn; everyone else slows a little mid-swing
-		speed *= Archer.SHOOT_MOVE if (has_bow() and atk_style == "bow") else 0.72
+		# everyone slows a little mid-swing; a class may step its own way (the archer, slowly with the bow drawn)
+		var ap := ClassSkills.attack_pace(self)
+		speed *= ap if ap > 0.0 else 0.72
 	if game.test_fast:
 		speed *= game.TEST_FAST
 	if shove.length() > 0.05:
@@ -2122,8 +2111,7 @@ func _process_body(delta: float) -> void:
 	if Enemy.server_nopose:
 		return
 	Anim.pose(rig, st)
-	if is_archer():
-		ArcherBody.pose_bow(self, st)
+	ClassSkills.posed(self, st)
 	last_pose = st
 	_hover()
 	Dodge.pose(self, delta)
@@ -2306,11 +2294,10 @@ func _puppet_process(delta: float) -> void:
 	if Enemy.server_nopose:
 		return
 	Anim.pose(rig, st)
-	if is_archer():
-		ArcherBody.pose_bow(self, st)
+	ClassSkills.posed(self, st)
 	_hover()
 	Dodge.pose(self, delta)
-	Archer.update(self, delta)
+	ClassSkills.puppet_update(self, delta)
 	SkillFx.update(self, delta)
 	_apply_shield_pose()
 	# a partner's swing in his class's colour (white before), and none on Doug's throws and tricks nor while the

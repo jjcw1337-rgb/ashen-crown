@@ -30,6 +30,11 @@ game/heroes/archer/
 and `Data.SKILLS`, `Talents.TREES`, `RunTalents`' themes, the class picker (`ClassStage`), `MpLobbyView.PLAYSTYLE`,
 `BgMatchup.ACCENTS` and the Sandbox's stats.
 
+**A hero's own ways go in its script, never in `hero.gd`.** `ClassSkills` asks the hero's script for optional hooks:
+its own basic attack (`attack`), `reach`, walking pace (`pace`, `attack_pace`), a pose after the body's (`posed`),
+what runs on a partner's copy (`puppet_update`), how it holds its weapon (`weapon_hand`), and its skill objects
+(`skill`, which rites use for a free cast). The Archer uses all of them (`archer.gd`).
+
 ## Making a hero
 
 1. **Kit (no credits).** Write `data/codex/heroes/<id>.json`: the fantasy, three directions, the skills (LMB, RMB,
