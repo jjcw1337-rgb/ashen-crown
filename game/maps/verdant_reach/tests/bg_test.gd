@@ -1,8 +1,8 @@
 extends SceneTree
-## Battlegrounds (battlegrounds.gd), the Hollow Crypt, two processes on this machine:
-##   godot --headless --path . -s tools/bg_test.gd -- --server --port 24611 --raid-fast server
-##   godot --headless --path . -s tools/bg_test.gd -- client 24611 [addr <host>] [cloud <nakama url> <server key>]
-## The client makes a real character (in a scratch character folder) and enters the crypt with a fresh run character
+## Battlegrounds (battlegrounds.gd), the Verdant Reach, two processes on this machine:
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_test.gd -- --server --port 24611 --raid-fast server
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_test.gd -- client 24611 [addr <host>] [cloud <nakama url> <server key>]
+## The client makes a real character (in a scratch character folder) and enters the forest with a fresh run character
 ## of its class (RunBuild, level 0: the multiplayer overhaul; the saved character is never touched), kills a monster,
 ## loots a chest, picks up what fits and swaps a piece of gear through the host (the old piece left on the ground),
 ## waits for the portals, extracts, goes back in as a new run character and dies: its gear drops for others. The server
@@ -67,7 +67,7 @@ func _run() -> void:
 
 func _server() -> void:
 	await until(func(): return g.bg != null and g.net.active and g.cur_zone == Battlegrounds.ZONE and not g._busy, 40.0)
-	check(g.net.server and g.net.is_host and Battlegrounds.fast, "dedicated server hosting the crypt (fast rounds)")
+	check(g.net.server and g.net.is_host and Battlegrounds.fast, "dedicated server hosting the raid (fast rounds)")
 	check(not g.hero.visible and g.hero.phased, "the server's own hero is hidden and unseen")
 	var mons := func() -> int:
 		var n := 0
@@ -75,43 +75,28 @@ func _server() -> void:
 			if e is Enemy and not e.dead:
 				n += 1
 		return n
-	check(mons.call() >= 10, "%d monsters in the crypt" % mons.call())
+	check(mons.call() >= 10, "%d monsters in the forest" % mons.call())
 	var e0 = g.world.enemies_root.get_child(0)
-	if load("res://scripts/mp_mode.gd").FOREST:
-		# (the Verdant Reach's camps are tuned by tier, Camps.MON_LEVEL: a tier III monster tougher than a tier I one)
-		var CA2 = load("res://scripts/camps.gd")
-		var t1: Array = CA2.all(g.world).filter(func(c): return int(c["tier"]) == 1)
-		var t3: Array = CA2.all(g.world).filter(func(c): return int(c["tier"]) == 3)
-		var lv := func(c): return g.world.enemies_root.get_children().filter(func(e): return e is Enemy and e.pack_id == int(c["pack"])).map(func(e): return e.level).max()
-		check(not t1.is_empty() and not t3.is_empty() and int(lv.call(t3[0])) > int(lv.call(t1[0])), "deeper camps are tougher (tier I level %d, tier III %d)" % [int(lv.call(t1[0])), int(lv.call(t3[0]))])
-	else:
-		check(e0 is Enemy and e0.max_life > Data.ENEMIES[e0.kind]["life"] * 2.0, "they are tougher than outside")
-	var forest: bool = load("res://scripts/mp_mode.gd").FOREST
+	# (the Verdant Reach's camps are tuned by tier, Camps.MON_LEVEL: a tier III monster tougher than a tier I one)
+	var CA2 = load("res://game/maps/verdant_reach/camps.gd")
+	var t1: Array = CA2.all(g.world).filter(func(c): return int(c["tier"]) == 1)
+	var t3: Array = CA2.all(g.world).filter(func(c): return int(c["tier"]) == 3)
+	var lv := func(c): return g.world.enemies_root.get_children().filter(func(e): return e is Enemy and e.pack_id == int(c["pack"])).map(func(e): return e.level).max()
+	check(not t1.is_empty() and not t3.is_empty() and int(lv.call(t3[0])) > int(lv.call(t1[0])), "deeper camps are tougher (tier I level %d, tier III %d)" % [int(lv.call(t1[0])), int(lv.call(t3[0]))])
 	check(g.world.enemies_root.get_children().any(func(e): return e.kind == "ice_troll") and g.world.enemies_root.get_children().any(func(e): return e.kind == "hermit"), "Hrimgar and Mossbeard in their halls")
-	if forest:
-		# the Verdant Reach (BgForest): four portals at its edges, sixteen camps whose chests are sealed, no gates
-		var camps: Array = load("res://scripts/camps.gd").all(g.world)
-		check(Battlegrounds.portal_list(g.world).size() == 4, "four candidate portals at the forest's edges")
-		check(camps.size() >= 12 and camps.all(func(c): return g.chest_sealed(c["chest_node"])), "%d camps, every chest sealed while its camp stands" % camps.size())
-		check(camps.filter(func(c): return int(c["tier"]) == 4).size() == 2, "two boss camps")
-		check(g.bg.state == "lobby" and (g.world.get_meta("bg_gates", []) as Array).is_empty(), "a round begins in the starting glades (no gates)")
-	else:
-		check(Battlegrounds.portal_list(g.world).size() == 8, "eight candidate portals: four on the Ossuary, two on each floor below")
-		check(g.world.interactables.filter(func(t): return t.kind == "descend").size() == 3, "three stairways down (two from the Ossuary, one from the Depths)")
-		var gold: Array = g.world.interactables.filter(func(t): return t.kind == "chest" and t.data.get("gold", false))
-		check(gold.size() == 1 and g.chest_sealed(gold[0]), "the golden chest, sealed while Mossbeard lives")
-		check(g.bg.state == "lobby" and g.world.has_meta("bg_gates") and (g.world.get_meta("bg_gates") as Array).size() >= 4 and not g.world.get_meta("bg_gates")[0]["up"], "a round begins in the antechamber, its gates shut (%d gates)" % (g.world.get_meta("bg_gates", []) as Array).size())
+	# the Verdant Reach (BgForest): four portals at its edges, sixteen camps whose chests are sealed, no gates
+	var camps: Array = load("res://game/maps/verdant_reach/camps.gd").all(g.world)
+	check(Battlegrounds.portal_list(g.world).size() == 4, "four candidate portals at the forest's edges")
+	check(camps.size() >= 12 and camps.all(func(c): return g.chest_sealed(c["chest_node"])), "%d camps, every chest sealed while its camp stands" % camps.size())
+	check(camps.filter(func(c): return int(c["tier"]) == 4).size() == 2, "two boss camps")
+	check(g.bg.state == "lobby", "a round begins in the starting glades")
 	check(await until(func(): return not g.net.players.is_empty(), 60.0), "a player joined")
-	if forest:
-		# the Verdant Reach: no antechamber, bell or countdown: the raid begins once someone is in
-		check(await until(func(): return g.bg.state == "raid", 20.0), "the raid began by itself")
-	else:
-		check(await until(func(): return g.bg.state == "prep", 30.0), "the player rang the bell: the countdown")
-		check(await until(func(): return g.bg.state == "raid", 20.0) and g.world.get_meta("bg_gates")[0]["up"], "then the raid was on")
-	check(await until(func(): return g.bg.open.size() == Battlegrounds.OPEN_PORTALS + (0 if forest else 2), 70.0), "the portals opened on time (%d)" % g.bg.open.size())
+	# the Verdant Reach: no antechamber, bell or countdown: the raid begins once someone is in
+	check(await until(func(): return g.bg.state == "raid", 20.0), "the raid began by itself")
+	check(await until(func(): return g.bg.open.size() == Battlegrounds.OPEN_PORTALS, 70.0), "the portals opened on time (%d)" % g.bg.open.size())
 	var items0: int = g.net.items.size()
 	check(await until(func(): return g.net.items.size() >= items0 + 3, 120.0), "the fallen hero's gear lay on the floor (%d items)" % (g.net.items.size() - items0))
-	check(await until(func(): return g.bg.state == "reset", 120.0), "the crypt collapsed at the end of the round")
+	check(await until(func(): return g.bg.state == "reset", 120.0), "the raid ended with the round")
 	check(await until(func(): return g.bg.state in ["lobby", "raid"] and g.bg.raid_t < 5.0, 30.0), "and a new round began (in its antechamber)")
 
 func _client() -> void:
@@ -136,29 +121,13 @@ func _client() -> void:
 	g.test_immortal = true
 	g.test_onehit = true
 	await g.start_battlegrounds("%s:%d" % [host, port], id)
-	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt as Testric")
+	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the forest as Testric")
 	check(not _save(path).get("in_raid", false) and g.hero.run != null and g.hero.level == 0 and g.hero.run.skills.is_empty(), "a fresh run character at level 0; the saved character stays out of the raid")
 	check(await until(func(): return not g.bg_raid.is_empty(), 10.0), "the raid's clock arrived (%s)" % str(g.bg_raid.get("state", "?")))
-	# the antechamber: behind its gate; ring the bell and the countdown begins for everyone; then the gate rises
-	var gates: Array = g.world.get_meta("bg_gates", [])
-	var forest: bool = load("res://scripts/mp_mode.gd").FOREST
-	var bells: Array = g.world.interactables.filter(func(t): return t.kind == "bell")
-	if forest:
-		# the Verdant Reach (Blaine, 2026-11-06): no bell, no gates, no countdown; the raid starts by itself
-		check(bells.is_empty(), "no bells in the starting glades")
-		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0), "the raid began by itself (%s)" % str(g.bg_raid.get("state", "")))
-	else:
-		check(str(g.bg_raid.get("state", "")).begins_with("lobby") and not gates.is_empty() and not gates[0]["up"], "waiting for the round to start (%s)" % str(g.bg_raid.get("state", "")))
-		check(bells.size() == 4, "a bell in each of the four antechambers")
-		var bell = bells[0]
-		for b in bells:
-			if b.global_position.distance_to(g.hero.global_position) < bell.global_position.distance_to(g.hero.global_position):
-				bell = b
-		g._interact(bell)
-		check(await until(func(): return str(g.bg_raid.get("state", "")).begins_with("prep"), 6.0), "rang the bell: the gates open in a moment (%s)" % str(g.bg_raid.get("state", "")))
-		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0) and gates[0]["up"], "the raid was on")
+	# the Verdant Reach (Blaine, 2026-11-06): no bell, no gates, no countdown; the raid starts by itself
+	check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 10.0), "the raid began by itself (%s)" % str(g.bg_raid.get("state", "")))
 	await secs(1.0)
-	# one standard for attacks: the same timing, damage and cooldowns in the crypt as in the story game
+	# one standard for attacks: the same timing, damage and cooldowns in the raid as in the story game
 	var same := true
 	for sk in Data.skills_known(g.hero.cls):
 		var sid := str(sk["id"]) if sk is Dictionary else str(sk)
@@ -174,7 +143,7 @@ func _client() -> void:
 	var dur_out: float = g.hero.atk_dur
 	g.bg_mode = true
 	g.hero.atk_t = g.hero.atk_dur
-	check(same and is_equal_approx(dur_in, dur_out), "attacks are the same in the crypt as outside (swing %.2f s)" % dur_in)
+	check(same and is_equal_approx(dur_in, dur_out), "attacks are the same in the raid as outside (swing %.2f s)" % dur_in)
 	var z = _nearest_enemy()
 	check(z != null, "a monster nearby")
 	if z:

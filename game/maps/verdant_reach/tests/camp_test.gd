@@ -13,7 +13,7 @@ const MIN_CAMPS := 14
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
-	CA = load("res://scripts/camps.gd")
+	CA = load("res://game/maps/verdant_reach/camps.gd")
 	RB = load("res://scripts/run_build.gd")
 	_run()
 

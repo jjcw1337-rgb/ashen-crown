@@ -24,7 +24,7 @@ permissions:
 
 concurrency:
   group: staging
-  cancel-in-progress: true
+  cancel-in-progress: false   # (a newer push waits for the build in progress, which reaches itch, instead of cancelling it)
 
 jobs:
   build:

@@ -139,12 +139,7 @@ var menus: Control                # the title and its screens (characters, class
 var modals: Control               # dialogs, the party vote, the pause menu, the F8 panel, death and victory
 var top: Control                  # tooltips, drags, messages, sparkles: over everything
 var menu_shade: ColorRect         # under a menu screen opened over the title: dims it and keeps its clicks off it
-var bg_panel: PanelContainer      # the Battlegrounds screen (open_battlegrounds): class, server address, the stash
-var bg_class: OptionButton       # the Battlegrounds screen's hero picker (character ids as metadata)
-var bg_addr: LineEdit
 var home: TitleHome               # the title's controls (title_home.gd): the character sidebar, the modes and Play
-var bg_page: BgPage               # the Battlegrounds' own page over the title (bg_page.gd)
-var bg_status: Label             # the Battlegrounds screen's wait for the next raid (Game.bg_refused), counting down
 var _join_refresh := 0.0
 var death_panel: Control
 var spectate_panel: Control      # Battlegrounds: the fallen hero watching the living (Game.spectate_*)
@@ -218,7 +213,6 @@ func setup(g: Node) -> void:
 	_build_tooltip()
 	_build_title()
 	_build_join()
-	_build_battlegrounds()
 	_build_enchant()
 	_build_death()
 	_build_spectate()
@@ -2788,13 +2782,9 @@ func _build_stash() -> void:
 	stash_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	stash_panel.visible = false
 	windows.add_child(stash_panel)
-	# in a raid's antechamber the chest is one player's at a time (Battlegrounds.stash_user): closing frees it
 	stash_panel.visibility_changed.connect(func():
-		if not stash_panel.visible:
-			if is_instance_valid(trade_with) and trade_with.kind == "stash" and not game.bg_mode:
-				game.chest_lid(trade_with, false)     # (an antechamber's stays open, burning, until the gates rise)
-			if game.bg_mode:
-				game.net.send_bg_stash_closed())
+		if not stash_panel.visible and is_instance_valid(trade_with) and trade_with.kind == "stash":
+			game.chest_lid(trade_with, false))
 	var body := Control.new()
 	body.name = "body"
 	body.custom_minimum_size = STASH_SIZE
@@ -3762,7 +3752,7 @@ func _build_admin(parent: Control) -> VBoxContainer:
 	var rrow := HBoxContainer.new()
 	rrow.add_theme_constant_override("separation", 4)
 	rrow.alignment = BoxContainer.ALIGNMENT_CENTER
-	for c in [["restart", "Restart round"], ["gates", "Start the raid" if MpMode.FOREST else "Open gates"], ["portals", "Open portals"]]:
+	for c in [["restart", "Restart round"], ["gates", "Start the raid"], ["portals", "Open portals"]]:
 		var cmd: String = c[0]
 		var rb := _iron_button(c[1], 112, 36, 14)
 		rb.pressed.connect(func():
@@ -3909,7 +3899,7 @@ func _sync_menu_shade() -> void:
 		menu_shade.mouse_filter = Control.MOUSE_FILTER_STOP
 		menus.add_child(menu_shade)
 		menus.move_child(menu_shade, title_panel.get_index() + 1)
-	menu_shade.visible = (join_panel != null and join_panel.visible) or (bg_panel != null and bg_panel.visible)
+	menu_shade.visible = join_panel != null and join_panel.visible
 
 ## One of the screen's layers (see `setup`): a full-screen holder that lets the mouse through.
 func _layer(nm: String) -> Control:
@@ -3947,8 +3937,7 @@ func _build_title() -> void:
 	title_stage.hovering.connect(_title_hover)
 	title_stage.clicked.connect(_title_choose)
 	# while the class picker or the character list covers it, the stage stops drawing
-	title_stage.covered = func() -> bool: return (class_panel != null and class_panel.visible) or (chars_panel != null and chars_panel.visible) \
-		or (bg_page != null and bg_page.visible)
+	title_stage.covered = func() -> bool: return (class_panel != null and class_panel.visible) or (chars_panel != null and chars_panel.visible)
 	var shade := ColorRect.new()
 	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -4060,9 +4049,6 @@ func _build_title() -> void:
 	home = TitleHome.new()
 	title_panel.add_child(home)
 	home.setup(self)
-	bg_page = BgPage.new()
-	title_panel.add_child(bg_page)
-	bg_page.setup(self)
 	# a fade for the move into a choice (under the picker and the list, which are built on top)
 	_title_fade = ColorRect.new()
 	_title_fade.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -4256,114 +4242,10 @@ func _fit_join_panel() -> void:
 	join_panel.scale = Vector2.ONE * factor
 	join_panel.position = (get_viewport().get_visible_rect().size - join_panel.size) * 0.5
 
-## The Battlegrounds screen (battlegrounds.gd): pick one of your characters, the raid server's address, Enter. Death in
-## the crypt costs everything carried (Game.bg_strip; levels kept), and the screen says so before anyone goes in.
-func _build_battlegrounds() -> void:
-	bg_panel = PanelContainer.new()
-	bg_panel.visibility_changed.connect(_sync_menu_shade)
-	bg_panel.anchor_left = 0.5
-	bg_panel.anchor_right = 0.5
-	bg_panel.anchor_top = 0.5
-	bg_panel.anchor_bottom = 0.5
-	bg_panel.offset_left = -330
-	bg_panel.offset_right = 330
-	bg_panel.offset_top = -250
-	bg_panel.offset_bottom = 250
-	bg_panel.visible = false
-	menus.add_child(bg_panel)
-	var vb := VBoxContainer.new()
-	vb.add_theme_constant_override("separation", 10)
-	bg_panel.add_child(vb)
-	var t := _label(Battlegrounds.map_title(), 30, GOLD, true)
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(t)
-	var sub := _label("Descend with one of your heroes. Monsters are few and deadly, other players are hunting too, and the Extraction Portals only open %d minutes in. Get out alive and everything you carry is yours. Fall, and it lies where you fell." % int(Battlegrounds.PORTALS_AT / 60.0), 14, Color(0.78, 0.72, 0.64))
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(sub)
-	var warn := _label("☠  DEATH COSTS EVERYTHING YOU CARRY. Fall in the crypt and every item you wear and carry, your belt and your gold stay where you fell. Your hero lives on: levels, stats and rites are kept, and your camp stash is safe.", 15, Color(1.0, 0.42, 0.32), true)
-	warn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(warn)
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
-	vb.add_child(row)
-	row.add_child(_label("Hero", 16))
-	bg_class = OptionButton.new()
-	bg_class.custom_minimum_size = Vector2(380, 36)
-	bg_class.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(bg_class)
-	vb.add_child(_label("Server address (host or host:port):", 14, Color(0.7, 0.66, 0.58)))
-	var row2 := HBoxContainer.new()
-	row2.add_theme_constant_override("separation", 8)
-	vb.add_child(row2)
-	bg_addr = LineEdit.new()
-	bg_addr.placeholder_text = "127.0.0.1"
-	bg_addr.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bg_addr.custom_minimum_size = Vector2(0, 40)
-	bg_addr.text_submitted.connect(func(_t): _bg_go())
-	row2.add_child(bg_addr)
-	var go := Button.new()
-	go.name = "enter"
-	go.text = "Enter the Crypt"
-	go.custom_minimum_size = Vector2(150, 40)
-	go.pressed.connect(func(): _bg_go())
-	row2.add_child(go)
-	bg_status = _label("", 16, Color(0.6, 0.85, 1.0), true)
-	bg_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	bg_status.visible = false
-	vb.add_child(bg_status)
-	var back := Button.new()
-	back.text = "Back"
-	back.custom_minimum_size = Vector2(0, 40)
-	back.pressed.connect(func():
-		bg_panel.visible = false
-		game.bg_retry = [])          # (stop waiting for the next raid)
-	vb.add_child(back)
-
-## The Battlegrounds' own page over the title (BgPage), with the character that went in last.
+## The lobby browser's Battlegrounds.
 func open_battlegrounds() -> void:
 	if game.lobby_client != null:
 		game.lobby_client.open("battlegrounds")
-		return
-	join_panel.visible = false
-	if bg_page != null and title_panel.visible:
-		bg_page.open()
-		return
-	_open_bg_panel()
-
-## The old Battlegrounds screen (a server address, a hero): kept for a local test against another server.
-func _open_bg_panel() -> void:
-	join_panel.visible = false
-	bg_panel.visible = true
-	bg_addr.text = str(game._load_setting("battlegrounds", "address", ""))
-	if bg_addr.text == "" and BuildEnv.env() != "local":
-		bg_addr.text = BuildEnv.value("bg_server")      # a staging or production build knows its server
-	bg_class.clear()
-	var last := str(game._load_setting("battlegrounds", "character", ""))
-	for c in game.list_characters():
-		bg_class.add_item("%s  ·  level %d %s" % [c["name"], int(c["level"]), str(Data.CLASSES.get(c["cls"], {}).get("name", c["cls"]))])
-		bg_class.set_item_metadata(bg_class.item_count - 1, c["id"])
-		if c["id"] == last:
-			bg_class.select(bg_class.item_count - 1)
-	var go := bg_panel.find_child("enter", true, false) as Button
-	if bg_class.item_count == 0:
-		bg_class.add_item("No heroes yet: create one first")
-		bg_class.disabled = true
-		go.disabled = true
-	else:
-		bg_class.disabled = false
-		go.disabled = false
-
-func _bg_go() -> void:
-	if bg_class.disabled or bg_class.selected < 0:
-		return
-	var id := str(bg_class.get_item_metadata(bg_class.selected))
-	var nm := bg_class.get_item_text(bg_class.selected).split("  ·  ")[0]
-	var addr := bg_addr.text if bg_addr.text.strip_edges() != "" else "127.0.0.1"
-	# a last word before risking everything they carry
-	open_dialog(Battlegrounds.map_title(), "%s will enter with everything they wear and carry. If %s dies down there, all of it stays on the crypt floor (their levels and rites are kept).\n\nEnter the crypt?" % [nm, nm],
-		[["Enter", func():
-			bg_panel.visible = false
-			game.start_battlegrounds(addr, id)], ["Not yet", func(): pass]])
 
 func open_join() -> void:
 	Sfx.play("click")
@@ -4922,8 +4804,6 @@ func open_class_picker() -> void:
 
 func show_title() -> void:
 	title_panel.visible = true
-	if bg_page:
-		bg_page.visible = false
 	if class_panel:
 		class_panel.visible = false
 		_close_class_stage()
@@ -5338,7 +5218,7 @@ func close_all() -> bool:
 ## The title with nothing open over it (no class picker, character list, co-op or Battlegrounds screen).
 func title_idle() -> bool:
 	return title_panel.visible and not (class_panel != null and class_panel.visible) and not (chars_panel != null and chars_panel.visible) \
-		and not join_panel.visible and not bg_panel.visible and not (bg_page != null and bg_page.visible) and not (game.lobby_client != null and game.lobby_client.panel.visible)
+		and not join_panel.visible and not (game.lobby_client != null and game.lobby_client.panel.visible)
 
 func any_panel_open() -> bool:
 	return (run_ui != null and run_ui.visible) or (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible or auction_panel.visible
@@ -5464,11 +5344,6 @@ func refresh() -> void:
 		char_labels["gf"].text = "%d%%" % hero.gf
 
 func _process(delta: float) -> void:
-	if bg_status != null and bg_panel.visible:
-		var waiting: bool = game.bg_wait_until > Time.get_ticks_msec() and not game.bg_retry.is_empty()
-		bg_status.visible = waiting
-		if waiting:
-			bg_status.text = "The next raid opens in %s: you'll be let in then." % game.bg_wait_text()
 	if boat_shop:
 		boat_shop.tick(delta)
 	_update_drag(delta)

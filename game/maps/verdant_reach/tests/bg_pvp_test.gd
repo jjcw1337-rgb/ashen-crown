@@ -1,8 +1,8 @@
 extends SceneTree
 ## Battlegrounds PvP, three processes:
-##   godot --headless --path . -s tools/bg_pvp_test.gd -- --server --port 24671 --raid-fast server
-##   godot --headless --path . -s tools/bg_pvp_test.gd -- a 24671 [addr <host>] [cloud <nakama url> <server key>]
-##   godot --headless --path . -s tools/bg_pvp_test.gd -- b 24671 [addr <host>] [cloud <nakama url> <server key>]
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_pvp_test.gd -- --server --port 24671 --raid-fast server
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_pvp_test.gd -- a 24671 [addr <host>] [cloud <nakama url> <server key>]
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_pvp_test.gd -- b 24671 [addr <host>] [cloud <nakama url> <server key>]
 ## Two real characters enter the crypt. On a's screen b is an invisible stand-in target (Battlegrounds.sync_proxies);
 ## a walks up to b and swings at it: b's life drops through the server (Net.sv_pvp_hit, PVP_MULT) until b falls.
 ## b's gear drops, the server announces who killed whom, and a picks b's things up. Both raid as run characters

@@ -35,7 +35,7 @@ func _run() -> void:
 	g.ui.close_all()
 	var a = _hero("archer", Vector3(0, 0, 0))
 	var t = _hero("knight", Vector3(5, 0, 0))
-	var bg = load("res://scripts/battlegrounds.gd").new()
+	var bg = load("res://game/maps/verdant_reach/battlegrounds.gd").new()
 	bg.game = g
 	g.add_child(bg)
 	g.net.players = {2: {"name": "A", "hero": a}, 3: {"name": "T", "hero": t}}

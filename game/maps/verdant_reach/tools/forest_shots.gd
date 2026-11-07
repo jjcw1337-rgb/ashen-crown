@@ -34,7 +34,7 @@ func _run() -> void:
 	g.bg_mode = true
 	g.test_immortal = true
 	await g.load_zone(0, "bg", "start")
-	var F = load("res://scripts/bg_forest.gd")
+	var F = load("res://game/maps/verdant_reach/verdant_reach.gd")
 	if OS.get_cmdline_user_args().has("keyart"):
 		# the lobby's Battlegrounds art: no HUD, the camera a little further out, the hero out of the way
 		g.ui._set_hud(false)
@@ -49,7 +49,7 @@ func _run() -> void:
 	await shot("stream", Vector2(20, -20))
 	# ForestLife's places: the mushroom woodland's heart, a crystal shrine, a meadow by the stream
 	await shot("mush_heart", F.MUSH_C + Vector2(6, 4))
-	var L = load("res://scripts/forest_life.gd")      # (at run time: a static reference compiles it before Sfx exists)
+	var L = load("res://game/maps/verdant_reach/forest_life.gd")      # (at run time: a static reference compiles it before Sfx exists)
 	var spots: Array = L.shrines
 	print("[LIFE] shrines ", spots, " flower clumps ", L.flower_pts.size() * 5)
 	if not spots.is_empty():

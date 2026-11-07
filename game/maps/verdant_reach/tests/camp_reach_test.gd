@@ -3,7 +3,7 @@ extends SceneTree
 ## World.move step by step, the way Hero walks) gets close enough to open its chest, and none of its monsters stands
 ## inside a prop's footprint or can't get out to a hero (Blaine 2026-11-06: a chest walled in after its camp fell,
 ## a camp monster that never moved). Prints what blocks a failing camp.
-##   godot --headless --path . -s tools/_late.gd -- res://tools/camp_reach_test.gd
+##   godot --headless --path . -s tools/_late.gd -- res://game/maps/verdant_reach/tests/camp_reach_test.gd
 var g
 var fails := 0
 
@@ -49,7 +49,7 @@ func _run() -> void:
 	g.test_immortal = true
 	await g.load_zone(0, "bg", "start")
 	var w = g.world
-	var camps: Array = load("res://scripts/camps.gd").all(w)
+	var camps: Array = load("res://game/maps/verdant_reach/camps.gd").all(w)
 	check(camps.size() >= 12, "%d camps" % camps.size())
 	var need := 1.4 + 0.45 + 0.35      # (Hero: an Inter's radius + his body + slack)
 	for c in camps:

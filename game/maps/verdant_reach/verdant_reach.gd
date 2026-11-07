@@ -439,7 +439,7 @@ static func _prop(path: String) -> Node3D:
 const FUNGUS_SINK := 0.2
 
 static func _fungus(w: World, p: Vector2, yaw: float, s: float, foot := 0.0) -> Node3D:
-	var n := _put(w, "res://assets/models/bg/fungus.glb", p, yaw, s, foot)
+	var n := _put(w, "res://game/maps/verdant_reach/props/fungus.glb", p, yaw, s, foot)
 	if n != null:
 		n.position.y -= FUNGUS_SINK * s
 	return n
@@ -448,7 +448,7 @@ static func _fungus(w: World, p: Vector2, yaw: float, s: float, foot := 0.0) -> 
 const SHROOM_SINK := 0.34
 
 static func _shrooms(w: World, p: Vector2, yaw: float, s: float) -> Node3D:
-	var n := _put(w, "res://assets/models/bg/mushrooms.glb", p, yaw, s, 1.1 * s)
+	var n := _put(w, "res://game/maps/verdant_reach/props/mushrooms.glb", p, yaw, s, 1.1 * s)
 	if n != null:
 		n.position.y -= SHROOM_SINK * s
 	return n
@@ -512,10 +512,10 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 		"frost":
 			for k in 6:
 				var q := _ring(at, r * rng.randf_range(0.85, 1.15), k, 6, rng.randf())
-				_put(w, "res://assets/models/bg/ice_crystals.glb" if k % 2 == 0 else "res://assets/models/lairs/ice_rock.glb", q, rng.randf() * TAU, rng.randf_range(1.2, 2.0), 1.0)
+				_put(w, "res://game/maps/verdant_reach/props/ice_crystals.glb" if k % 2 == 0 else "res://assets/models/lairs/ice_rock.glb", q, rng.randf() * TAU, rng.randf_range(1.2, 2.0), 1.0)
 			if int(c["tier"]) >= 4:
 				for k in 4:
-					_put(w, "res://assets/models/bg/frozen_pillar.glb", _ring(at, r * 0.8, k, 4, 0.4), rng.randf() * TAU, 1.3, 0.8)
+					_put(w, "res://game/maps/verdant_reach/props/frozen_pillar.glb", _ring(at, r * 0.8, k, 4, 0.4), rng.randf() * TAU, 1.3, 0.8)
 			if at.distance_to(FROST_C) > FROST_R:
 				_frost_ground(w, at, r * 2.0)      # (the hollow's own frost covers the camps inside it)
 			_light(w, at, Color(0.55, 0.8, 1.0), 1.2, 15.0)
@@ -585,7 +585,7 @@ static func _regions(w: World, rng: RandomNumberGenerator) -> void:
 			if not open_at(q2, 1.0):
 				_fungus(w, q2, rng.randf() * TAU, rng.randf_range(0.8, 1.4))
 		if rng.randf() < 0.25:
-			_put(w, "res://assets/models/bg/brambles.glb", p + Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)), rng.randf() * TAU, rng.randf_range(1.0, 1.6), 0.9)
+			_put(w, "res://game/maps/verdant_reach/props/brambles.glb", p + Vector2(rng.randf_range(-3, 3), rng.randf_range(-3, 3)), rng.randf() * TAU, rng.randf_range(1.0, 1.6), 0.9)
 		fungi += 1
 	for k in 10:
 		var p := MUSH_C + Vector2(rng.randf_range(-1, 1), rng.randf_range(-1, 1)) * MUSH_R * 0.9

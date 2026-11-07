@@ -1,11 +1,11 @@
 extends SceneTree
 ## The admin role on the Battlegrounds server (Blaine's progression overhaul: "enforce authorization on the server"):
 ## "Go to level 20" gear (items marked "boost") is for admins only. Two processes:
-##   godot --headless --path . -s tools/bg_admin_test.gd -- --server --port 24661 server
-##   godot --headless --path . -s tools/bg_admin_test.gd -- client 24661
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_admin_test.gd -- --server --port 24661 server
+##   godot --headless --path . -s game/maps/verdant_reach/tests/bg_admin_test.gd -- client 24661
 ## The client goes in with a character in boosted gear and is turned away ("boosted"); then its per-PC id is put on
 ## the server's admin list (user://bg_server/admins.json, the stand-in for Nakama's role without Nakama) and it goes
-## in and stays. Then it uses the admin's raid controls (Open gates, Open portals, Restart round: the crypt collapses on
+## in and stays. Then it uses the admin's raid controls (Start the raid, Open portals, Restart round: the raid ends on
 ## it) and gets back into the new round after the server has moved it past the time joining closes.
 var g
 var role := "client"
@@ -86,30 +86,16 @@ func _run() -> void:
 		f.close()
 		await create_timer(2.0).timeout
 		await g.start_battlegrounds("127.0.0.1:%d" % port, id)
-		check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "on the admin list: in the crypt")
+		check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "on the admin list: in the raid")
 		await create_timer(6.0).timeout
 		check(g.net.active and g.bg_refusal == "", "and still there after the server's gear check")
-		# the antechamber's stash chest: the server hands it over, it opens, the opener is slowed for the raid
-		var chest = null
-		for it in g.world.interactables:
-			if is_instance_valid(it) and it.kind == "stash" and (chest == null or it.global_position.distance_to(g.hero.global_position) < chest.global_position.distance_to(g.hero.global_position)):
-				chest = it
-		check(chest != null, "a stash chest in the antechamber")
-		if chest != null:
-			g.hero.global_position = g.world.free_spot_near(chest.global_position + Vector3(1.0, 0, 0), 0.5)
-			await create_timer(0.5).timeout
-			g._interact(chest)
-			check(await until(func(): return g.ui.stash_panel.visible, 10.0), "the server gave us the chest: the stash is open")
-			check(g.hero.stash_slowed, "and its opener is slowed for the raid")
-			g.ui.close_all()
-			await create_timer(0.5).timeout
 		g.net.send_bg_admin("gates")
-		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 20.0), "Open gates: the raid is on")
-		check(not g.stash_allowed() and g.hero.stash_slowed, "the stash is sealed now, and the slow stays")
+		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 20.0), "Start the raid: the raid is on")
+		check(not g.stash_allowed(), "no stash in the raid")
 		g.net.send_bg_admin("portals")
 		check(await until(func(): return not (g.bg_raid.get("open", []) as Array).is_empty(), 20.0), "Open portals: they're open")
 		g.net.send_bg_admin("restart")
-		check(await until(func(): return g.hero.dead or not g.net.active, 20.0), "Restart round: the crypt collapsed on him")
+		check(await until(func(): return g.hero.dead or not g.net.active, 20.0), "Restart round: the raid ended on him")
 		while g._busy or g.net.active:
 			await process_frame
 		await create_timer(6.0).timeout

@@ -76,11 +76,11 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
 | `game/heroes/<hero>/` | Everything one hero owns: code, model, skills with their assets, build scripts, tests |
 | `game/maps/<map>/` | Everything one map owns: its builder, props, the modes played on it, tests (the Arena is the first) |
 | `scripts/game.gd` | Boot, zones, camera, input, saving |
-| `scripts/world.gd`, `bg_forest.gd`, `camps.gd` | Map building, the Verdant Reach, camps and their chests |
+| `scripts/world.gd` | Map building: terrain, paths, props, chests |
 | `scripts/hero.gd`, `enemy.gd` | Players and monsters |
 | `scripts/run_build.gd`, `run_talents.gd`, `run_ui.gd` | A run's hero, its rites, gems and consumables, and its windows |
 | `scripts/<class>_skills.gd`, `*_fx.gd` | Each class's skills and their effects |
-| `scripts/battlegrounds.gd`, `net.gd`, `lobby_client.gd` | The raid server, networking and the lobby browser |
+| `scripts/net.gd`, `lobby_client.gd` | Networking and the lobby browser |
 | `data/codex/` | Skills, rites, gems and consumables as data |
 | `assets/` | Models (Meshy, rigged in Blender), textures, audio, the intro video |
 | `tools/` | Headless tests, preview renderers, the asset pipeline |

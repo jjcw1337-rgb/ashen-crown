@@ -58,10 +58,10 @@ const WAYPOINT_GROUPS := [
 ##   id · name · kind (its mode, under the name) · art (the Meshy painting on the window's banner, 640x480) · wide
 ##   (the same painting at 16:9, behind the loading words on the way down) · lines (what the card says of the place)
 const WAYPOINT_BATTLEGROUNDS := [
-	{"id": "crypt", "name": "The Hollow Crypt", "kind": "Extraction raid",
+	{"id": "crypt", "name": "The Verdant Reach", "kind": "Extraction raid",
 		"art": "res://assets/textures/ui/wp_bg_crypt.png", "wide": "res://assets/textures/ui/wp_bg_crypt_wide.jpg",
-		"lines": ["Three floors under the old kingdom: the Ossuary's twelve chambers round a great pillared hall, the Frozen Depths where Hrimgar the Frostbound waits, and the Overgrown Vault, Old Mossbeard's, with its golden chest. Each round opens in the antechambers behind iron gates: the first bell rung, the gates rise.",
-			"Other raiders are hunting down there too. Reach an Extraction Portal once they open and everything you carry comes home."]},
+		"lines": ["An open forest of monster camps, two bosses in its depths. Clear a camp and its chest offers a skill, a rite or a gem.",
+			"Other raiders are hunting there too. Reach an Extraction Portal once they open to keep your hero as a survivor."]},
 ]
 
 ## Activity registration: add/remove entries here, not buttons in the waypoint panel.
