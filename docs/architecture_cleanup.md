@@ -53,7 +53,7 @@ Modelled on Unreal's Gameplay Ability System and Slay the Spire 2's hooks, built
    has a stacking rule.
 3. **Statuses and tags** such as burning, feared, frozen or Branded, which other rules check.
 4. **Hooks** (on hit, on kill, on cast, when struck) that rites, gems and items subscribe to. These replace the 59
-   procs that are now one `match` in `run_talents.gd`.
+   procs that are now one `match` in `game/items/rites/rite_procs.gd`.
 5. **Cues**, which draw the effects. Today's fx events already work this way.
 6. **Delivery**: projectile, area, ground zone, channel/tether, stages, summon. These extend `SkillSpec` rather
    than replacing it.
@@ -99,7 +99,7 @@ Each step is done for the Archer first, all the way through, and the other heroe
    reproduces it or explains each difference.
 4. **The new damage and effect system**, server-side from day one ([combat](systems/combat.md), "What's changing").
    Move the Archer, then the rest. Nothing new is built on the old path.
-5. **One data source.** The codex JSON is the only copy. The copies in `data.gd`, `run_talents.gd` and
+5. **One data source.** The codex JSON is the only copy. The copies in `data.gd`, `rites/rites.gd`, `gems/gems.gd` and
    `talents.gd` go, and then so do `code_base.json` and the three-way merge.
 6. **Real ids** (`pierce` → `fire_arrow`) everywhere at once, with aliases for saved survivors. Ids travel over the
    network, so the server deploy and the clients ship together.
@@ -128,8 +128,8 @@ Touch points to coordinate:
   - Tasks: every hero into its folder, the per-skill split (the Archer first, as the template), the shared effects
     into `game/systems/fx/`, one `codex.json` per hero, then the damage and effect system. The docs by concept
     (`AGENTS.md`, `docs/content/`, `docs/systems/`, `docs/pipeline/`).
-  - Owns: `game/heroes/**`, `game/systems/**`, `class_skills.gd`, `skill_fx.gd`, `skill_spec.gd`, `run_talents.gd`,
-    `run_build.gd`, `codex.gd`, `data/codex/`, `tools/codex/`.
+  - Owns: `game/heroes/**`, `game/systems/**` (but `world/` and `loading/`), `game/items/**`, `data/codex/`,
+    `tools/codex/`.
 - **Shared big files** (`game.gd`, `ui.gd`, `hero.gd`, `net.gd`, `enemy.gd`): either of us may edit them.
   - Keep commits small, and pull before starting.
   - Before a large edit, add a line under "In progress" below and remove it when it lands.
@@ -206,7 +206,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   `game/systems/fx/lightning/` (ArcFx) and the frost toolkit `game/systems/fx/frost/` (FrostFx), with Frost Volley's
   own look in his folder. The body fire every burn shows and the simulated-flame
   building blocks are `game/systems/fx/fire/flame_fx.gd` (FlameFx), the game clock `game/systems/game_clock.gd`, and
-  his arrows' look `shared/arrow_fx.gd`. Left: the burn's look chosen by class in `RunTalents` and `Enemy.ignite` (with
+  his arrows' look `shared/arrow_fx.gd`. Left: the burn's look chosen by class in `RiteProcs.on_hit` and `Enemy.ignite` (with
   the statuses work); joining FlameFx and the older FireFx (torches, campfires).
 - [ ] 3. Reference recordings: every hero's skills on still dummies (`tools/hero_reference.gd`,
   `tools/references/<class>.json`), and a PvP mode per hero through a real server (`bg_pvp_test.gd <hero>`). Left: a

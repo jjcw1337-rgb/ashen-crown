@@ -34,7 +34,7 @@ shared there: nothing new goes in it.
 | Heroes | `game/heroes/<hero>/` (the Archer is the example); every hero's shared code in `game/heroes/hero.gd`; a family's in `game/systems/` (`dragons/`) | |
 | Monsters | `game/monsters/<monster>/` (Hrimgar is the example); the shared monster code in `game/monsters/enemy.gd` | stats in `data.gd` `ENEMIES` |
 | Maps and camps | `game/maps/<map>/`: `arena/` (the example), `verdant_reach/` | shared world code: `game/systems/world/` (`World`, props, grass, weather) |
-| Items: rites, gems, consumables | `game/items/` | all in one file still: `run_talents.gd` |
+| Items: rites, gems, consumables | `game/items/`: `rites/`, `gems/`, `consumables/`; `run_talents.gd` (`RunTalents`) is what combat calls | |
 | Screens | `game/ui/<screen>/`: `lobby/` (the home screen), `chat/`, `loot_list/`, `hud/`, `run/`, `codex/`; `game/ui/ui.gd` builds them | `ui.gd` still lays out the HUD and menus itself |
 | Shared systems | `game/systems/<system>/`; the game itself in `game/game.gd` | |
 | Numbers and text | `data/codex/` (the Hero Codex editor writes it) | |

@@ -36,7 +36,9 @@ sequenceDiagram
 
 ## Rites and gems
 
-`game/items/run_talents.gd` holds what rites and gems do. They hook into combat at fixed points: before and after a
+Rites and gems live in `game/items/`: their tables in `rites/rites.gd` and `gems/gems.gd`, when a proc fires in
+`rites/rite_procs.gd`, what it does to foes in `rites/proc_hits.gd`, and its look in `rites/rite_fx.gd`. Combat calls
+them through `RunTalents` (`game/items/run_talents.gd`) at fixed points: before and after a
 hit (`hit_mult`, `on_hit`), on a kill, when struck, on a cooldown, every frame, and on a shot. Their procs fire only
 where the hero's hits are decided (`Hero.decides`).
 

@@ -12,8 +12,8 @@
 ## How the game reads it
 
 `Codex` (`game/systems/data/codex.gd`) lays the codex over the old built-in data when the game starts: `Data` (skills),
-`Talents` and `RunTalents` (rites and gems), `RunBuild` (shared rites). The old copies in `game/systems/data/data.gd`,
-`talents.gd` and `run_talents.gd` still hold what the codex doesn't (a skill's key, aim and tags; each rite's code),
+`Talents`, `Rites` and `Gems` (rites and gems), `RunBuild` (shared rites). The old copies in `game/systems/data/data.gd`,
+`talents.gd`, `game/items/rites/rites.gd` and `game/items/gems/gems.gd` still hold what the codex doesn't (a skill's key, aim and tags; each rite's code),
 and some damage numbers are still written in hero scripts.
 
 The codex and the code can both change a value, so `Codex` merges them against `code_base.json` (the code's values at
