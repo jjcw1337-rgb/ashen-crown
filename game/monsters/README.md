@@ -22,7 +22,7 @@ pose), pick one, start it (cooldown and warning) and land it; the loop, targetin
 |---|---|---|
 | `hrimgar/` | `ice_troll` | Hrimgar the Frostbound (boss): Glacial Slam, Frost Lances, Rime Roar, Avalanche |
 | `mossbeard/` | `hermit`, `spore_shroom` | Old Mossbeard (boss) and his Poison Mushrooms: Spore Bolt, Sprouting, Thorn Snare, Spore Step, Bramble Burst |
-| `king_grubb/` | `goblin_king`, `grabber` | King Grubb the Gilded (boss) and his Gold Grabbers: his fight (`hoard.gd`: his gold is his life), the goblins' bodies (`goblin.gd`), his model, tests. His fight needs no vault: without tunnels his grabbers come from round him, so any camp can have him (`hoard_test`) |
+| `king_grubb/` | `goblin_king`, `grabber` | King Grubb the Gilded (boss) and his Gold Grabbers: his fight (`hoard.gd`: his gold is his life), the goblins' bodies (`goblin.gd`, sculpted with `sculpt.gd`), his model, tests. His fight needs no vault: without tunnels his grabbers come from round him, so any camp can have him (`hoard_test`) |
 | `bear/` | `bear` | The bear: its body (`bear.gd`, the Meshy bear on its own skeleton), brain (`bear_brain.gd`), model, tests |
 | `feral/` | `feral` | The Feral: its body (`feral.gd`, five models), brain (`feral_brain.gd`: perched in trees, the pack's lunges), tests |
 | `hollow_sloth/` | `sloth_fire`, `sloth_ice`, `sloth_storm` | The Hollow Sloths: body and brain (`hollow_sloth.gd`), three models, tests |
