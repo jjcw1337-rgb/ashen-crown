@@ -10,6 +10,8 @@ const ARC := [Color(0.92, 1.0, 0.98), Color(0.3, 0.9, 1.0)]
 
 ## One of its skills' events (SkillFx.play): true when it was drawn.
 static func play(h: Hero, ev: Dictionary) -> bool:
+	if not Wyvern.IDS.has(str(ev["s"])):
+		return false
 	match str(ev["s"]):
 		"storm_arc": return StormArcFx.play(h, ev)
 		"v_dive": return ThunderDiveFx.play(h, ev)

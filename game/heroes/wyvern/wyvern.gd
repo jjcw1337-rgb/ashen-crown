@@ -8,6 +8,8 @@ extends RefCounted
 ## skill shares, DragonSkill. Its skills run on the match server (ServerRules).
 
 const IDS := ["storm_arc", "v_dive", "v_cloud", "v_gale"]
+## Its colour (the swing's trail, ClassSkills.trail_color): storm teal.
+const ACCENT := Color(0.55, 0.95, 0.9)
 
 # ---------------------------------------------------------------- its kit
 ## Its skill objects (docs/content/skills.md): one per hero, made the first time it's needed, kept in Hero.kit.

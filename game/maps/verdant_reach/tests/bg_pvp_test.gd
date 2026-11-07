@@ -207,6 +207,13 @@ func _player() -> void:
 			check(not g.hero.decides(), "and my game doesn't decide my hits (Hero.decides)")
 			check(await until(func(): return ServerRules.given_count > 0, 5.0), "the server's Drain Life gave me life back through my own game (%d)" % ServerRules.given_count)
 		if dcls != "":
+			if (DRAGON_SKILLS[dcls] as Array).is_empty():
+				# no skills yet: its claw, bite and tail spin (the common swing; every game sees its blows land)
+				g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.8, 0, 0), 0.5)
+				await secs(0.6)
+				for i in 3:
+					g.hero.swipe_attack(foe.global_position, false)
+					await secs(1.1)
 			# every skill of its kit and its run's, each from where it reaches them
 			g.test_allskills = true
 			for id in DRAGON_SKILLS[dcls]:

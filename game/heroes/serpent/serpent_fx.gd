@@ -26,6 +26,8 @@ static func _game(n: Node):
 
 ## One of its skills' events (SkillFx.play): true when it was drawn.
 static func play(h: Hero, ev: Dictionary) -> bool:
+	if not Serpent.IDS.has(str(ev["s"])):
+		return false
 	match str(ev["s"]):
 		"frost_breath": return FrostBreathFx.play(h, ev)
 		"s_tomb": return GlacialTombFx.play(h, ev)

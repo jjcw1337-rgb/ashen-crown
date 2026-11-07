@@ -9,6 +9,8 @@ extends RefCounted
 
 ## Its skill ids (none yet).
 const IDS: Array = []
+## Its colour (the swing's trail, ClassSkills.trail_color): ember.
+const ACCENT := Color(1.0, 0.42, 0.15)
 
 # ---------------------------------------------------------------- its kit
 static func skill(_h: Hero, _id: String) -> Skill:

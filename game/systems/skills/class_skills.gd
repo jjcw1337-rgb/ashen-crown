@@ -179,7 +179,7 @@ static func trail_color(cls: String, skill: String) -> Color:
 		"wraith": return WraithFx.SPIRIT
 		"demon": return DemonFx.EMBER
 		"warlock": return Warlock.FEL
-		"wyrm": return Color(1.0, 0.42, 0.15)
-		"serpent": return Color(0.55, 0.9, 1.0)
-		"wyvern": return Color(0.55, 0.95, 0.9)
+		"wyrm": return Wyrm.ACCENT
+		"serpent": return Serpent.ACCENT
+		"wyvern": return Wyvern.ACCENT
 	return Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)
