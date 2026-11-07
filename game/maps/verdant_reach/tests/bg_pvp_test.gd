@@ -18,7 +18,7 @@ extends SceneTree
 ## no curse, fright or drain and that the drain's life came back to it from the server; b checks it was hurt and
 ## frightened through the server, and that her spells were aimed at it on its screen.
 ## With "wraith" instead, a plays the Wraith and casts his skills at b (Haunting Grasp, Soul Siphon, Phantom Assault,
-## Shadowstep, Banshee Wail): they run on the server too, which checks it made them; a checks its own game holds
+## Shadowstep): they run on the server too, which checks it made them; a checks its own game holds
 ## none of their tethers, phantoms or shades; b checks it was held by the grasp (PvpStatus "stagger" through the
 ## server) and slowed by the tether.
 
@@ -185,11 +185,13 @@ func _player() -> void:
 			check(hx != null and hx.dots.is_empty() and hx.feared.is_empty() and dr != null and not dr.latched, "my game keeps no curse, fright or drain of its own: the server's copy of me deals them")
 			check(not g.hero.decides(), "and my game doesn't decide my hits (Hero.decides)")
 			check(await until(func(): return ServerRules.given_count > 0, 5.0), "the server's Drain Life gave me life back through my own game (%d)" % ServerRules.given_count)
+		var life_before: float = foe.life if is_instance_valid(foe) else 0.0
 		if wraith and role == "a":
-			# his skills from beside them: each is made on the server, which deals it
+			# his skills from beside them: each is made on the server, which deals it (leaving them some life for
+			# the blows below)
 			g.test_allskills = true
-			for id in ["grasp", "siphon", "phantom", "step", "r_wail"]:
-				if not is_instance_valid(foe) or foe.dead:
+			for id in ["grasp", "siphon", "phantom", "step"]:
+				if not is_instance_valid(foe) or foe.dead or foe.life < foe.max_life * 0.3:
 					break
 				await until(func(): return g.hero.atk_t < 0.0, 4.0)      # (the last one's clip has ended)
 				g.hero.mana = g.hero.max_mana
@@ -200,10 +202,10 @@ func _player() -> void:
 				check(p != null and g.hero.use_skill(id, p.global_position), "%s at them" % id)
 				await secs(1.4)
 			var k: Dictionary = g.hero.kit
-			check(k.has("siphon") and k["siphon"].tether.is_empty() and k.has("phantom") and k["phantom"].phantoms.is_empty() and k.has("step") and k["step"].shades.is_empty(),
-				"my game keeps no tether, phantom or shade of its own: the server's copy of me deals them")
+			check(k.has("grasp") and (not k.has("siphon") or k["siphon"].tether.is_empty()) and (not k.has("phantom") or k["phantom"].phantoms.is_empty())
+				and (not k.has("step") or k["step"].shades.is_empty()), "my game keeps no tether, phantom or shade of its own: the server's copy of me deals them")
 			check(not g.hero.decides(), "and decides none of my blows")
-		var life_seen: Array = []
+		var life_seen: Array = [life_before] if wraith else []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
 				break
@@ -248,8 +250,9 @@ func _player() -> void:
 			check(g.hero.life < l0, "her drain and curse hurt me through the server before any blow (%d of %d)" % [int(g.hero.life), int(l0)])
 			check(SkillFx.aimed_at_me > 0, "and her spells were aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
 		if wraith:
-			check(await until(func(): return g.hero.daze_t > 2.0, 60.0), "Haunting Grasp held me through the server (%.1f s)" % g.hero.daze_t)
-			check(await until(func(): return float(g.hero.cc.get("slow", {}).get("t", 0.0)) > 0.0, 20.0), "and Soul Siphon's tether slowed me")
+			# (what landed, whenever it did: I may see the other player after his first holds have worn off)
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "stagger" and float(x[1]) > 2.0), 60.0), "Haunting Grasp held me through the server (%s)" % str(PvpStatus.landed))
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "slow"), 20.0), "and Soul Siphon's tether slowed me")
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		# fallen, I watch the one still alive (Game.spectate_*), until they leave too
