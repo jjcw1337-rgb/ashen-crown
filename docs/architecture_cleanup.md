@@ -138,7 +138,10 @@ Touch points to coordinate:
 ### In progress
 
 - Claude-2 (2026-11-07): next, the server refusing damage a player's game reports (`ServerRules.REFUSE_REPORTED`:
-  counted now, refused once the arena and lobby tests stop killing through `Net.send_pvp_hit`).
+  counted now, refused once the arena and lobby tests stop killing through `Net.send_pvp_hit`); then cooldowns and
+  mana checked on the server (needs a design call: which message starts a cast). Done tonight besides the heroes: the
+  hero registry (`game/heroes/heroes.gd`), rites, gems and consumables split under `game/items/`, every hero's own
+  sounds in its skill folders.
 
 ## Cutting an old system
 
