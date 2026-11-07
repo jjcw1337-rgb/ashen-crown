@@ -895,7 +895,7 @@ func cl_dealt(at: Vector3, amount: float, crit: bool) -> void:
 
 ## Server: what a player's own blows did to them here (life leeched, a rite's buff, a cooldown back, Hunger, what a
 ## skill's rules gave them: "give", Skill.give), for their game, which keeps their life, cooldowns and run
-## (Hero.gain_life, RunTalents._tell_owner, ServerRules.got).
+## (Hero.gain_life, RiteProcs._tell_owner, ServerRules.got).
 func tell_self(h: Hero, d: Dictionary) -> void:
 	if server and active and int(h.peer_id) > 0 and multiplayer.get_peers().has(int(h.peer_id)):
 		rpc_id(int(h.peer_id), "cl_self", d)
