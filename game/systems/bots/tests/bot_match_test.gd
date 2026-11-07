@@ -21,7 +21,7 @@ func _initialize():
 	var i := args.find("--broker")
 	if i >= 0 and i + 1 < args.size():
 		url = str(args[i + 1])
-	load("res://scripts/build_env.gd").forced = {"env": "local", "cloud": "0", "lobby_url": url}
+	load("res://game/systems/net/build_env.gd").forced = {"env": "local", "cloud": "0", "lobby_url": url}
 	g = load("res://main.tscn").instantiate()
 	g.char_dir = "user://bot_match_test_" + mode + "/"
 	get_root().disable_3d = true
@@ -50,7 +50,7 @@ func _run() -> void:
 	c.identity = c.auth.sha256_text().substr(0, 24)
 	var want := "Test arena · 1v1" if mode == "arena" else "Test raid · duo"
 	if mode == "arena":
-		var SV = load("res://scripts/survivors.gd")
+		var SV = load("res://game/systems/saves/survivors.gd")
 		SV.dir = "user://bot_match_test_sv/"
 		DirAccess.make_dir_recursive_absolute(SV.dir)
 		var h = g.hero
