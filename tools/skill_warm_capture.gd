@@ -118,7 +118,7 @@ func _run() -> void:
 				h.run = null
 			await wait(2.2)
 			if id == "drain":
-				h.end_drain()
+				h.end_channel()
 			for w in events:
 				var pw = _plain(w, origin)
 				if pw is Dictionary and pw.has("s") and pw.has("e"):

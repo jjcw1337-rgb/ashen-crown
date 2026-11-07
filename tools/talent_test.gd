@@ -147,7 +147,7 @@ func _run() -> void:
 			var ok: bool = h.use_skill(sk["id"], aim)
 			await wait((3.2 if cls == "demon" else 1.2) if sk["id"] != "drain" else 0.4)     # (the Demon's chain: throw, haul, smash)
 			if sk["id"] == "drain":
-				h.end_drain()
+				h.end_channel()
 			var settle := 0
 			while h.atk_t >= 0.0 and settle < 240:      # a long cast (Eclipse Bloom's 1.8 s) ends before the next skill
 				await process_frame
