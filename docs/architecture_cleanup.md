@@ -211,9 +211,10 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
   Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his
   body and bow in `body/`, his arrow models in `weapon/`; `hero.gd`, `ui.gd` and `run_talents.gd` reach him through
-  `ClassSkills`' optional hooks (`archer.gd`: 957 lines to about 190). Left: the shared fire, frost and arc effects
-  (`arrow_fx.gd`, `frost_volley_fx.gd`, `arc_fx.gd`) split into `game/systems/fx/` and his own looks; the burn's look
-  chosen by class in `RunTalents` and `Enemy.ignite` (with the statuses work).
+  `ClassSkills`' optional hooks (`archer.gd`: 957 lines to about 190). The shared lightning is
+  `game/systems/fx/lightning/` (ArcFx) and the frost toolkit `game/systems/fx/frost/` (FrostFx), with Frost Volley's
+  own look in his folder. Left: the fire in `arrow_fx.gd` split into `game/systems/fx/fire/` and his arrows' look; the
+  burn's look chosen by class in `RunTalents` and `Enemy.ignite` (with the statuses work).
 - [ ] 3. Reference recordings
 - [ ] 4. Damage and effect system
 - [ ] 5. One data source
