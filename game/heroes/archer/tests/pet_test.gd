@@ -1,5 +1,5 @@
 extends SceneTree
-## The archer's Spirit Beast as a companion (spirit_beast.gd, Archer.keep_companions/_command_beast): he
+## The archer's Spirit Beast as a companion (spirit_beast.gd: SpiritBeast.keep; the command: skills/spirit_beast/beast_command.gd): he
 ## starts with it; it settles near him when he stands, keeps up when he runs, fights what threatens him,
 ## goes for the one he shoots, obeys commands (attack with a pounce, hold, come back), sticks with a target,
 ## lets go of the dead, comes back when he leaves a fight, arrives with him in a new zone, makes him faster,

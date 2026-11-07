@@ -9,7 +9,7 @@ extends RefCounted
 ##  Thunderstep: "vault" {p: the sigil, q: where he lands}, "spring" {p, r, t: the foes struck, n: how many of them
 ##    were on the sigil, x: it strikes again} (ThunderstepFx)
 ##  Spirit Beast: "impact" {p: the point, t: [the foe] when it was sent at one, x: called home} (the command's
-##    rings and the roar; a puppet's own wolf (Archer.keep_companions) takes the same command and only shows its bites)
+##    rings and the roar; a puppet's own wolf (SpiritBeast.keep) takes the same command and only shows its bites)
 
 static func play(h: Hero, ev: Dictionary) -> bool:
 	var root: Node3D = h.game.world.fx_root
@@ -41,7 +41,7 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				var foe2: Node3D = foes2[0]
 				var ring := Fx.aura(foe2, Archer.HUNTER, 18, 0.2, 0.09, 0.8, 0.4, 0.5, 30.0, Vector3(0, 2.4, 0))
 				ring.name = "hunted"
-				Fx._free_later(ring, float(ev.get("x", Archer.MARK_SECS)))
+				Fx._free_later(ring, float(ev.get("x", Skill.num("a_mark", "secs", 8.0))))
 			SkillFx.snd(h, "hunter_mark", -2.0)
 		["a_explosive", "blast"]:
 			# Blast Arrow's burst: the fire sim's fireball is ArrowFx.finish's; here the blast's own boom and ring, and
@@ -58,7 +58,8 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var foe = foes[0] if not foes.is_empty() else null
 			var home: bool = bool(ev.get("x", false))
 			var aim: Vector3 = ev["p"]
-			for b in h.beasts:
+			# a partner's copy of his wolf takes the command here (his own took it from BeastCommand)
+			for b in h.beasts if h.puppet else []:
 				if not is_instance_valid(b) or b.dead:
 					continue
 				if foe != null:

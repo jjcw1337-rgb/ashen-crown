@@ -108,7 +108,14 @@
 				"command",
 				"summon"
 			],
-			"lvl": 9
+			"lvl": 9,
+			"k": {
+				"buff_s": 12,
+				"reach": 3,
+				"home": 2.5,
+				"mark_s": 8,
+				"cast_s": 0.6
+			}
 		},
 		{
 			"id": "a_multishot",
@@ -209,7 +216,13 @@
 				"cc"
 			],
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"secs": 8,
+				"more": 35,
+				"reach": 3.5,
+				"cast_s": 0.45
+			}
 		},
 		{
 			"id": "a_barrage",

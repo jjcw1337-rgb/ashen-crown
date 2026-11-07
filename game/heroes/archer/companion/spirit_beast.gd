@@ -13,7 +13,7 @@ extends Node3D
 ## bite (the lion's maul) and a pounce (the lion's leap), each landing once on its impact frame and
 ## followed by a recovery. Stuck or unable to reach a foe, it tries a new path, then gives that foe up for
 ## a while. Monsters it bites turn on it (`Enemy.taunt`); it can be killed and rises again beside him
-## (`Archer.keep_companions`). Commands: `command(kind, ...)`: "attack" (a foe; with a pounce), "hold"
+## (`SpiritBeast.keep`). Commands: `command(kind, ...)`: "attack" (a foe; with a pounce), "hold"
 ## (a place), "follow"/"return". The archer's Spirit Beast skill issues them (archer.gd). Every tuning
 ## number is in CFG. A partner's copy of the archer (Hero.puppet) runs one too, on the partner's game, so it
 ## is seen there (its commands come as fx events, ArcherFx): it hunts and bites the same, but hurts nothing
@@ -624,3 +624,41 @@ func _reset_to_side() -> void:
 	_owner_last = master.global_position
 	_owner_v = Vector3.ZERO
 	settled = false
+
+# ---------------------------------------------------------------- at his side
+## The archer always has his Spirit Beast (two with Alpha): it rises beside him when he becomes an archer, a
+## while after it falls, and with him in every zone (it follows him through portals itself); Archer.update calls this on every game.
+static func keep(h: Hero, delta: float) -> void:
+	h.mark_t = maxf(0.0, h.mark_t - delta)
+	if h.mark != null and (not is_instance_valid(h.mark) or h.mark.dead):
+		h.mark = null
+	if h.dead or not h.is_archer() or h.game == null or h.game.world == null or h.game._busy:
+		return
+	if h.puppet and not h.net_has:
+		return
+	h.beasts = h.beasts.filter(func(b) -> bool: return is_instance_valid(b) and not b.dead)
+	var want := 2 if h.talent("beast_two") > 0.0 else 1
+	if h.beasts.size() >= want:
+		return
+	h.beast_down_t -= delta
+	if h.beast_down_t > 0.0:
+		return
+	h.beast_down_t = 0.0
+	var fwd: Vector3 = -h.rig.global_transform.basis.z
+	var k := h.beasts.size()
+	var side := Vector3(fwd.z, 0, -fwd.x) * (1.4 if k == 0 else -1.4)
+	var pos: Vector3 = h.game.world.free_spot_near(h.global_position + side - fwd * 0.8, 1.5)
+	pos.y = h.game.world.height_at(pos.x, pos.z)
+	var b := SpiritBeast.new()
+	h.game.add_child(b)
+	b.setup(h, h.game, k)
+	b.global_position = pos
+	h.beasts.append(b)
+	# it comes out of the mist: spirit-light rising off where it stands, a breath of pale mist round it
+	var root: Node3D = h.game.world.fx_root
+	InfernalFx.particles(root, pos + Vector3(0, 0.3, 0), {"amount": 24, "life": 1.2, "explosive": 0.8, "shape": "sphere",
+		"r": 0.6, "dir": Vector3.UP, "spread": 25.0, "vel": [0.6, 1.6], "gravity": 0.4, "damping": [0.6, 1.0], "turb": 0.4,
+		"scale": [0.4, 1.0], "size": 0.08, "colors": [[0.0, Color(Archer.HUNTER, 0.0)], [0.2, Color(1, 1, 1)], [0.6, Archer.HUNTER], [1.0, Color(Archer.HUNTER, 0.0)]]})
+	ElementalFx._dust(root, pos + Vector3(0, 0.3, 0), Color(0.5, 0.62, 0.58), 1.3, 0.45, {"amount": 5, "life": 1.4,
+		"explosive": 0.9, "shape": "ring", "r": 0.5, "r_in": 0.2, "dir": Vector3.UP, "spread": 20.0, "vel": [0.2, 0.5],
+		"radial": [1.0, 2.0], "damping": [1.6, 2.4], "scale": [0.7, 1.2], "grow": [0.5, 1.6]})

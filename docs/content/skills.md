@@ -29,7 +29,8 @@ The Archer is the example to copy. Most other heroes still keep every skill in o
   that strikes at a beat) and `DelayedArea` (a spot that goes off after a fuse). They are plain data, with no nodes, so a server could run them.
 - **The look keeps its own copy.** The rules send one event (an arrow's "loose"), and every game's look flies its own
   arrow from it with the same `Missile` step (`shared/arrow_flight_fx.gd`). The look never makes game state.
-- Spirit Beast and Hunter's Mark are still in `archer.gd`.
+- Every one of his skills has its folder now. His wolf (`companion/spirit_beast.gd`) is a summon with its own brain,
+  and each game runs its own copy; it isn't split into rules and look yet.
 
 ## Designing a skill
 

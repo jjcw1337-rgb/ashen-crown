@@ -175,6 +175,8 @@ static func _make(h: Hero, id: String) -> Skill:
 		"volley": return FrostVolley.new(h, id)
 		"a_barrage": return ArrowStorm.new(h, id)
 		"snare": return Thunderstep.new(h, id)
+		"beast": return BeastCommand.new(h, id)
+		"a_mark": return HuntersMark.new(h, id)
 	return null
 
 # ---------------------------------------------------------------- the bow
@@ -208,17 +210,6 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 	var s := skill(h, id)
 	if s != null:
 		s.cast(aim)
-		return
-	match id:
-		"beast":
-			h.atk_aim = aim
-			h._start_attack("cast", "beast")
-			h.atk_dur = 0.6
-		# a run's skill (Data.RUN_SKILLS): the mark, a quick cast
-		"a_mark":
-			h.atk_aim = aim
-			h._start_attack("cast", "a_mark")
-			h.atk_dur = 0.45
 
 ## ClassSkills: nothing to check before a shot.
 static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
@@ -231,7 +222,7 @@ static func rooted(h: Hero) -> bool:
 			return true
 	return false
 
-## His wolf and arrows stay through death (the wolf rises again on its own, keep_companions).
+## His wolf and arrows stay through death (the wolf rises again on its own, SpiritBeast.keep).
 static func died(_h: Hero) -> void:
 	pass
 
@@ -250,44 +241,10 @@ static func impact(h: Hero) -> bool:
 	if h.atk_skill == "" and h.atk_style != "bow":
 		return false
 	var s := skill(h, h.atk_skill if h.atk_skill != "" else "attack")
-	if s != null:
-		s.impact()
-		return true
-	match h.atk_skill:
-		"beast":
-			_command_beast(h, h.atk_aim)
-		"a_mark":
-			_hunters_mark(h, h.atk_aim)
-		_:
-			return false
+	if s == null:
+		return false
+	s.impact()
 	return true
-
-## Hunter's Mark's time and what it adds.
-const MARK_SECS := 8.0
-const MARK_MORE := 0.35
-
-## Hunter's Mark: the foe nearest the pointer is marked (Enemy "hunted_until": +35% from everyone), the one his wolf
-## goes for; the claw mark and a ring over it are seen by all.
-static func _hunters_mark(h: Hero, at: Vector3) -> void:
-	var best = null
-	var bd := 3.5
-	for e in h.game.enemies_near(at, 3.5):
-		if e.dead or e.pvp_obj > 0:
-			continue
-		var d: float = Vector2(e.global_position.x - at.x, e.global_position.z - at.z).length()
-		if d < bd:
-			bd = d
-			best = e
-	if best == null:
-		h.fx("a_mark", "impact", {"p": at})
-		return
-	best.set_meta("hunted_until", Time.get_ticks_msec() + int(MARK_SECS * 1000.0))
-	h.mark = best
-	h.mark_t = MARK_SECS
-	for b in h.beasts:
-		if is_instance_valid(b) and not b.dead:
-			b.command("attack", best)
-	h.fx("a_mark", "impact", {"p": best.global_position, "t": [best], "x": MARK_SECS})
 
 ## An arrow of one of his arrow skills, loosed from elsewhere (a rite's: Phoenix Quiver's free Fire Arrow).
 static func _loose(h: Hero, at: Vector3, pierce: bool, mult: float, src: String, yaw: float) -> void:
@@ -347,69 +304,13 @@ static func _arrow_mesh(kind: String, bare := false) -> Node3D:
 		Fx.aura(root, FIRE, 18, 0.5, 0.09, 0.35, 0.8, 0.06, 30.0, Vector3(0, 0, -0.3))
 	return root
 
-# ---------------------------------------------------------------- Spirit Beast
-## The archer always has his Spirit Beast (two with Alpha): it rises beside him when he becomes an archer, a
-## while after it falls, and with him in every zone (SpiritBeast follows him through portals itself).
-static func keep_companions(h: Hero, delta: float) -> void:
-	h.mark_t = maxf(0.0, h.mark_t - delta)
-	if h.mark != null and (not is_instance_valid(h.mark) or h.mark.dead):
-		h.mark = null
-	if h.dead or not h.is_archer() or h.game == null or h.game.world == null or h.game._busy:
-		return
-	if h.puppet and not h.net_has:
-		return
-	h.beasts = h.beasts.filter(func(b) -> bool: return is_instance_valid(b) and not b.dead)
-	var want := 2 if h.talent("beast_two") > 0.0 else 1
-	if h.beasts.size() >= want:
-		return
-	h.beast_down_t -= delta
-	if h.beast_down_t > 0.0:
-		return
-	h.beast_down_t = 0.0
-	var fwd: Vector3 = -h.rig.global_transform.basis.z
-	var k := h.beasts.size()
-	var side := Vector3(fwd.z, 0, -fwd.x) * (1.4 if k == 0 else -1.4)
-	var pos: Vector3 = h.game.world.free_spot_near(h.global_position + side - fwd * 0.8, 1.5)
-	pos.y = h.game.world.height_at(pos.x, pos.z)
-	var b := SpiritBeast.new()
-	h.game.add_child(b)
-	b.setup(h, h.game, k)
-	b.global_position = pos
-	h.beasts.append(b)
-	# it comes out of the mist: spirit-light rising off where it stands, a breath of pale mist round it
-	var root: Node3D = h.game.world.fx_root
-	InfernalFx.particles(root, pos + Vector3(0, 0.3, 0), {"amount": 24, "life": 1.2, "explosive": 0.8, "shape": "sphere",
-		"r": 0.6, "dir": Vector3.UP, "spread": 25.0, "vel": [0.6, 1.6], "gravity": 0.4, "damping": [0.6, 1.0], "turb": 0.4,
-		"scale": [0.4, 1.0], "size": 0.08, "colors": [[0.0, Color(HUNTER, 0.0)], [0.2, Color(1, 1, 1)], [0.6, HUNTER], [1.0, Color(HUNTER, 0.0)]]})
-	ElementalFx._dust(root, pos + Vector3(0, 0.3, 0), Color(0.5, 0.62, 0.58), 1.3, 0.45, {"amount": 5, "life": 1.4,
-		"explosive": 0.9, "shape": "ring", "r": 0.5, "r_in": 0.2, "dir": Vector3.UP, "spread": 20.0, "vel": [0.2, 0.5],
-		"radial": [1.0, 2.0], "damping": [1.6, 2.4], "scale": [0.7, 1.2], "grow": [0.5, 1.6]})
-
 ## Shatter (Frost): the chilled take 20% more from his arrows.
 static func shatter(h: Hero, e) -> float:
 	return 1.2 if h.talent("frost_shatter") > 0.0 and e.chill_t > 0.0 else 1.0
 
-## The Spirit Beast skill commands it: at a foe near the cursor it pounces and fights it; on open ground it
-## holds that spot; on himself it comes back to his side. Each command rouses the hunt: +40% damage, 12 s.
-static func _command_beast(h: Hero, aim: Vector3) -> void:
-	var foe = null
-	var bd := 3.0
-	for e in h.game.enemies_near(aim, 3.0):
-		var d: float = e.global_position.distance_to(aim)
-		if not e.dead and d < bd:
-			bd = d
-			foe = e
-	var home: bool = foe == null and aim.distance_to(h.global_position) < 2.5
-	# (the beasts take the command in ArcherFx, on every game)
-	if foe != null:
-		h.mark = foe
-		h.mark_t = 8.0
-	h.buff_t = 12.0 + h.talent("buff_dur")
-	h.fx("beast", "impact", {"p": aim, "t": [foe] if foe != null else [], "x": home})
-
 # ---------------------------------------------------------------- every frame
 static func update(h: Hero, delta: float) -> void:
-	keep_companions(h, delta)
+	SpiritBeast.keep(h, delta)
 	# his skills that are objects (Hero.kit): arrows in flight, the rains, the sigils; on his own game only, since a partner's
 	# copy of him only shows them
 	if not h.puppet:

@@ -462,9 +462,10 @@ func take_damage(phys: float, fire: float, from: Vector3, knockback: float, crit
 		phys = maxf(phys, life * 10.0 + 1000000.0)   # testing switch (F8): any hit kills
 	var p := phys * 100.0 / (100.0 + armor * 0.6)
 	if has_meta("hunted_until") and Time.get_ticks_msec() < int(get_meta("hunted_until")):
-		# Hunter's Mark (a run's archer skill): it takes more from everyone
-		p *= 1.0 + Archer.MARK_MORE
-		fire *= 1.0 + Archer.MARK_MORE
+		# marked (a mark skill sets these): it takes more from everyone
+		var more: float = float(get_meta("hunted_more", 0.0))
+		p *= 1.0 + more
+		fire *= 1.0 + more
 	var total := p + fire
 	if remote:
 		# the host applies the real damage; show the hit straight away
