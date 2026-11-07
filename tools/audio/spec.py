@@ -327,7 +327,7 @@ SPEC = [
          prompt="a damp stone crypt, slow water drips echoing, faint distant wind, no music"),
 ]
 
-# Doug the clown (DougSkills.sound / DougFx): slapstick, but real and weighty, not cartoon beeps
+# Doug the clown (Doug.sound / DougFx): slapstick, but real and weighty, not cartoon beeps
 SPEC += [
     dict(name="doug_splat", src="eleven", n=4, dur=0.8, hit=0, label="a cream pie splatting into a face",
          prompt="a cream pie smashed into someone's face, a wet soft squelching splat of whipped cream and crust" + DRY),
@@ -430,7 +430,7 @@ SPEC += [
          prompt="a thrown glass alchemy flask shattering on the ground with a magical burst" + DRY),
     dict(name="banshee_wail", src="eleven", n=4, dur=1.8, hit=0, label="a banshee's terrifying scream",
          prompt="a ghostly banshee wraith letting out a piercing terrifying scream that echoes and warps, chilling and unearthly" + DRY),
-    # the dragons' run skills (DragonRunFx, 2026-11-06)
+    # the dragons' run skills (their looks in game/heroes/serpent/ and wyvern/skills/, 2026-11-06)
     dict(name="ice_tomb_seal", src="eleven", n=4, dur=1.2, hit=0, label="ice sealing a foe in",
          prompt="thick glacier ice rapidly freezing and cracking closed around something, crystalline crunching and a deep cold creak" + DRY),
     dict(name="wyvern_dive", src="eleven", n=4, dur=1.4, hit=0.9, label="a dragon diving down with a thunderclap",

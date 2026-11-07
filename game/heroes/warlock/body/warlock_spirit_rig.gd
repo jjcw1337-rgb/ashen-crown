@@ -1,4 +1,4 @@
-extends "res://scripts/knight_mocap_rig.gd"
+extends "res://game/systems/bodies/mocap_rig.gd"
 ## The Warlock's jungle void spirit on the shared mocap system (Warlock._build_spirit; the Wraith's float mode). Meshy's
 ## idle and float clips hold her almost still, so a slow procedural "weave" is laid over them whenever she isn't
 ## casting (Blaine, 2026-11-06: "he looks so static when he's just chilling"): the spine undulates in a wave from the

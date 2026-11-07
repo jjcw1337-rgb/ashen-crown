@@ -52,7 +52,7 @@ jobs:
       - name: Stamp preview protocol revision
         run: |
           revision=$(printf '%s' "$GITHUB_SHA" | cut -c1-7)
-          sed -i "s/^const REV := \"dev\"/const REV := \"$revision\"/" scripts/build_env.gd
+          sed -i "s/^const REV := \"dev\"/const REV := \"$revision\"/" game/systems/net/build_env.gd
 
       - name: Install export templates
         run: |

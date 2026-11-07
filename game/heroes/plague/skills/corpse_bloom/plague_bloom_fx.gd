@@ -1,6 +1,6 @@
 class_name PlagueBloomFx
 extends RefCounted
-## Corpse Bloom's look (the Plague Doctor's R; gameplay in plague.gd): a corpse flower erupting from the ground.
+## Corpse Bloom's look (the Plague Doctor's R; its rules: CorpseBloom, corpse_bloom.gd): a corpse flower erupting from the ground.
 ##
 ## The organism is the Meshy model game/heroes/plague/skills/corpse_bloom/bloom.glb (concept, image-to-3D, tools/blender/prep_prop.py:
 ## swollen spore sacs in diseased petals over black roots). It grows out of the soil (squash and stretch, the petals
@@ -328,3 +328,78 @@ void fragment() {
 }
 """
 	return _rsh
+
+# ---------------------------------------------------------------- the events (PlagueFx), on every game
+## Corpse Bloom's events: "bloom" {p, r, n: its id, x: seconds it breathes, a: seconds between pulses} (the Bloom keeps
+## its own clock: growth, warning ring, pulse), "pulse" {p, n, t: the monsters its roots lash}, "obj" {n, x: blows
+## left} (PvP: it flinches, and at none it dies). On another player's game in a match it has a stand-in to strike
+## (PvpObjects.proxy).
+static func play(h: Hero, ev: Dictionary) -> bool:
+	var st := PlagueFx.state(h)
+	if not st.has("blooms"):
+		st["blooms"] = []
+	var blooms: Array = st["blooms"]
+	match str(ev["e"]):
+		"bloom":
+			var w: World = h.game.world
+			var g: Vector3 = ev["p"]
+			var r := float(ev.get("r", Skill.num("bloom", "radius", 3.5)))
+			var oid := int(ev.get("n", 0))
+			var grow := Skill.num("bloom", "grow_s", 1.0)
+			var active := float(ev.get("x", Skill.num("bloom", "active_s", 6.0)))
+			var node := Bloom.new()
+			w.fx_root.add_child(node)
+			node.global_position = g
+			node.setup(w, g, r, grow, active, float(ev.get("a", Skill.num("bloom", "every", 2.0))), Skill.num("bloom", "warn", 0.6))
+			blooms.append({"node": node, "pos": g, "age": 0.0, "life": grow + active, "oid": oid, "proxy": PlagueFx.proxy(h, oid, "bloom", g)})
+			Sfx.play_at("impact_metal", g, -10.0, 0.7)
+			Sfx.play_at("drip", g, -6.0, 0.5)
+		"pulse":
+			Sfx.play_at("blight_burst", ev["p"], -3.0, 0.8)
+			var b := _of(blooms, int(ev.get("n", 0)))
+			for e in ev.get("t", []):
+				if not b.is_empty():
+					lash(b["node"], e)
+		"obj":
+			var b := _of(blooms, int(ev.get("n", 0)))
+			if b.is_empty():
+				return true
+			var left := int(ev.get("x", 0))
+			PvpObjects.set_left(b.get("proxy"), left)
+			var node = b["node"]
+			if left > 0:
+				if is_instance_valid(node):
+					(node as Bloom).hurt()
+			else:
+				blooms.erase(b)
+				if is_instance_valid(node):
+					(node as Bloom).kill()
+		_:
+			return false
+	return true
+
+static func _of(blooms: Array, oid: int) -> Dictionary:
+	for b in blooms:
+		if int(b["oid"]) == oid:
+			return b
+	return {}
+
+## Each withers at the end of its life (its own clock); a stand-in stays on it.
+static func update(_h: Hero, st: Dictionary, delta: float) -> void:
+	for b in (st.get("blooms", []) as Array).duplicate():
+		b["age"] = float(b["age"]) + delta
+		if not is_instance_valid(b["node"]) or float(b["age"]) >= float(b["life"]):
+			# (or freed under it: a zone change; a typed hold on a freed node errors every frame)
+			(st["blooms"] as Array).erase(b)
+			PvpObjects.drop(b.get("proxy"))
+			if is_instance_valid(b["node"]):
+				(b["node"] as Bloom).wither()
+			continue
+		PvpObjects.keep_on(b.get("proxy"), b["pos"])
+
+static func clear(_h: Hero, st: Dictionary) -> void:
+	for b in st.get("blooms", []):
+		if is_instance_valid(b["node"]):
+			(b["node"] as Node).queue_free()
+		PvpObjects.drop(b.get("proxy"))
+	st.erase("blooms")

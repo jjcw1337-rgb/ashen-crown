@@ -442,7 +442,7 @@ func _build_hud() -> void:
 	bottom.offset_top = -190
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud.add_child(bottom)
-	# life and mana globes (scripts/globe.gd): liquid that surges, ripples, swirls and pulses
+	# life and mana globes (game/ui/hud/globe.gd): liquid that surges, ripples, swirls and pulses
 	life_globe = Globe.new()
 	life_globe.kind = "life"
 	life_globe.ref_max = 120.0      # a level-1 hero's life; more makes the globe bigger
@@ -1412,7 +1412,7 @@ func _panel(title: String, left: bool, w: int, h: int) -> PanelContainer:
 
 var _pie_overlay: ColorRect
 
-## A cream pie in the face (DougSkills; Hero.take_hit "pied"): cream splattered over the screen's edges, fading.
+## A cream pie in the face (Doug's Cream Pie; Hero.take_hit "pied"): cream splattered over the screen's edges, fading.
 func pie_face(secs: float) -> void:
 	if _pie_overlay == null:
 		_pie_overlay = ColorRect.new()
@@ -2450,6 +2450,17 @@ func _build_pause() -> void:
 		game.set_click_move(not game.click_move)
 		ctl_text.call())
 	vb.add_child(ctl)
+	# click to cast (Aiming): an area skill's key arms it and the left click casts it; quick cast casts on the key
+	var aoe := _iron_button("", 320, 38, 16)
+	aoe.name = "aoe_cast"
+	aoe.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var aoe_text := func(): aoe.text = "AoE skills: " + ("Click to cast" if game.aiming.click_cast else "Quick cast")
+	aoe_text.call()
+	pause_panel.visibility_changed.connect(aoe_text)
+	aoe.pressed.connect(func():
+		game.aiming.set_click_cast(not game.aiming.click_cast)
+		aoe_text.call())
+	vb.add_child(aoe)
 	var fps := _iron_button("FPS counter (F3)", 320, 38, 16)
 	fps.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	fps.pressed.connect(func(): show_fps = not show_fps)

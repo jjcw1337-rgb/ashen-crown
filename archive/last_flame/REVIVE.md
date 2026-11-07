@@ -24,13 +24,13 @@ it removed every one of them (`git log -- archive/last_flame`, then `git show` t
     and `vigil` (kindle it, feed it a log: `net.vigil_feed`, `net.vigil_hi`, `net.request_vigil`);
   - the waypoint's activity (`waypoint_activities`, `waypoint_activity_go`, the `zone in [...]` list);
   - the death respawn (`Vigil.respawn_at`).
-- `scripts/net.gd`: `vigil_state`/`cl_vigil`, `vigil_event`/`cl_vigil_fx`, `request_vigil`/`sv_vigil`,
+- `game/systems/net/net.gd`: `vigil_state`/`cl_vigil`, `vigil_event`/`cl_vigil_fx`, `request_vigil`/`sv_vigil`,
   `vigil_feed`/`sv_vigil_feed`, `vigil_hi`/`sv_vigil_hi`.
 - `game/systems/combat/projectile.gd`: a projectile hits nodes in the `objective` group (the flame).
 - `scripts/monster_warm.gd`: warm the waves' monsters (`Vigil.WAVES`).
 - `game/systems/data/data.gd` `WAYPOINT_ACTIVITIES`: the `vigil` entry.
-- `scripts/mp_mode.gd`: `WAVES` and the solo label; `scripts/lobby_client.gd` `play_solo_waves`;
-  `scripts/match_instance.gd`: the `waves` mode (`begin`, finished when the flame is `lost`); the lobby service's
+- `game/systems/net/mp_mode.gd`: `WAVES` and the solo label; `scripts/lobby_client.gd` `play_solo_waves`;
+  `game/systems/net/match_instance.gd`: the `waves` mode (`begin`, finished when the flame is `lost`); the lobby service's
   `waves` mode (`deploy/lobbies/service.py`, removed earlier).
 - `game/maps/camp/forest_camp.gd`: the Vigil Gate (`VIGIL_GATE`, its portal and two stone posts, the `from_vigil`
   spawn).

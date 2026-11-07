@@ -19,12 +19,12 @@ func _initialize():
 		if n is SubViewport:
 			n.disable_3d = true)
 	role = "b" if OS.get_cmdline_user_args().has("b") else "a"
-	load("res://scripts/build_env.gd").forced = {"env": "local", "cloud": "0", "lobby_url": "http://127.0.0.1:7352"}
+	load("res://game/systems/net/build_env.gd").forced = {"env": "local", "cloud": "0", "lobby_url": "http://127.0.0.1:7352"}
 	g = load("res://main.tscn").instantiate()
 	g.char_dir = "user://arena_survivor_test_" + role + "/"
 	get_root().disable_3d = true
 	get_root().add_child(g)
-	SV = load("res://scripts/survivors.gd")
+	SV = load("res://game/systems/saves/survivors.gd")
 	RB = load("res://game/items/run_build.gd")
 	_run()
 

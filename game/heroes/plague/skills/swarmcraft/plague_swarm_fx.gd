@@ -1,6 +1,6 @@
 class_name PlagueSwarmFx
 extends RefCounted
-## Swarmcraft's look (the Plague Doctor's E; gameplay in plague.gd): a living swarm of plague flies.
+## Swarmcraft's look (the Plague Doctor's E; its rules: Swarmcraft, swarmcraft.gd): a living swarm of plague flies.
 ##
 ## The flies are one GPUParticles3D run by a particle shader (`SWARM_PROCESS`): each fly has its own orbit round the
 ## swarm's point (`target`), so the swarm stretches, twists and folds as it travels, thins at its edges (its
@@ -404,3 +404,64 @@ void fragment() {
 }
 """
 	return _fsh
+
+# ---------------------------------------------------------------- the events (PlagueFx), on every game
+## Swarmcraft's events: "swarm" {p: from, q: to, r, x: seconds} the swarm poured out (each game flies its own at the
+## rules' pace), "swarm_to" {q} sent on, "scatter", "bite" {t}, "home".
+static func play(h: Hero, ev: Dictionary) -> bool:
+	var st := PlagueFx.state(h)
+	var sw: Dictionary = st.get("swarm", {})
+	var node = sw.get("node")
+	match str(ev["e"]):
+		"swarm":
+			if is_instance_valid(node):
+				go_home(node, h)
+			var w: World = h.game.world
+			var from: Vector3 = ev["p"]
+			var s := Swarm.new()
+			w.fx_root.add_child(s)
+			s.setup(w, from, ev["q"], float(ev.get("r", Skill.num("swarm", "radius", 3.0))), PlagueFx.quality(h))
+			st["swarm"] = {"node": s, "pos": from, "to": ev["q"], "t": float(ev.get("x", Skill.num("swarm", "secs", 6.0))) + 3.0}
+			Sfx.play_at("drip", from, -4.0, 0.6)
+		"swarm_to":
+			if not sw.is_empty():
+				sw["to"] = ev["q"]
+				redirect(node, ev["q"])
+			if not h.puppet:
+				Sfx.play_at("swing_light", h.global_position, -9.0, 1.4)
+		"scatter":
+			scatter(node)
+		"bite":
+			for e in ev.get("t", []):
+				bite(node, e)
+		"home":
+			if is_instance_valid(node):
+				go_home(node, h)
+			st.erase("swarm")
+		_:
+			return false
+	return true
+
+## It flies at its own speed toward its point and hangs there (as the rules' swarm does).
+static func update(h: Hero, st: Dictionary, delta: float) -> void:
+	var sw: Dictionary = st.get("swarm", {})
+	if sw.is_empty():
+		return
+	var node = sw["node"]
+	if not is_instance_valid(node):
+		st.erase("swarm")
+		return
+	var pos: Vector3 = sw["pos"]
+	pos += ((sw["to"] as Vector3) - pos).limit_length(Skill.num("swarm", "speed", 6.0) * delta)
+	sw["pos"] = pos
+	(node as Swarm).target = pos
+	sw["t"] = float(sw["t"]) - delta
+	if float(sw["t"]) <= 0.0:
+		go_home(node, h)      # (its end never came)
+		st.erase("swarm")
+
+static func clear(_h: Hero, st: Dictionary) -> void:
+	var sw: Dictionary = st.get("swarm", {})
+	if is_instance_valid(sw.get("node")):
+		(sw["node"] as Node).queue_free()
+	st.erase("swarm")

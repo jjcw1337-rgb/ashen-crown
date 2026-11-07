@@ -1,10 +1,10 @@
 #!/bin/sh
-# CI: points this checkout's build at an environment before exporting, by rewriting scripts/build_env.gd's constants.
+# CI: points this checkout's build at an environment before exporting, by rewriting game/systems/net/build_env.gd's constants.
 #   sh tools/ci/write_build_env.sh <env> <bg_server host:port> <nakama https url> <nakama server key>
 # Values are checked against strict patterns (no quotes or spaces can get into the GDScript). Prints no key.
 set -eu
 ENV_NAME=$1; BG=$2; URL=$3; KEY=$4
-F=scripts/build_env.gd
+F=game/systems/net/build_env.gd
 REV=$(echo "${GITHUB_SHA:-$(git rev-parse HEAD 2>/dev/null || echo ci)}" | cut -c1-7 | tr -cd 'A-Za-z0-9')
 echo "$ENV_NAME" | grep -Eq '^(staging|production)$' || { echo "env must be staging or production"; exit 1; }
 echo "$BG" | grep -Eq '^[A-Za-z0-9.-]+:[0-9]{2,5}$' || { echo "bad bg_server"; exit 1; }

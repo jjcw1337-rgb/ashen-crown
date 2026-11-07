@@ -1,6 +1,7 @@
 # Heroes
 
-What a hero is made of, how to make one, and how to change one. The Archer (`game/heroes/archer/`) is the example.
+What a hero is made of, how to make one, and how to change one. Every hero lives in `game/heroes/<hero>/`; the
+Archer (`game/heroes/archer/`) is the example.
 
 ## A hero's pieces
 
@@ -19,21 +20,30 @@ game/heroes/archer/
   archer.gd        its skills script (which skill object handles which id) and its body
   archer_fx.gd     its effects: draws its fx events
   body/ weapon/    models and dyes
-  skills/<skill>/  one folder per skill: rules, look, its own models
+  skills/<skill>/  one folder per skill: rules, look, its own models and sounds/
   shared/          what only this hero's skills share
   companion/       what it summons
   build/ tests/ tools/   Blender scripts, tests, previews (never shipped)
 ```
 
-**Where the game names a hero.** A new hero is added to: `ClassSkills` (`of`, `all`, `trail_color`), `SkillFx`
-(`_play`, `update`, `clear`), `Hero` (`is_<id>`, `_build_rig`), `Net.STYLES`, `Models.item_model`, `Data.CLASSES`
-and `Data.SKILLS`, `Talents.TREES`, `RunTalents`' themes, the class picker (`ClassStage`), `MpLobbyView.PLAYSTYLE`,
-`BgMatchup.ACCENTS` and the Sandbox's stats.
+A family of heroes keeps what they all share in `game/systems/` (the three dragons: `game/systems/dragons/`), never
+in one member's folder.
 
-**A hero's own ways go in its script, never in `hero.gd`.** `ClassSkills` asks the hero's script for optional hooks:
-its own basic attack (`attack`), `reach`, walking pace (`pace`, `attack_pace`), a pose after the body's (`posed`),
-what runs on a partner's copy (`puppet_update`), how it holds its weapon (`weapon_hand`), and its skill objects
-(`skill`, which rites use for a free cast). The Archer uses all of them (`archer.gd`).
+**Where the game names a hero.** A new hero is added to: `ClassSkills` (`of`, `all`, `trail_color`),
+`ServerRules.CLASSES` (its skills run on the match server), `SkillFx` (`_play`, `update`, `clear`), `Hero`
+(`is_<id>`, `_build_rig`), `Net.STYLES`, `Models.item_model`, `Data.CLASSES` and `Data.SKILLS`, `Talents.TREES`,
+`RunTalents`' themes, the class picker (`ClassStage`), `MpLobbyView.PLAYSTYLE`, `BgMatchup.ACCENTS` and the
+Sandbox's stats.
+
+**A hero's own ways go in its script, never in `hero.gd`.** `ClassSkills` asks the hero's script for optional
+hooks, each named for what it answers:
+- attacking: `attack`, `swing` (its own weapon blows), `reach`, `free_cast`, `recast`, `stage_done` (a skill of
+  several clips), `dash`, `channel` / `end_channel`, `struck` (its mark on what it hits);
+- moving and the body: `pace`, `attack_pace`, `unstoppable`, `posed`, `pose`, `weapon_hand`, `hands_busy`;
+- being hit: `taken`, `absorb`, `hidden_from_monster`;
+- other copies of it: `puppet_update` (a partner's game), `server_update` (the match server's copy: its summons);
+- PvP things of its own: `obj_pos`, `obj_hit`;
+- its skill objects: `skill` (rites use it for a free cast).
 
 ## Making a hero
 
@@ -44,8 +54,10 @@ what runs on a partner's copy (`puppet_update`), how it holds its weapon (`weapo
    hero's `build/prep_*_mocap.py`). See [assets](../pipeline/assets.md).
 4. **Props** for what its skills throw or place (Meshy text-to-3D, ~10 credits each), in the skill's folder.
 5. **Code:** copy the Archer's files, write each skill ([skills](skills.md)), and add the hero everywhere listed above.
-6. **Tests:** its own in `tests/`, plus `tools/coop_fx_test.gd`, `skill_spec_test.gd`, `playtest.gd` and a PvP test.
-   Post screenshots of every skill from the game camera.
+6. **Tests:** its own in `tests/`; its reference (`tools/hero_reference.gd <hero> record`, twice, then the compare
+   on every change); a mode in `game/maps/verdant_reach/tests/bg_pvp_test.gd` proving the server made its skills;
+   plus `tools/coop_fx_test.gd`, `skill_spec_test.gd` and `playtest.gd`. Post screenshots of every skill from the
+   game camera.
 7. **Sound** (ElevenLabs): add it to `tools/audio/spec.py`; a human picks the takes.
 
 ## Changing a hero

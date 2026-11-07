@@ -14,7 +14,7 @@ folder is the template for every map: the map, its pieces, the modes played on i
 | `tests/` | `arena_round_test`, `arena_survivor_test`, `lobby_team_test`, `sandbox_test`, `sandbox_entry_test`, `sandbox_lobby_test` |
 | `tools/` | `sandbox_shot` (screenshots) |
 
-How a match gets here: the lobby service starts a match server with `--match-config`; `scripts/match_instance.gd`
+How a match gets here: the lobby service starts a match server with `--match-config`; `game/systems/net/match_instance.gd`
 loads the mode's script from this folder and the zone; players join with their lobby ticket.
 
 Still borrowed from outside, to go when their homes exist:

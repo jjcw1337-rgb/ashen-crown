@@ -36,7 +36,7 @@ func _run() -> void:
 	root3.add_child(ground)
 	var rigs := []
 	for i in 2:
-		var r: Node3D = Knight.build_meshy() if meshy else Knight.build(Knight.default_gear())
+		var r: Node3D = KnightBody.build_meshy() if meshy else Knight.build(Knight.default_gear())
 		r.set("fixed_dt", 1.0 / 30.0)
 		r.set_meta("pers", "hero")
 		if i == 1:

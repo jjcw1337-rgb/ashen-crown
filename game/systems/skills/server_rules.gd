@@ -9,7 +9,7 @@ extends RefCounted
 ## blowing, a mark landing) comes from the server to everyone. Single player and Enter World co-op are unchanged.
 
 ## The classes whose skills run on the server (the rest still deal their own hits until they move over).
-const CLASSES := ["archer", "warlock"]
+const CLASSES := ["archer", "warlock", "plague", "doug", "wraith", "demon", "knight", "wyrm", "serpent", "wyvern"]
 
 ## Tests: what the server made from players' skills, and what it refused; what a player's game took from its skills'
 ## rules on the server (Skill.give: life back, mana).
@@ -45,6 +45,18 @@ static func received(game, pid: int, id: String, kind: String, data: Dictionary)
 		else:
 			refused_count += 1
 			print("[RULES] refused %s's run %s" % [h.peer_id, kind])
+		return
+	if id == "attack" and kind == "swing":
+		# a weapon swing (Hero._send_swing): its copy here strikes with its own positions
+		Hero.striker = h
+		var tg = null
+		var ids = data.get("t", [])
+		if (ids is PackedInt64Array or ids is Array) and ids.size() > 0:
+			tg = foe_of(game, int(ids[0]))
+		if h.server_swing(str(data.get("style", "")), data.get("fwd", Vector3.ZERO) if data.get("fwd") is Vector3 else Vector3.ZERO, tg, data.get("at")):
+			made_count += 1
+		else:
+			refused_count += 1
 		return
 	if id != "attack" and str(Data.skill_def(id).get("cls", "")) != str(h.cls):
 		return
@@ -88,11 +100,12 @@ static func update(h, delta: float) -> void:
 	if m != null and m.has_method("server_update"):
 		m.server_update(h, delta)
 	h.buff_t = maxf(0.0, h.buff_t - delta)      # (the battle buff its game sent wears off here too)
+	if h.run != null:
+		RunTalents.tick(h, delta)      # (and its rites' timed buffs: frenzy, momentum...)
 	if h.dead:
 		return
 	Hero.striker = h
-	for sk in h.kit.values():
-		sk.update(delta)
+	Skill.update_kit(h, delta)
 
 ## A stand-in for this player or someone on their side (a duo's pair, an arena teammate): their skills pass it by.
 ## (A player's own game makes stand-ins only for foes: Battlegrounds.sync_proxies.)

@@ -5,7 +5,7 @@ a molten interior (a second material, "Interior", for the game's hot-core shader
 
 Every cell is the rock clipped by the bisecting planes toward every other seed point (bmesh bisect + fill), so
 the pieces fit back together exactly. Seeds are biased toward the middle so a few big chunks come with smaller
-shards round them. The game (DemonHurlFx, DemonFx's meteors) swaps the whole rock for its pieces at the moment of
+shards round them. The game (BrimstoneHurlFx, DemonFx's meteors) swaps the whole rock for its pieces at the moment of
 impact and throws them.
 """
 import bpy

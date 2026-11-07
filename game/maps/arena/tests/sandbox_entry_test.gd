@@ -20,7 +20,7 @@ func run() -> void:
  var lobby=g.lobby_client
  lobby.set_process(false)
  lobby.panel.show()
- var mode=load("res://scripts/mp_mode.gd")
+ var mode=load("res://game/systems/net/mp_mode.gd")
  var original_count: int=g.list_characters().size()
  for name in mode.MODES:
   lobby.selected_mode=name;lobby.draw()

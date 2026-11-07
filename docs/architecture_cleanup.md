@@ -137,9 +137,10 @@ Touch points to coordinate:
 
 ### In progress
 
-- Claude-2 (2026-11-07, one agent per hero, each on its own branch): the Plague Doctor, the Warlock, Doug, the Wraith
-  and the Demon onto the Archer's template with their skills on the server; then the Knight and the dragons. Also
-  click-to-cast for AoE skills (`game/systems/skills/aiming.gd`, JJ and Blaine).
+- Claude-2 (2026-11-07): every hero is on the template with its skills on the server (merged in
+  `claude-2/game-folder`, going to staging after the full test run), and the skill and rite text is short (Blaine).
+  Next: the net stack and the last shared scripts out of `scripts/`, one way for skills to send a target the player
+  picked, then the server refusing damage a player's game reports.
 
 ## Cutting an old system
 
@@ -193,13 +194,13 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 
 ## Status
 
-- [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
-  Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`. Shared systems out of
-  `scripts/` (2026-11-07): `game/systems/fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/` and `game/items/`.
-  Left in `scripts/`: the big shared files (`game.gd`, `hero.gd`, `net.gd`, `enemy.gd`, `ui.gd`), the net stack,
-  the screens, the world and loading (Claude-1's), and the heroes not moved yet. A skill's own sounds live in its
-  `sounds/` folder (the Archer's first).
-- [ ] 2. The Archer, end to end. Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
+- [x] 1. Folders (2026-11-07): every hero is in `game/heroes/<hero>/`, one folder per skill (rules, look, models,
+  sounds), the dragons' shared code in `game/systems/dragons/`, the shared body builder in
+  `game/systems/bodies/` (`mocap_rig.gd`; `knight_rig.gd` is left in `scripts/`). Shared systems out of `scripts/`:
+  `game/systems/fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/` and `game/items/`. Left in `scripts/`: the
+  big shared files (`game.gd`, `hero.gd`, `net.gd`, `enemy.gd`, `ui.gd`), the net stack, the screens and the camp's
+  (being archived). Some heroes' own sounds are still in `assets/audio/sfx/`.
+- [x] 2. The Archer, end to end, and every other hero after him (2026-11-07). Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
   Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his
   body and bow in `body/`, his arrow models in `weapon/`; `hero.gd`, `ui.gd` and `run_talents.gd` reach him through
@@ -210,11 +211,12 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   his arrows' look `shared/arrow_fx.gd`. Left: the burn's look chosen by class in `RunTalents` and `Enemy.ignite` (with
   the statuses work); joining FlameFx and the older FireFx (torches, campfires).
 - [ ] 3. Reference recordings: every hero's skills on still dummies (`tools/hero_reference.gd`,
-  `tools/references/<class>.json`). Left: the PvP pair through a real server, and a combat log.
-- [ ] 4. Damage and effect system. Done: the Archer's skills, wolf and rites run on the match server
-  (`game/systems/skills/server_rules.gd`, deployed to staging 2026-11-07). In progress: the Plague Doctor and the
-  Warlock. Left: the other heroes; then the server refuses damage a server-run hero's game sends (its consumables and
-  thorns go through the server first); then the gameplay core.
+  `tools/references/<class>.json`), and a PvP mode per hero through a real server (`bg_pvp_test.gd <hero>`). Left: a
+  combat log.
+- [ ] 4. Damage and effect system. Done (2026-11-07): every hero's skills, summons, rites, plain weapon swing, flasks
+  and thorns run on the match server (`game/systems/skills/server_rules.gd`); what they give the player comes back
+  through `Net.tell_self`. Left: the server refuses damage a player's game reports (`sv_enemy_hit`, `sv_pvp_hit`...),
+  PvP things' blows counted on the server, cooldowns and mana checked there; then the gameplay core.
 - [ ] 5. One data source
 - [ ] 6. Real ids
 - [ ] 7. Upgrade Godot

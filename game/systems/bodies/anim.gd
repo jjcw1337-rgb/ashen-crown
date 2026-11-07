@@ -45,13 +45,13 @@ static func impact_at(style: String) -> float:
 		"pd_transfuse": return 0.45
 		"pd_crank": return 0.97
 		"cast": return 0.55
-		"dive": return DragonSkills.DIVE_FLY.y     # the Storm Wyvern's Thunder Dive (a run skill): down on its foes
+		"dive": return 0.8       # a dive comes down on its foes (the Storm Wyvern's Thunder Dive lands its blow here)
 		"claw": return 0.45
 		"slam": return 0.58
 		"bite": return 0.5
 		"lob": return 0.55
 		"smash": return 0.58
-		"fists": return 0.75          # the Demon's skills (DemonSkills; the clips' blows, Demon.SHOTS)
+		"fists": return 0.75          # the Demon's skills (Demon; the clips' blows, DemonBody.SHOTS)
 		"icharge": return 0.5
 		"cslam": return 0.58
 		"hurl": return 0.52
@@ -69,7 +69,7 @@ static func impact_at(style: String) -> float:
 		"skirm_lunge": return 0.5       # the Fallen Skirmisher's sickle comes down at the end of the leap
 		"reaver_cleave": return 0.52    # the Reaver's axe whips through its arc
 		"stalk_hook": return 0.45       # the Stalker's claws hook across
-		# the Wraith's clips (WraithSkills.SHOTS): the first rake, the hand thrust out, the spin's strike, the slam,
+		# the Wraith's clips (WraithBody.SHOTS): the first rake, the hand thrust out, the spin's strike, the slam,
 		# the claw after the phantoms, and Eternal Night's stages
 		"rend": return 0.42
 		"siphon": return 0.5
@@ -121,7 +121,7 @@ static func kick(D: Dictionary, key: String, impulse: float) -> void:
 ## st: time, phase, move, atk (-1 or 0..1), style, block (0..1), hit (0..1)
 static func pose(rig: Node3D, st: Dictionary) -> void:
 	if rig.has_meta("dragon"):
-		Dragon.pose(rig, st)      # the dragon classes pose their own skeleton (scripts/dragon.gd)
+		Dragon.pose(rig, st)      # the dragon classes pose their own skeleton (game/systems/dragons/dragon.gd)
 		return
 	var J: Dictionary = rig.get_meta("j")
 	if rig.has_meta("crawler"):

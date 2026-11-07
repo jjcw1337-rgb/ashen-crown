@@ -19,7 +19,7 @@ extends RefCounted
 ## changed takes the codex's (`conflicts`). tools/codex_test.gd prints both; tools/codex/server.py exports on Publish.
 
 const DIR := "res://data/codex/"
-const SKILL_FIELDS := ["name", "desc", "mana", "cd", "use", "power", "range", "role", "rarity", "direction", "k"]   # (k: the skill's own numbers, Skill.val)
+const SKILL_FIELDS := ["name", "desc", "mana", "cd", "use", "power", "range", "role", "rarity", "direction", "k", "aoe"]   # (k: the skill's own numbers, Skill.val; aoe: an area at the pointer, Aiming)
 const RITE_FIELDS := ["name", "text", "max", "fx", "rarity", "k"]      # (k: a run talent's numbers, RunTalents)
 ## The fx keys a rite may use and still be live: fx_keys.json "any" (plain stats and percentages Hero.recalc /
 ## Hero.talent read for every class, plus the per-skill forms dmg:<skill>, cd:<skill>, cost:<skill>) and the class's

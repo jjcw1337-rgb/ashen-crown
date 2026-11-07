@@ -49,7 +49,7 @@ def logs(title, expr, desc):
 
 red = [{"color": "green", "value": None}, {"color": "orange", "value": 1}, {"color": "red", "value": 5}]
 add({"type": "text", "title": "", "options": {"mode": "markdown", "content":
-     "**Players and errors.** What the staging builds send (`scripts/telemetry.gd`: a performance sample a minute of play, "
+     "**Players and errors.** What the staging builds send (`game/systems/telemetry/telemetry.gd`: a performance sample a minute of play, "
      "every error and crash with where the player was and what they did), and the servers' logs (Loki). The nightly triage job "
      "(05:00) works from the same data: `tools/telemetry_query.sh issues` / `spots`. Docs: `docs/systems/telemetry.md`."}}, 0, 0, 24, 3)
 add(stat("Open issues (in range)", "SELECT count(DISTINCT fingerprint) AS issues FROM tm_error WHERE $__timeFilter(ts)",

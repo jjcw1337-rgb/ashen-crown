@@ -1,7 +1,7 @@
 {
 	"cls": "serpent",
 	"name": "Frost Serpent",
-	"fantasy": "A long, wingless dragon of pale ice-blue scale with crystal antlers and a ridge of ice shards. Swims over the ground, strikes with claw and fang and lashes its tail in a full turn.",
+	"fantasy": "A wingless ice dragon with crystal antlers. It swims over the ground, strikes with claw and fang and lashes its tail in a full turn.",
 	"directions": [
 		{
 			"id": "Frost",
@@ -26,7 +26,7 @@
 			"name": "Frost Breath",
 			"rarity": 0,
 			"direction": "Frost",
-			"desc": "The serpent lowers its head and breathes a freezing gale over everything in a cone 7 metres ahead for over a second: cold damage again and again, chilling (slowing) them; the ground frosts over and ice bursts up where it ends.",
+			"desc": "Breathe a freezing gale in a 7 m cone for over 1 s, dealing cold damage repeatedly and chilling foes. Ice bursts up where it ends.",
 			"mana": 10,
 			"cd": 0.0,
 			"use": 1.4,
@@ -37,7 +37,12 @@
 				"area",
 				"channel"
 			],
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"beat": 0.2,
+				"open": 0.15,
+				"close": 0.9
+			}
 		},
 		{
 			"id": "s_tomb",
@@ -45,7 +50,7 @@
 			"name": "Glacial Tomb",
 			"rarity": 0,
 			"direction": "Glacier",
-			"desc": "Seal the foe nearest the pointer, and all within 2.5 metres of it, in ice for 1.6 seconds. Then the tomb shatters: 180% weapon damage to each sealed foe and 90% to everything else within 3 metres.",
+			"desc": "Encase the foe nearest the pointer and all within 2.5 m in ice for 1.6 s. The tomb then shatters for 180% weapon damage, 90% to others within 3 m.",
 			"mana": 10,
 			"cd": 9.0,
 			"range": 12.0,
@@ -54,7 +59,18 @@
 				"cc"
 			],
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"pick": 3.5,
+				"r": 2.5,
+				"most": 6,
+				"hold": 1.6,
+				"chill": 0.6,
+				"chill_s": 2.0,
+				"dmg": 180,
+				"burst": 90,
+				"burst_r": 3.0
+			}
 		},
 		{
 			"id": "s_coil",
@@ -62,13 +78,20 @@
 			"name": "Crushing Coil",
 			"rarity": 0,
 			"direction": "Beast",
-			"desc": "Whip your body round in a full coil: 130% weapon damage to everything within 4.2 metres, slowing them by 45% for 2 seconds. Chilled foes are crushed for 30% more.",
+			"desc": "Coil your body around you: 130% weapon damage within 4.2 m, slowing foes 45% for 2 s. Chilled foes take 30% more.",
 			"mana": 7,
 			"cd": 0.0,
 			"use": 1.0,
 			"role": "crush what surrounds you",
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"r": 4.2,
+				"dmg": 130,
+				"chilled": 30,
+				"slow": 45,
+				"slow_s": 2.0
+			}
 		},
 		{
 			"id": "s_lance",
@@ -76,14 +99,22 @@
 			"name": "Rime Lance",
 			"rarity": 1,
 			"direction": "Frost",
-			"desc": "Breathe a line of ice spikes 10 metres ahead: 125% weapon damage to every foe on it, chilling them. A foe already chilled is frozen solid for 1 second.",
+			"desc": "Breathe a 10 m line of ice spikes: 125% weapon damage to every foe on it, chilling them. Already-chilled foes freeze for 1 s.",
 			"mana": 9,
 			"cd": 0.0,
 			"use": 1.0,
 			"range": 10.0,
 			"role": "a line of ice",
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"len": 10.0,
+				"w": 1.3,
+				"dmg": 125,
+				"chill": 0.45,
+				"chill_s": 3.0,
+				"freeze_s": 1.0
+			}
 		}
 	],
 	"rites": [
@@ -95,7 +126,7 @@
 			"run": true,
 			"direction": "Frost",
 			"max": 1,
-			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} seconds.",
+			"text": "Every {n}th hit on a chilled foe freezes it solid for {secs} s.",
 			"icon": "frost_breath",
 			"k": {
 				"n": 5.0,
@@ -141,7 +172,7 @@
 			"run": true,
 			"direction": "Beast",
 			"max": 2,
-			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
+			"text": "+{dmg:attack}% claw and bite damage and +{crit}% critical chance.",
 			"icon": "attack",
 			"fx": {
 				"dmg:attack": 15.0,
@@ -172,7 +203,7 @@
 			"run": true,
 			"direction": "Beast",
 			"max": 1,
-			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"text": "Each kill: +{dmg}% damage for {secs} s, up to {stacks} times.",
 			"icon": "t_fist",
 			"k": {
 				"dmg": 6.0,
@@ -189,7 +220,7 @@
 			"run": true,
 			"direction": "Frost",
 			"max": 3,
-			"text": "Chills last {chill_pct}% longer; Frost Breath +{dmg:frost_breath}%.",
+			"text": "Chills last {chill_pct}% longer and Frost Breath deals +{dmg:frost_breath}% damage.",
 			"icon": "frost_breath",
 			"fx": {
 				"chill_pct": 25.0,
@@ -220,7 +251,7 @@
 			"run": true,
 			"direction": "Beast",
 			"max": 2,
-			"text": "Crushing Coil reaches {coil_r}% further, hits {dmg:s_coil}% harder and heals {coil_shield}% of your life for each foe it crushes.",
+			"text": "Crushing Coil reaches {coil_r}% further, hits {dmg:s_coil}% harder and heals {coil_shield}% of your life per foe crushed.",
 			"icon": "s_coil",
 			"fx": {
 				"coil_r": 15.0,
@@ -267,7 +298,7 @@
 			"run": true,
 			"direction": "Glacier",
 			"max": 3,
-			"text": "Chills last {chill_pct}% longer; Glacial Tomb +{dmg:s_tomb}%.",
+			"text": "Chills last {chill_pct}% longer and Glacial Tomb deals +{dmg:s_tomb}% damage.",
 			"icon": "s_tomb",
 			"fx": {
 				"chill_pct": 20.0,
@@ -316,7 +347,7 @@
 			"run": true,
 			"direction": "Glacier",
 			"max": 1,
-			"text": "A blow that would kill you leaves you at {life}% life inside a shell of ice instead (once every {secs} seconds).",
+			"text": "Survive a killing blow at {life}% life inside a shell of ice, once every {secs} s.",
 			"icon": "t_armor",
 			"k": {
 				"life": 40.0,

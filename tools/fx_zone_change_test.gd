@@ -1,6 +1,6 @@
 extends SceneTree
 ## The hero's lingering skill effects (Hero.fxs) go with the zone that held their nodes (triage 2026-11-05): a Demon's
-## Molten Fists, then a zone change at once. Before Game.load_zone cleared them, DemonFistsFx.update touched the freed
+## Molten Fists, then a zone change at once. Before Game.load_zone cleared them, MoltenFistsFx.update touched the freed
 ## nodes every frame ("Trying to assign invalid previously freed instance", demon_fists_fx.gd:168).
 ## Usage: godot --headless --path . -s tools/_late.gd -- res://tools/fx_zone_change_test.gd
 var g

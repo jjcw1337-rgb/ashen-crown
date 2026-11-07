@@ -177,7 +177,7 @@ func _client() -> void:
 	var sgold: int = int((sv.get("hero", {}) as Dictionary).get("gold", 0))
 	check(FileAccess.file_exists(path) and not sv.get("in_raid", true) and _count_saved(sv) == inv0 and sgold == gold0 and held == 0, "the saved character is untouched by the run (%d items, %d gold)" % [_count_saved(sv), sgold])
 	# the run's results: Save Character (once), then Return to the lobby browser
-	var SV = load("res://scripts/survivors.gd")
+	var SV = load("res://game/systems/saves/survivors.gd")
 	SV.dir = "user://bg_test_survivors/"
 	DirAccess.make_dir_recursive_absolute(SV.dir)
 	for fn in DirAccess.get_files_at(SV.dir):

@@ -151,10 +151,12 @@ func _run() -> void:
 				# here: this script compiles before the Sfx autoload they need)
 				if str(wsk.get_script().resource_path).begins_with("res://game/heroes/warlock/"):
 					wsk.clear()
-			DemonSkills.clear(h)        # his lava on the ground would burn the fresh pack
-			DragonSkills.clear(h)       # (the Storm Wyvern's Thunderhead goes on striking where he cast it)
-			if h.pd != null:
-				h.pd.clear()  # the Plague Doctor's clouds and dome linger where he cast them, over the fresh pack
+			Demon.clear(h)        # his lava on the ground would burn the fresh pack
+			for dsk in h.kit.values():
+				if str(dsk.get_script().resource_path).begins_with("res://game/heroes/wyvern/"):
+					dsk.clear()       # (the Storm Wyvern's Thunderhead goes on striking where he cast it)
+			if h.is_plague():
+				Plague.clear(h)  # the Plague Doctor's clouds and dome linger where he cast them, over the fresh pack
 			var en2: Array = await pack(far + OFF + Vector3(0, 0, -2.5), 3)
 			var l0 := lives(en2)
 			puppet.life = 50.0
@@ -174,8 +176,8 @@ func _run() -> void:
 			SkillFx.clear(puppet)
 			h.global_position = far
 			h.end_channel()
-			WraithSkills.clear(h)
-			DemonSkills.clear(h)
+			Wraith.clear(h)
+			Demon.clear(h)
 		# the dodge roll (jj: "I never saw the roll in PvP"): his partner sees the puppet tumble
 		h.global_position = g.world.free_spot_near(h.global_position, 1.0)
 		for e in g.world.enemies_root.get_children():

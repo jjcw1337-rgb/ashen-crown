@@ -51,7 +51,7 @@ func _run() -> void:
 			nw.mesh = Flora.oak_model(k + 1, path, leaf_n)
 			nw.position = Vector3(-9.0 + k * 9.0, 0, 6.0)
 			root3.add_child(nw)
-	var kn: Node3D = Knight.build_meshy() if Knight.meshy_ok() else Knight.build(Knight.default_gear())
+	var kn: Node3D = KnightBody.build_meshy() if KnightBody.meshy_ok() else Knight.build(Knight.default_gear())
 	root3.add_child(kn)
 	kn.position = Vector3(-4.5, 0, 9.0)
 	Anim.pose(kn, {"time": 0.0})

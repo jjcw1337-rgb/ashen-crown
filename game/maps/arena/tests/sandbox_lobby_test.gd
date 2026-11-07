@@ -18,7 +18,7 @@ func _initialize() -> void:
  if args.has("--capture"):capture=args[args.find("--capture")+1]
  if role not in ["host","guest"] or not broker.begins_with("http://127.0.0.1:"):
   printerr("Sandbox fixture requires host/guest and an explicit loopback broker");quit(2);return
- load("res://scripts/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":broker}
+ load("res://game/systems/net/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":broker}
  call_deferred("run")
 func _process(_delta: float) -> bool:
  if is_instance_valid(g):g._intro_skip=true

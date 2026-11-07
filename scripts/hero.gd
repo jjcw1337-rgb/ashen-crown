@@ -92,7 +92,7 @@ var block_flash := 0.0
 ## the Hollow Sloth's blows (sloth.gd): its sweep throws you back, its slam stuns
 var shove := Vector3.ZERO
 var daze_t := 0.0
-var fog_hidden := false     # a puppet hidden from this game by the Plague Doctor's Fog (Plague._update_visibility)
+var fog_hidden := false     # a puppet hidden from this game by the Plague Doctor's Fog (PlagueFogFx.update)
 var pvs := {}               # statuses another player put on him in PvP (PvpStatus: slow, snare, harried, reveal, blight)
 var pvs_shown := -1         # what PvpStatusFx shows of them on him (bits | blight << 4)
 var net_pvs_bits := 0       # a puppet: the statuses his game says he has (PvpStatusFx bits, in his state packet)
@@ -102,19 +102,16 @@ var cc := {}                # crowd control from other players in the Battlegrou
 var hit_t := 0.0
 var cls := "knight"          # "knight", "wraith", "demon" or "warlock" (Data.CLASSES)
 var cds := {}
-var wr := {}                 # Wraith: the skills' state (WraithSkills: the tether, phantoms, the night, the claws)
 var veil_t := 0.0            # Wraith: seconds he is mist, and blows pass through him (Shadowstep, Eternal Night)
 var roll_t := -1.0          # the dodge roll on Space (Dodge): seconds into it, -1 when not rolling
 var roll_dir := Vector3.FORWARD
 var roll_cd := 0.0
-var dm := {}                 # Demon: the skills' state (DemonSkills: the charge, lava on the ground, fissures, boulders, the grip, the wrath)
 var phased := false          # (the Underworld's grade in game.gd reads it; no skill sets it now)
 var channel_t := -1.0        # a held channel (the Warlock's Drain Life): seconds held, -1 when none (ClassSkills.channel)
 ## A hero's skills that are objects (Skill, docs/content/skills.md), by skill id: made by his class's script
 var kit: Dictionary = {}
 ## The archer (archer.gd): arrows in flight (drawn: ArcherArrowFx), the spirit beasts
 var arrows: Array = []
-var pd: Plague = null           # the plague doctor's flasks, clouds, traps, poison and infection (plague.gd)
 var beasts: Array = []
 var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
 var mark = null             # the enemy the archer is shooting at: his beast goes for it first
@@ -124,9 +121,7 @@ var heal_pool := 0.0
 var mana_pool := 0.0
 var dead := false
 var dead_t := 0.0
-var charge_t := -1.0
-var charge_dir := Vector3.ZERO
-var charge_hit := {}
+var charge_t := -1.0         # a dash in progress (the Knight's Charge): seconds into it, -1 when none (ClassSkills.dash)
 var anim_time := 0.0
 var shield_rest := Transform3D()
 var trail: MeshInstance3D
@@ -155,16 +150,13 @@ var swipe_idle := 0.0
 var swipe_q := false
 var swipe_aim := Vector3.ZERO
 var swipe_keep := false
-const SLAM_RANGE := 6.0
-const SLAM_REACH := 1.25
-var slam_leap := 0.0       # Holy Slam: how far this leap carries him, and how far ahead the blade lands
-var slam_reach := SLAM_REACH
+var atk_leap := -1.0        # how far this attack's lunge carries him when a skill sets it (Holy Slam's leap): -1 for none
 var atk_target = null
 var stamina := 100.0
 var max_stamina := 100.0
 var stamina_rest := 0.0
 var hidden_t := 0.0            # Doug's Doppel-Doug: monsters can't see him while it runs (Enemy's hero_dead)
-var pied_t := 0.0              # a cream pie in the face (DougSkills, PvP): aim assist off, the screen creamed
+var pied_t := 0.0              # a cream pie in the face (Doug's Cream Pie, PvP): aim assist off, the screen creamed
 ## seconds since this hero last fought (struck, was struck, attacked or cast; jj, 2026-11-02): out of combat
 ## stamina lasts and refills better and better, up to CALM_MAX times after CALM_RAMP more seconds (calm())
 var combat_t := 999.0
@@ -224,7 +216,7 @@ func is_doug() -> bool:
 func is_plague() -> bool:
 	return cls == "plague"
 
-## The dragon classes (Obsidian Wyrm, Frost Serpent, Storm Wyvern; scripts/dragon.gd).
+## The dragon classes (Obsidian Wyrm, Frost Serpent, Storm Wyvern; their shared body game/systems/dragons/dragon.gd).
 func is_dragon() -> bool:
 	return Dragon.is_dragon(cls)
 
@@ -414,27 +406,25 @@ func cc_k() -> float:
 
 func _build_rig() -> void:
 	if is_wraith():
-		rig = Wraith.build(wraith_gear())
+		rig = WraithBody.build(wraith_gear())
 	elif is_demon():
-		rig = Demon.build(demon_gear())
+		rig = DemonBody.build(demon_gear())
 	elif is_warlock():
 		rig = Warlock.build(warlock_gear())
 	elif is_archer():
 		rig = ArcherBody.build()
 	elif is_doug():
-		rig = Doug.build_body()
+		rig = DougBody.build()
 	elif is_plague():
 		rig = Plague.build_body()
-		if pd == null:
-			pd = Plague.new(self)
 	elif is_dragon():
 		rig = Dragon.build(cls)     # posed in code every frame (Anim.pose hands it to Dragon.pose)
 	else:
 		var body := _knight_body()
 		if body == "mocap":
-			rig = Knight.build_mocap()
+			rig = KnightBody.build_mocap()
 		else:
-			rig = Knight.build(Knight.default_gear()) if body == "" else Knight.build_meshy(body == "armored")
+			rig = Knight.build(Knight.default_gear()) if body == "" else KnightBody.build_meshy(body == "armored")
 		rig.set_meta("gait", "knight")    # Anim: heavy armoured run, elbows out
 	rig.set_meta("pers", "hero")
 	radius = float(Dragon.spec(cls)["radius"]) if is_dragon() else 0.45
@@ -454,10 +444,10 @@ func _knight_body() -> String:
 	if cls != "knight":
 		return ""
 	if equipment.get("armor") == null:
-		return "plain" if Knight.meshy_ok() else ""
-	if Knight.mocap_ok():
+		return "plain" if KnightBody.meshy_ok() else ""
+	if KnightBody.mocap_ok():
 		return "mocap"
-	return "armored" if Knight.armored_ok() else ""
+	return "armored" if KnightBody.armored_ok() else ""
 
 ## Switch the character's class: new body, skills and spirit colours.
 func set_class(c: String) -> void:
@@ -477,7 +467,6 @@ func set_class(c: String) -> void:
 		talents = {}
 		tfx = {}
 	ClassSkills.clear(self)
-	pd = null                 # the plague doctor's Plague object goes with his body (a new one comes with the rig)
 	SkillFx.clear(self)
 	if rig != null:
 		rig.queue_free()
@@ -512,7 +501,7 @@ func _tint_aura() -> void:
 	(aura.process_material as ParticleProcessMaterial).color_ramp = gt
 
 func demon_gear() -> Dictionary:
-	var g := Demon.default_gear()
+	var g := DemonBody.default_gear()
 	var a = equipment.get("armor")
 	if a != null:
 		var p := Models.palette(a)
@@ -534,7 +523,7 @@ func warlock_gear() -> Dictionary:
 	return g
 
 func wraith_gear() -> Dictionary:
-	var g := Wraith.default_gear()
+	var g := WraithBody.default_gear()
 	var a = equipment.get("armor") if equipment is Dictionary else null
 	if a != null:
 		var p := Models.palette(a)
@@ -864,12 +853,12 @@ func refresh_gear() -> void:
 	if h != null and cls == "knight" and not ["armored", "mocap"].has(str(rig.get_meta("meshy", ""))):
 		var hm := Models.item_model(h)
 		(J.get("at_head", J["head"]) as Node3D).add_child(hm)
-		Knight.fit_helm(hm, rig)
+		KnightBody.fit_helm(hm, rig)
 		gear_nodes.append(hm)
 	if is_wraith():
-		Wraith.rebuild_body(rig, wraith_gear())
+		WraithBody.rebuild_body(rig, wraith_gear())
 	elif is_demon():
-		Demon.rebuild_body(rig, demon_gear())
+		DemonBody.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
 	elif is_dragon():
@@ -945,7 +934,7 @@ func _carry_weapon(delta: float) -> void:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
 	# hidden in the scabbard; on the back it stays in view
-	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy) and not rig.has_meta("bare_hands")   # the plague doctor puts his cane away to throw
+	weapon_node.visible = (in_hand or store != "hilt") and not ClassSkills.hands_busy(self) and not rig.has_meta("bare_hands")   # the plague doctor puts his cane away to throw
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
@@ -1006,7 +995,8 @@ func cmd_move(p: Vector3, direct := false) -> void:
 ## aims, and the two are independent, so he can run one way and cast another. Facing never decides
 ## where anything goes; the body only turns to show it (see _process). Each skill says in
 ## Data.SKILLS how it uses the pointer:
-##   "point"  lands on the pointer (each skill still clamps to its own range: Volley, Grasp, Hurl...)
+##   "point"  lands on the pointer (each skill still clamps to its own range: Volley, Grasp, Hurl...; an area
+##            skill, "aoe" in its data, is clamped here to its "range" too, so Aiming shows the spot it lands on)
 ##   "facing" directional: goes from the hero toward the pointer, out to the skill's "range" (projectiles,
 ##            beams, charges, lunges, frontal arcs). The name is kept for old data; it means "toward
 ##            the pointer" now. Short melee skills (range < MELEE_RANGE) bend onto a foe within AIM_CONE_MELEE
@@ -1066,6 +1056,8 @@ func skill_aim(id: String, at: Vector3) -> Vector3:
 		return at
 	match String(s.get("aim", "facing")):
 		"point":
+			if s.has("aoe"):
+				return _in_range(at, float(s.get("range", 0.0)))
 			return at
 		"self":
 			return global_position + facing()
@@ -1080,6 +1072,16 @@ func skill_aim(id: String, at: Vector3) -> Vector3:
 	# the pointer itself when it's in range (so a beam or a tether latches on what's under it), else
 	# the point on its line at full range; either way the direction is the pointer's
 	var p := global_position + dir * minf(maxf(to.length(), 0.5), rng)
+	p.y = game.world.height_at(p.x, p.z) if game != null and game.world != null else at.y
+	return p
+
+## An area skill's spot ("aoe" in its data): the pointer, or the point on its line at the skill's range when it is
+## further (where its rules put it; Aiming shows the same spot before the click).
+func _in_range(at: Vector3, rng: float) -> Vector3:
+	var to := (at - global_position) * Vector3(1, 0, 1)
+	if rng <= 0.0 or to.length() <= rng:
+		return at
+	var p := global_position + to.limit_length(rng)
 	p.y = game.world.height_at(p.x, p.z) if game != null and game.world != null else at.y
 	return p
 
@@ -1135,14 +1137,14 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	var L: Array = SWIPE_LUNGE[atk_style]
 	var f0 := clampf((a0 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
 	var f1 := clampf((a1 - L[0]) / (L[1] - L[0]), 0.0, 1.0)
-	var slam := atk_style == "cleave" and atk_skill in ["cleave", "k_rites"]
-	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * (slam_leap if slam else float(L[2]))
+	var slam := atk_leap >= 0.0
+	var d: float = (smoothstep(0.0, 1.0, f1) - smoothstep(0.0, 1.0, f0)) * (atk_leap if slam else float(L[2]))
 	if d <= 0.0:
 		return
 	# along the aim taken when the swing started, not the body's facing
 	var fwd := aim_dir()
 	if slam:
-		# Holy Slam leaps to the spot aimed at, sliding round anything solid on the way
+		# a skill's leap (Holy Slam's) to the spot aimed at, sliding round anything solid on the way
 		global_position = game.world.move(global_position, fwd * d)
 		return
 	# don't step through a foe that's already in reach
@@ -1154,25 +1156,61 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	global_position = game.world.move(global_position, fwd.normalized() * d)
 
 func _swipe_impact() -> void:
-	var fwd := aim_dir()
-	var fin := atk_style == "swipe3"
+	# a class may deal its swing its own way (the plague doctor's cane: each blow leaves its mark, decided where his
+	# rules run)
+	if ClassSkills.swing(self, atk_style):
+		return
+	if not decides():
+		_send_swing(null)
+		return
+	_swipe_blows(atk_style, aim_dir())
+
+## A weapon swing whose blows the match server decides (this hero's skills run there: ServerRules): its game sends
+## the swing, and the server's copy of it strikes with its own positions (server_swing).
+func _send_swing(tg) -> void:
+	var ids: PackedInt64Array = SkillFx.encode(game.net, {"t": [tg] if is_instance_valid(tg) else []})["t"]
+	game.net.send_skill_make("attack", "swing", {"style": atk_style, "fwd": aim_dir(), "t": ids, "at": global_position})
+
+## Match server: a player's swing, struck by its copy here (ServerRules.received "attack" "swing"), from where their
+## game swung it (`at`) when that's near where the server has them (the copy lags a step behind them). False when it
+## doesn't add up (a style it can't swing, faster than it swings, too far from where the server has them).
+func server_swing(style: String, fwd: Vector3, tg, at = null) -> bool:
+	var now := Time.get_ticks_msec()
+	if style.length() > 16 or now - _last_swing_ms < 150:
+		return false
+	if at is Vector3:
+		if (at as Vector3).distance_to(global_position) > SWING_SLACK:
+			return false
+		global_position = at
+	_last_swing_ms = now
+	fwd = (fwd * Vector3(1, 0, 1)).normalized() if fwd.length() > 0.01 else facing()
+	if style.begins_with("swipe"):
+		_swipe_blows(style, fwd)
+	else:
+		_plain_blow(tg, fwd)
+	return true
+
+var _last_swing_ms := 0
+## How far a swing's spot may be from where the match server has the player (its copy is a few frames behind them).
+const SWING_SLACK := 4.0
+
+func _swipe_blows(style: String, fwd: Vector3) -> void:
+	var fin := style == "swipe3"
 	var rng := reach() + (1.0 if fin else 0.55)
 	var arc := 181.0 if fin else 70.0
-	var mult := 1.0 if atk_style == "swipe1" else (1.15 if atk_style == "swipe2" else 1.7)
+	var mult := 1.0 if style == "swipe1" else (1.15 if style == "swipe2" else 1.7)
 	var any := false
 	var struck := []
 	for e in game.enemies_near(global_position, rng + 1.5):
 		var to: Vector3 = e.global_position - global_position
 		to.y = 0
-		if to.length() - e.radius > rng:
+		if to.length() - e.radius > rng or ServerRules.friend(self, e):
 			continue
 		if to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(arc)):
 			_hit_enemy(e, mult, 0.9 if fin else 0.2)
 			fx("attack", "hit", {"p": e.global_position + Vector3(0, 1.1 * e.height, 0), "c": trail_col.lerp(Color(1.0, 0.75, 0.4), 0.5)})
 			any = true
 			struck.append(e)
-	if pd != null:
-		pd.cane_blow(atk_style, struck)      # the plague doctor's blows each leave something of his own
 	if fin:
 		fx("attack", "finisher", {"r": rng, "x": any})
 		if any and _mine():
@@ -1261,26 +1299,11 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 	break_invis()
 	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
-	if atk_t >= 0.0 and atk_skill != "" and is_demon() and DemonSkills.recast(self, id):
+	if atk_t >= 0.0 and atk_skill != "" and ClassSkills.recast(self, id):
 		return true
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
-	var sk: Dictionary = {}
-	for s in skill_list() + Data.shared_skills():
-		if s["id"] == id:
-			sk = s
-	if sk.is_empty() or (skill_locked(sk) and not game.test_allskills):
-		if _mine():
-			game.ui.message(("%s isn't learned yet" % sk["name"]) if run != null else ("Requires level %d" % sk.get("lvl", 1)), Color(1, 0.4, 0.3))
-		return false
-	if cds.get(id, 0.0) > 0.0:
-		if _mine():
-			game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
-		return false
-	if mana < skill_cost(id):
-		if _mine():
-			game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
-		Sfx.play("deny")
+	if skill_denied(id):
 		return false
 	# the class's own checks (a foe to latch onto or seize, ...) before anything is spent
 	if not ClassSkills.can_cast(self, id, aim):
@@ -1295,12 +1318,34 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 		RunTalents.on_cooldown(self, id)
 	atk_aim = aim
 	_face(aim - global_position)
-	# the class's skills script starts it (ClassSkills.of: KnightSkills, WraithSkills, DemonSkills, ...)
+	# the class's skills script starts it (ClassSkills.of: KnightSkills, Wraith, Demon, ...)
 	ClassSkills.cast(self, id, aim)
 	SkillSpec.apply_timing(self, id)      # (a "use" in the skill's data sets its length)
 	# the cast itself, seen by everyone (SkillFx: the class draws it, or the default puff shows it)
 	fx(id, "cast", {"p": atk_aim})
 	return true
+
+## Is the skill kept from casting by its lock, its cooldown or its mana? Tells his player why. A cast checks this, and
+## so does arming an area skill for click to cast (Aiming).
+func skill_denied(id: String) -> bool:
+	var sk: Dictionary = {}
+	for s in skill_list() + Data.shared_skills():
+		if s["id"] == id:
+			sk = s
+	if sk.is_empty() or (skill_locked(sk) and not game.test_allskills):
+		if _mine():
+			game.ui.message(("%s isn't learned yet" % sk.get("name", id)) if run != null else ("Requires level %d" % sk.get("lvl", 1)), Color(1, 0.4, 0.3))
+		return true
+	if cds.get(id, 0.0) > 0.0:
+		if _mine():
+			game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
+		return true
+	if mana < skill_cost(id):
+		if _mine():
+			game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
+		Sfx.play("deny")
+		return true
+	return false
 
 func drink(slot: int) -> void:
 	if dead or slot < 0 or slot > 3 or belt[slot] == null:
@@ -1358,6 +1403,7 @@ func _start_attack(style: String, skill := "", secs := 0.0) -> void:
 	if not pvs.is_empty():
 		atk_dur *= PvpStatus.act_mult(self)       # harried (PvP)
 	impact_done = false
+	atk_leap = -1.0
 	trail_pts.clear()
 	trail_col = ClassSkills.trail_color(cls, skill)
 	var w = equipment.get("weapon")
@@ -1402,8 +1448,6 @@ func _face(d: Vector3) -> void:
 		rig.rotation.y = atan2(-d.x, -d.z)
 
 func reach() -> float:
-	if is_dragon():
-		return Dragon.reach(cls)
 	var r := ClassSkills.reach(self)
 	return r if r > 0.0 else 1.7
 
@@ -1477,8 +1521,7 @@ func _hit_enemy(e, mult: float, knock: float = 0.0, src := "", flat := 0.0) -> v
 		game.net.tell_dealt(self, e.global_position, dealt, r["crit"])      # (the number on the player's screen)
 	if run != null:
 		RunTalents.on_hit(self, e, dealt, r["crit"], src)
-		if cls == "knight" and src != "k_judgment" and run.skills.has("k_judgment"):
-			KnightSkills.brand(self, e)      # Holy Brands, for Judgment to spend
+		ClassSkills.struck(self, e, src)      # a class's own mark on what its blows strike (the Knight's Holy Brands)
 		if is_instance_valid(e) and e.has_meta("deathmark") and e.get_meta("deathmark").get("h") == self:
 			e.get_meta("deathmark")["stored"] = float(e.get_meta("deathmark")["stored"]) + dealt      # (Death Mark's store)
 	if ls > 0.0:
@@ -1543,8 +1586,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	var fwd := -rig.global_transform.basis.z
 	var facing := fwd.dot(to_src.normalized()) > cos(deg_to_rad(80.0))
 	var has_shield: bool = equipment.get("shield") != null
-	if pd != null:
-		dmg = pd.absorb(dmg)     # the Plague Doctor's Transfusion soaks part of it into his tanks
+	dmg = ClassSkills.taken(self, dmg)     # (the Plague Doctor's Transfusion soaks part of it into his tanks)
 	var shield_pos := global_position + Vector3(0, 1.2, 0) + fwd * 0.5
 	if block_amt > 0.5 and facing:
 		var reduce := maxf(0.05, 0.2 - talent("block_dr") / 100.0)     # Block: 80% less damage from the front
@@ -1571,10 +1613,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		dmg *= 120.0 / (120.0 + a)
 	else:
 		dmg *= 1.0 - res / 100.0
-	if is_demon():
-		dmg = DemonSkills.absorb(self, dmg)      # Wrath of the Pit's Crucible
 	dmg = maxf(1.0, dmg)
-	dmg = ClassSkills.absorb(self, dmg)      # a class's own ward (the Warlock's shield: Blood Ward, the Soul Feast)
+	dmg = ClassSkills.absorb(self, dmg)      # a class's own ward (the Warlock's shield; the Demon's Crucible)
 	if ward > 0.0:
 		var soak := minf(ward, dmg)
 		ward -= soak
@@ -1603,7 +1643,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if _mine():
 		game.ui.flash_damage()
 	# Doug in his clown car is unstoppable: blows land, their stuns and slows don't
-	if DougSkills.driving(self) and kind in ["sweep", "quake", "chill", "freeze", "shock", "root", "slip"]:
+	if ClassSkills.unstoppable(self) and kind in ["sweep", "quake", "chill", "freeze", "shock", "root", "slip"]:
 		kind = "melee"
 	# the Hollow Sloths' blows: thrown back, stunned, chilled, frozen solid, shocked
 	match kind:
@@ -1624,8 +1664,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 			Fx.number(game.world.fx_root, global_position + Vector3(0, 2.6, 0), "Frozen", Color(0.6, 0.9, 1.0))
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 1.0, 0), Color(0.8, 0.95, 1.0), 30, 1.5, 0.15, 1.0, true, -1.0)
 		"slip":
-			# a banana peel (DougSkills): down for a moment, sliding on the way he was going
-			if not DougSkills.driving(self):
+			# a banana peel (Doug's): down for a moment, sliding on the way he was going
+			if not ClassSkills.unstoppable(self):
 				daze_t = maxf(daze_t, 0.7 * cc_k())
 				var dir := facing()
 				shove = dir * 6.0
@@ -1666,8 +1706,6 @@ func _process_body(delta: float) -> void:
 	anim_time += delta
 	if puppet:
 		_puppet_process(delta)
-		if pd != null:
-			pd.update(delta)       # a partner plague doctor's flasks and clouds (shown only)
 		return
 	Hero.striker = self
 	if run != null:
@@ -1768,8 +1806,8 @@ func _process_body(delta: float) -> void:
 		exhausted = false
 	if exhausted and stamina >= max_stamina * 0.3:
 		exhausted = false
-	var speed := 4.8 * (1.0 + frw / 100.0 + (float(stats.get("dash", 0)) / 100.0 if dash_t > 0.0 else 0.0)) * (Battlegrounds.MOVE_MULT if raid_rules() else 1.0) * DougSkills.car_mult(self)
-	speed *= ClassSkills.pace(self)      # (a class's own pace: the archer beside his wolf)
+	var speed := 4.8 * (1.0 + frw / 100.0 + (float(stats.get("dash", 0)) / 100.0 if dash_t > 0.0 else 0.0)) * (Battlegrounds.MOVE_MULT if raid_rules() else 1.0)
+	speed *= ClassSkills.pace(self)      # (a class's own pace: the archer beside his wolf, Doug in his clown car)
 	if running:
 		speed *= 1.6
 	if phased:
@@ -1798,13 +1836,11 @@ func _process_body(delta: float) -> void:
 			speed = 0.0
 	if not pvs.is_empty() or pvs_shown > 0 or cc.has("slow"):
 		PvpStatusFx.sync(self, PvpStatusFx.bits_of(self), PvpStatusFx.blight_of(self))
-	if pd != null:
-		speed *= pd.speed_mult()     # quicker in his own fog, slower with the needle in his arm
 
 	if roll_t >= 0.0:
 		vel = Dodge.step(self, delta)
 	elif charge_t >= 0.0:
-		KnightSkills.update_charge(self, delta)
+		ClassSkills.dash(self, delta)      # a dash (the Knight's Charge) moves him in place of his walking
 	else:
 		if atk_t >= 0.0:
 			_update_attack(delta)
@@ -1913,8 +1949,7 @@ func _process_body(delta: float) -> void:
 		carry.update(self, delta)
 		st.merge(carry.anim_state(), true)
 		_carry_weapon(delta)
-		if pd != null:
-			pd.idle_fidget(st, delta)   # now and then, standing about, he peers at a vial
+		ClassSkills.pose(self, st, delta)   # (a class's own idle: now and then the plague doctor peers at a vial)
 	if Enemy.server_nopose:
 		last_pose = st      # (no body to pose on the server, but a match's bot sends its pose: Net._hero_packet)
 		return
@@ -1933,7 +1968,7 @@ func _process_body(delta: float) -> void:
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
 	if is_demon():
-		Demon.animate(rig, anim_time, move_amt, self)
+		DemonBody.animate(rig, anim_time, move_amt, self)
 		return
 	if not is_wraith() or dead or _floats():
 		return
@@ -2097,7 +2132,7 @@ func _puppet_process(delta: float) -> void:
 	# Plague Doctor's hands are on a skill
 	if trail_pts.is_empty():
 		trail_col = ClassSkills.trail_color(cls, "")
-	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (is_doug() and str(st.get("style", "")) in Doug.SKILL_STYLES) and not (pd != null and pd.hands_busy))
+	_update_trail(atk_t >= 0.0 and not has_bow() and not is_dragon() and not (is_doug() and str(st.get("style", "")) in Doug.SKILL_STYLES) and not ClassSkills.hands_busy(self))
 
 func _apply_shield_pose() -> void:
 	if shield_node == null or not is_instance_valid(shield_node):
@@ -2121,7 +2156,7 @@ func _update_attack(delta: float) -> void:
 	atk_t += delta
 	var a := atk_t / atk_dur
 	var swipe := atk_skill == "" and SWIPE_LUNGE.has(atk_style)
-	if swipe or (atk_skill in ["cleave", "k_rites"] and atk_style == "cleave"):
+	if swipe or (atk_leap >= 0.0 and SWIPE_LUNGE.has(atk_style)):
 		_swipe_lunge(a0, a)
 	if not impact_done and a >= Anim.impact_at(atk_style):
 		impact_done = true
@@ -2135,8 +2170,8 @@ func _update_attack(delta: float) -> void:
 		var done_skill := atk_skill
 		atk_t = -1.0
 		atk_skill = ""
-		if is_demon() and done_skill != "":
-			DemonSkills.stage_done(self, done_style, done_skill)
+		if done_skill != "":
+			ClassSkills.stage_done(self, done_style, done_skill)     # (a skill of several clips: the Demon's)
 		if swipe and atk_style == "swipe3":
 			swipe_n = 0
 
@@ -2156,30 +2191,35 @@ func _impact_body() -> void:
 			if atk_style.begins_with("swipe"):
 				_swipe_impact()
 				return
-			var hit_any := false
-			var tg = atk_target
-			if is_instance_valid(tg) and tg is Enemy and not tg.dead:
-				var d := Vector2(tg.global_position.x - global_position.x, tg.global_position.z - global_position.z).length()
-				if d <= reach() + tg.radius + 0.7:
-					_hit_enemy(tg, 1.0, 0.15)
-					fx("attack", "hit", {"p": tg.global_position + Vector3(0, 1.1 * tg.height, 0)})
-					hit_any = true
-			if not hit_any:
-				# free swing: strike the nearest foe in a frontal arc
-				var best = null
-				var bd := 99.0
-				for e in game.enemies_near(global_position, reach() + 1.6):
-					var to: Vector3 = e.global_position - global_position
-					to.y = 0
-					var dd: float = to.length() - e.radius
-					if dd <= reach() + 0.4 and (to.length() < 0.4 or fwd.dot(to.normalized()) > cos(deg_to_rad(60.0))) and dd < bd:
-						bd = dd
-						best = e
-				if best != null:
-					_hit_enemy(best, 1.0, 0.15)
-					fx("attack", "hit", {"p": best.global_position + Vector3(0, 1.1 * best.height, 0)})
-					hit_any = true
+			if not decides():
+				_send_swing(atk_target)
+			else:
+				_plain_blow(atk_target, fwd)
 	stats_changed.emit()
+
+## A plain weapon blow: on the foe it was swung at if it's still in reach, else the nearest foe in a frontal arc.
+func _plain_blow(tg, fwd: Vector3) -> void:
+	if is_instance_valid(tg) and tg is Enemy and not tg.dead and not ServerRules.friend(self, tg):
+		var d := Vector2(tg.global_position.x - global_position.x, tg.global_position.z - global_position.z).length()
+		if d <= reach() + tg.radius + 0.7:
+			_hit_enemy(tg, 1.0, 0.15)
+			fx("attack", "hit", {"p": tg.global_position + Vector3(0, 1.1 * tg.height, 0)})
+			return
+	# free swing: strike the nearest foe in a frontal arc
+	var best = null
+	var bd := 99.0
+	for e in game.enemies_near(global_position, reach() + 1.6):
+		if ServerRules.friend(self, e):
+			continue
+		var to: Vector3 = e.global_position - global_position
+		to.y = 0
+		var dd: float = to.length() - e.radius
+		if dd <= reach() + 0.4 and (to.length() < 0.4 or fwd.dot(to.normalized()) > cos(deg_to_rad(60.0))) and dd < bd:
+			bd = dd
+			best = e
+	if best != null:
+		_hit_enemy(best, 1.0, 0.15)
+		fx("attack", "hit", {"p": best.global_position + Vector3(0, 1.1 * best.height, 0)})
 
 # ---------------------------------------------------------------- a held channel
 ## The channel lets go (a move, a click, another skill, a dodge): its class's script ends it (ClassSkills.end_channel).
@@ -2532,9 +2572,9 @@ func from_save(d: Dictionary) -> void:
 	Items.upgrade_all([equipment, inventory, belt])
 	run = RunBuild.from_dict(d["run"]) if d.get("run") is Dictionary else null
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
-	WraithSkills.migrate_binds(binds)
-	DemonSkills.migrate_binds(binds)
-	PlagueSkills.migrate_binds(binds)
+	Wraith.migrate_binds(binds)
+	Demon.migrate_binds(binds)
+	Plague.migrate_binds(binds)
 	# saves from before the Path of Exile controls had Block on right mouse by default: it becomes the first skill
 	if int(d.get("binds_v", 1)) < 2 and str(binds.get("rmb", "")) == "block":
 		binds.erase("rmb")

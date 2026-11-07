@@ -60,7 +60,7 @@ func _run() -> void:
 	ground.mesh = pm
 	ground.material_override = Mats.mat(Color(0.2, 0.21, 0.16), 0.95)
 	root3.add_child(ground)
-	var a := _body(root3, Knight.MOCAP_GLB, -0.95)
+	var a := _body(root3, KnightBody.MOCAP_GLB, -0.95)
 	var b := _body(root3, cand, 0.95)
 	var cam := Camera3D.new()
 	root3.add_child(cam)

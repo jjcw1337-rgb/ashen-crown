@@ -18,7 +18,7 @@ into issues by fingerprint, counted per player and build, with the stack line, t
 last actions, ranked worst first, plus crash detection) is a small amount of code on what we already run. Loki is the
 other half: every raw line the servers print, searchable by time and text.
 
-## What the game sends (`scripts/telemetry.gd`, `Telemetry`)
+## What the game sends (`game/systems/telemetry/telemetry.gd`, `Telemetry`)
 
 On in cloud builds that aren't production (staging); in production only if `user://settings.cfg` has
 `[telemetry] on=true` (a settings toggle is still to come); never in tools, tests, screenshots or KPI runs. The

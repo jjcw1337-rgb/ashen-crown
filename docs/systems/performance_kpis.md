@@ -6,7 +6,7 @@ three times on each side, on the same machine, nothing else running.
 
 ## Scenarios
 
-Each is a scripted scene (`scripts/kpi.gd`, `SCENARIOS`), deterministic (fixed seeds, paths and spawns), the hero
+Each is a scripted scene (`game/systems/telemetry/kpi.gd`, `SCENARIOS`), deterministic (fixed seeds, paths and spawns), the hero
 immortal. Each loads its zone (timed), settles 4 s (shaders compile, monsters wake), then is measured for its
 seconds, every frame. Run one yourself, in any build:
 `AshenCrown -- --kpi <scenario> out.json [--quality 0-3] [--secs N]` (writes out.json and out.png, then quits).
@@ -35,7 +35,7 @@ Compare at **High** (preset 2) on the Game Factory Mac (Apple M6) unless the cha
 | `load_ms` | Entering the zone: `Game.load_zone` start to ready (for `server`: engine start to the raid being up) | **≤ 3000** |
 | `cpu_process_peak_ms` | Godot's `TIME_PROCESS`: the slowest frame's main-thread process time in each second, averaged | ≤ 16 |
 | `cpu_physics_peak_ms` | The same for the physics step | ≤ 4 |
-| `script_ms` | Every node's `_process` in a frame (average), timed between two probe nodes processed first and last (`scripts/kpi_probe.gd`). `cpu_process_peak_ms` includes drawing and the wait for the GPU, so this is the scripts' real cost | ≤ 8 |
+| `script_ms` | Every node's `_process` in a frame (average), timed between two probe nodes processed first and last (`game/systems/telemetry/kpi_probe.gd`). `cpu_process_peak_ms` includes drawing and the wait for the GPU, so this is the scripts' real cost | ≤ 8 |
 | `physics_ms`, `render_cpu_ms` | The same for `_physics_process`; the renderer's CPU time (viewport render + frame setup) | |
 | `gpu_ms` | GPU time per frame (`viewport_get_measured_render_time_gpu`); far below the frame time = the CPU is the limit | ≤ 12 |
 | `draw_calls` | Draw calls per frame (average) | ≤ 2000 |

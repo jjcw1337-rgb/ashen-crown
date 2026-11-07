@@ -111,6 +111,7 @@ var ground_pt := Vector3.ZERO
 var lmb_held := false
 var lmb_repeat := 0.0
 var rmb_held := false
+var aiming: Aiming        # click to cast for area skills (game/systems/skills/aiming.gd); AimIndicator draws it
 const BIND_KEYCODES := {"Q": KEY_Q, "E": KEY_E, "R": KEY_R, "F": KEY_F, "G": KEY_G, "V": KEY_V}
 var exit_grace := 0.0
 var test_block := false        # a tool holding the guard up (game/heroes/archer/tools/fire_range.gd's "block" take)
@@ -158,6 +159,10 @@ func _ready() -> void:
 	else:
 		set_sound(bool(_load_setting("audio", "sound_on", true)))
 	click_move = bool(_load_setting("controls", "click_move", false))
+	aiming = Aiming.new(self)
+	add_child(aiming)
+	if not args.has("--server"):
+		add_child(AimIndicator.new(aiming))
 	_setup_env()
 	weather = Weather.new()
 	weather.name = "Weather"
@@ -192,16 +197,16 @@ func _ready() -> void:
 		add_child(cloud)
 		_cloud_start()
 	if Telemetry.wanted():
-		add_child(Telemetry.new(self))      # player telemetry and error reports (scripts/telemetry.gd)
+		add_child(Telemetry.new(self))      # player telemetry and error reports (game/systems/telemetry/telemetry.gd)
 	if Kpi.start(self):
-		return       # the official performance KPIs (scripts/kpi.gd): a scripted scenario, measured, then quit
+		return       # the official performance KPIs (game/systems/telemetry/kpi.gd): a scripted scenario, measured, then quit
 	if args.has("--server"):
 		Enemy.server_nopose = not args.has("--pose")      # nobody sees a server's bodies (Enemy.server_nopose)
 		# the Battlegrounds' dedicated server: `godot --headless --path . -- --server [--port N]`
 		var pi := args.find("--port")
 		var port := int(args[pi + 1]) if pi >= 0 and pi + 1 < args.size() else Net.PORT
 		if args.has("--match-config"):
-			match_instance = load("res://scripts/match_instance.gd").new()
+			match_instance = load("res://game/systems/net/match_instance.gd").new()
 			add_child(match_instance)
 			await match_instance.start(self, args[args.find("--match-config") + 1], port)
 		else:
@@ -775,7 +780,7 @@ func _setup_post() -> void:
 	sh.code = """
 shader_type canvas_item;
 uniform float strength = 0.6;
-uniform float night = 0.0;         // the Wraith's Eternal Night: violet dark closing in from the edges (WraithFx.set_night)
+uniform float night = 0.0;         // the Wraith's Eternal Night: violet dark closing in from the edges (EternalNightFx.set_night)
 uniform float grain = 0.0;         // film grain (Grade.LOOKS): a faint flicker of light and dark specks, new every 1/24 s
 float ghash(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void fragment(){
@@ -2827,6 +2832,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT:
 			if ev.pressed and not paused:
+				if aiming.armed():
+					_update_hover()
+					aiming.confirm(_cursor_aim())      # (click to cast: the click casts the armed skill, no swing, no walk)
+					return
 				lmb_held = true
 				lmb_repeat = 0.12
 				_update_hover()
@@ -2858,7 +2867,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			return
 		match ev.keycode:
 			KEY_ESCAPE:
-				if not ui.close_all():
+				if aiming.armed():
+					aiming.cancel()
+				elif not ui.close_all():
 					toggle_pause()
 			KEY_I, KEY_B, KEY_K, KEY_N when hero.run != null:
 				# a run character's one build window (RunUI): skills, spellbook, passives, gear, consumables
@@ -2979,6 +2990,8 @@ func _use_bind(slot: String, first: bool) -> void:
 			_update_hover()
 			hero.swipe_attack(_cursor_aim())
 			return
+	if aiming.press(id, first, slot in Hero.BIND_KEYS):
+		return      # (click to cast: an area skill's key arms it, Aiming)
 	if first or hero.skill_ready(id):
 		cast_skill(id)
 
@@ -3029,7 +3042,7 @@ func _process(delta: float) -> void:
 		Battlegrounds.sync_proxies(self)
 	if (arena_mode or bg_mode) and net.active and not net.server:
 		ServerRules.client_tick(self, delta)      # (the build the server's copy of this player deals its skills with)
-	elif net.server and bg != null:
+	elif net != null and net.server and bg != null:
 		Battlegrounds.sync_proxies(self)      # (the server's own stand-ins: what players' skills run here strike)
 	if bg_mode:
 		Battlegrounds.sync_proxies(self)

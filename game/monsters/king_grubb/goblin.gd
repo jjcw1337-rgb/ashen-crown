@@ -218,7 +218,7 @@ static func build(kind: String) -> Node3D:
 	var gw: float = lerpf(0.72, 1.0, k["girth"])
 	var root := Node3D.new()
 	root.name = "Rig"
-	root.set_script(load("res://scripts/knight_rig.gd"))
+	root.set_script(load("res://game/systems/bodies/knight_rig.gd"))
 	var J := {}
 	var hips := Models.N(root, "hips", Vector3(0, HIPS_Y, 0))
 	J["hips"] = hips

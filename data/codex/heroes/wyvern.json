@@ -1,7 +1,7 @@
 {
 	"cls": "wyvern",
 	"name": "Storm Wyvern",
-	"fantasy": "A rearing two-legged dragon whose wings are its forelimbs, with lightning veined through the membranes. Strikes with its wing claws, bites, and whips its barbed tail round.",
+	"fantasy": "A two-legged dragon whose wings are its forelimbs, veined with lightning. It strikes with wing claws and bites, and whips its barbed tail.",
 	"directions": [
 		{
 			"id": "Storm",
@@ -26,7 +26,7 @@
 			"name": "Storm Arc",
 			"rarity": 0,
 			"direction": "Storm",
-			"desc": "The wyvern rears up, the lightning in its wings flaring, and breathes a bolt into the nearest foe ahead that leaps on to four more nearby, striking each.",
+			"desc": "Breathe a bolt into the nearest foe ahead. It leaps to 4 more nearby.",
 			"mana": 6,
 			"cd": 0.0,
 			"use": 0.75,
@@ -36,7 +36,11 @@
 				"lightning",
 				"chain"
 			],
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"jumps": 4,
+				"hop": 5.0
+			}
 		},
 		{
 			"id": "v_dive",
@@ -44,7 +48,7 @@
 			"name": "Thunder Dive",
 			"rarity": 0,
 			"direction": "Sky",
-			"desc": "Climb on your wings and dive onto the pointer (12 metres) in a strike of lightning: 240% weapon damage within 4 metres, stunning them for 0.8 seconds.",
+			"desc": "Dive onto the pointer (12 m) in a strike of lightning: 240% weapon damage within 4 m, stunning foes for 0.8 s.",
 			"mana": 12,
 			"cd": 8.0,
 			"range": 12.0,
@@ -53,7 +57,12 @@
 				"movement"
 			],
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"r": 4.0,
+				"dmg": 240,
+				"stun_s": 0.8
+			}
 		},
 		{
 			"id": "v_cloud",
@@ -61,14 +70,26 @@
 			"name": "Thunderhead",
 			"rarity": 1,
 			"direction": "Storm",
-			"desc": "Roar up a storm cloud over the pointer for 4 seconds: every half second it strikes a foe beneath it (within 5 metres) for 45% weapon damage. At most two at once.",
+			"desc": "Summon a storm cloud over the pointer for 4 s. Every 0.5 s it strikes a foe within 5 m for 45% weapon damage. Max 2 clouds.",
 			"mana": 14,
 			"cd": 0.0,
 			"use": 1.1,
 			"range": 13.0,
+			"aoe": {
+				"r": "r"
+			},
 			"role": "a storm over a crowd",
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"secs": 4.0,
+				"r": 5.0,
+				"first": 0.25,
+				"every": 0.5,
+				"most": 2,
+				"dmg": 45,
+				"stun_s": 0.5
+			}
 		},
 		{
 			"id": "v_gale",
@@ -76,7 +97,7 @@
 			"name": "Gale Wings",
 			"rarity": 0,
 			"direction": "Sky",
-			"desc": "One great beat of your wings: everything in a cone 6.5 metres ahead takes 100% weapon damage, is hurled back and slowed by 40% for 2.5 seconds.",
+			"desc": "Beat your wings: everything in a 6.5 m cone ahead takes 100% weapon damage, is hurled back and slowed 40% for 2.5 s.",
 			"mana": 8,
 			"cd": 6.0,
 			"range": 6.5,
@@ -85,7 +106,14 @@
 				"cc"
 			],
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"r": 6.5,
+				"half": 40.0,
+				"dmg": 100,
+				"slow": 40,
+				"slow_s": 2.5
+			}
 		}
 	],
 	"rites": [
@@ -128,7 +156,7 @@
 			"run": true,
 			"direction": "Beast",
 			"max": 2,
-			"text": "Claws and bites deal +{dmg:attack}%; +{crit}% critical chance.",
+			"text": "+{dmg:attack}% claw and bite damage and +{crit}% critical chance.",
 			"icon": "attack",
 			"fx": {
 				"dmg:attack": 15.0,
@@ -159,7 +187,7 @@
 			"run": true,
 			"direction": "Beast",
 			"max": 1,
-			"text": "Each kill: +{dmg}% damage for {secs} seconds, up to {stacks} times.",
+			"text": "Each kill: +{dmg}% damage for {secs} s, up to {stacks} times.",
 			"icon": "t_fist",
 			"k": {
 				"dmg": 6.0,
@@ -176,7 +204,7 @@
 			"run": true,
 			"direction": "Storm",
 			"max": 3,
-			"text": "Storm Arc and Arc deal +{dmg:storm_arc}%.",
+			"text": "Storm Arc and Arc deal +{dmg:storm_arc}% damage.",
 			"icon": "storm_arc",
 			"fx": {
 				"dmg:storm_arc": 15.0,
@@ -238,7 +266,7 @@
 			"run": true,
 			"direction": "Sky",
 			"max": 3,
-			"text": "+{frw}% run speed; Thunder Dive {cd:v_dive}% sooner.",
+			"text": "+{frw}% run speed, and Thunder Dive recharges {cd:v_dive}% faster.",
 			"icon": "v_gale",
 			"fx": {
 				"frw": 4.0,
@@ -253,7 +281,7 @@
 			"run": true,
 			"direction": "Sky",
 			"max": 3,
-			"text": "+{dex} Dexterity; Thunder Dive and Gale Wings +{dmg:v_dive}%.",
+			"text": "+{dex} dexterity, and Thunder Dive and Gale Wings deal +{dmg:v_dive}% damage.",
 			"icon": "v_dive",
 			"fx": {
 				"dex": 4.0,
@@ -269,7 +297,7 @@
 			"run": true,
 			"direction": "Sky",
 			"max": 2,
-			"text": "Each kill: +{frw}% run speed for {secs} seconds.",
+			"text": "Each kill: +{frw}% run speed for {secs} s.",
 			"icon": "v_dive",
 			"k": {
 				"frw": 15.0,

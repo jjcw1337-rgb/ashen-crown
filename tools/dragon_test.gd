@@ -3,8 +3,8 @@ extends SceneTree
 ## and the joints the hero code reads, it walks and sprints (the legs, tail and body actually move), its basic attack
 ## (claw, bite, tail spin) hurts monsters with no weapon equipped, it blocks, dies and revives, its sounds are in the
 ## bank, and the class picker spreads the three round the ring with none side by side.
-## Prints [G] lines ("FAIL" marks a check that failed).
-##   godot --headless --path . -s tools/dragon_test.gd --fixed-fps 60
+## Prints [G] lines ("FAIL" marks a check that failed). It reaches the Sfx autoload (the class picker), so it runs late:
+##   godot --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://tools/dragon_test.gd
 var g
 var fails := 0
 const KINDS := ["wyrm", "serpent", "wyvern"]
@@ -160,8 +160,10 @@ func _run() -> void:
 		check(h.dead, "it dies")
 		var roll: float = (h.rig.get_meta("drg_hold") as Node3D).rotation.z
 		check(roll > 0.8, "and falls onto its side (%.2f)" % roll)
-		g.respawn()
-		await wait(1.0)
+		await g.respawn()      # (back at the camp: wait for it to load before the next dragon)
+		while g._busy or g.world == null:
+			await process_frame
+		await wait(0.5)
 		check(not h.dead, "and comes back")
 		g.test_immortal = true
 		for e in en:

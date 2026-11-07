@@ -29,7 +29,7 @@ func _run() -> void:
 	ground.mesh = pm
 	ground.material_override = Mats.mat(Color(0.25, 0.27, 0.2), 0.95)
 	root3.add_child(ground)
-	var r: Node3D = Knight.build_meshy(true)
+	var r: Node3D = KnightBody.build_meshy(true)
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	root3.add_child(r)

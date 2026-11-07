@@ -1,7 +1,7 @@
 {
 	"cls": "wraith",
 	"name": "Wraith",
-	"fantasy": "A horned spirit in chains that never touches the ground. Tears souls out with spectral claws, drains them down a tether, steps through shadow, drags foes into the earth's grasp and brings down the night.",
+	"fantasy": "A chained, horned spirit that never touches the ground. It rends souls, drains foes on a tether, steps through shadow and brings down the night.",
 	"directions": [
 		{
 			"id": "Render",
@@ -11,7 +11,7 @@
 		{
 			"id": "Shadow",
 			"name": "Shadow",
-			"desc": "The tether and the mist: Soul Siphon and Shadowstep."
+			"desc": "The tether and the mist: Soul Siphon and Shadow Step."
 		},
 		{
 			"id": "Night",
@@ -26,11 +26,19 @@
 			"name": "Spectral Rend",
 			"rarity": 0,
 			"direction": "Render",
-			"desc": "Lunge at the foe ahead and tear through it with elongated spectral claws: two rakes for 90% weapon damage each. Every soul the claws tear out flies back and heals you.",
+			"desc": "Lunge at the foe ahead and rake it twice with spectral claws for 90% weapon damage each. Souls torn out fly back and heal you.",
 			"mana": 5,
 			"cd": 0.0,
 			"range": 4.5,
-			"lvl": 1
+			"lvl": 1,
+			"k": {
+				"dmg": 90,
+				"spirit": 20,
+				"radius": 3.3,
+				"arc": 75,
+				"lunge": 3,
+				"heal": 2
+			}
 		},
 		{
 			"id": "siphon",
@@ -38,7 +46,7 @@
 			"name": "Soul Siphon",
 			"rarity": 0,
 			"direction": "Shadow",
-			"desc": "Reach out and hook a spectral tether into an enemy: for 2.5 seconds it stands rigid while the tether drains it (about 180% weapon damage in all) and heals you a third of what it takes, and it is slowed after. A soul torn loose heals you more. The tether holds while you fight on.",
+			"desc": "Tether a foe, stunning it for 2.5 s while you drain about 180% weapon damage, healing a third. It is slowed after. You can fight on meanwhile.",
 			"mana": 12,
 			"cd": 6.0,
 			"range": 9.0,
@@ -46,7 +54,19 @@
 				"cc",
 				"sustain"
 			],
-			"lvl": 3
+			"lvl": 3,
+			"k": {
+				"secs": 2.5,
+				"tick": 0.25,
+				"weapon": 180,
+				"spirit": 200,
+				"heal": 35,
+				"slow": 50,
+				"slow_s": 1.5,
+				"leash": 13,
+				"soul": 6,
+				"pick": 3
+			}
 		},
 		{
 			"id": "step",
@@ -54,14 +74,25 @@
 			"name": "Shadow Step",
 			"rarity": 0,
 			"direction": "Shadow",
-			"desc": "Come apart into mist and re-form at the cursor, spinning into a claw strike round where you land for 130% weapon damage. For a moment after, blows pass through you. The shade you left behind collapses and hurts.",
+			"desc": "Turn to mist and re-form at the cursor, clawing around you for 130% weapon damage and a 0.7 s stun. Blows pass through you briefly, and your old shade bursts.",
 			"mana": 10,
 			"cd": 5.0,
 			"range": 9.0,
 			"tags": [
 				"movement"
 			],
-			"lvl": 5
+			"lvl": 5,
+			"k": {
+				"dmg": 130,
+				"spirit": 70,
+				"radius": 2.9,
+				"stun_s": 0.7,
+				"veil_s": 0.6,
+				"shade": 80,
+				"shade_spirit": 40,
+				"shade_r": 2.6,
+				"shade_s": 0.45
+			}
 		},
 		{
 			"id": "grasp",
@@ -69,14 +100,23 @@
 			"name": "Haunting Grasp",
 			"rarity": 1,
 			"direction": "Night",
-			"desc": "Slam the ground: spectral hands burst out of the earth around the cursor, seizing every enemy within 3.5 metres for 110% weapon damage, dragging them inward and holding them fast for 2.5 seconds.",
+			"desc": "Spectral hands burst up around the cursor, seizing every foe within 3.5 m for 110% weapon damage, pulling them in and holding them for 2.5 s.",
 			"mana": 16,
 			"cd": 10.0,
 			"range": 10.0,
+			"aoe": {
+				"r": "radius"
+			},
 			"tags": [
 				"cc"
 			],
-			"lvl": 9
+			"lvl": 9,
+			"k": {
+				"dmg": 110,
+				"spirit": 90,
+				"radius": 3.5,
+				"hold": 2.5
+			}
 		},
 		{
 			"id": "phantom",
@@ -84,13 +124,24 @@
 			"name": "Phantom Assault",
 			"rarity": 1,
 			"direction": "Render",
-			"desc": "Split into three phantoms that streak through the enemies ahead in a fan, each tearing everything in its path for 120% weapon damage, then strike with your own claws.",
+			"desc": "Split into 3 phantoms that streak through foes ahead in a fan for 120% weapon damage each, then strike with your claws.",
 			"mana": 22,
 			"cd": 0.0,
 			"use": 1.8,
 			"power": 0.58,
 			"range": 8.0,
-			"lvl": 14
+			"lvl": 14,
+			"k": {
+				"dmg": 120,
+				"spirit": 50,
+				"phantoms": 3,
+				"speed": 15,
+				"spread": 22,
+				"strike": 100,
+				"strike_spirit": 30,
+				"strike_r": 3.1,
+				"strike_arc": 70
+			}
 		},
 		{
 			"id": "night",
@@ -98,13 +149,26 @@
 			"name": "Eternal Night",
 			"rarity": 2,
 			"direction": "Night",
-			"desc": "Rise and bring down the night over 9 metres: a scream of terror (150% weapon damage, enemies hurled back and frozen with fear), then the dark feeds on everything in it while you hang untouchable above it, and it collapses into your slam for 200%. +40% damage for 12 seconds.",
+			"desc": "Bring down the night within 9 m: a scream deals 150% weapon damage, hurls foes back and freezes them with fear for 2.5 s. The dark feeds on them while you hang untouchable, then you slam for 200%. +40% damage for 12 s.",
 			"mana": 40,
 			"cd": 40.0,
 			"tags": [
 				"ultimate"
 			],
-			"lvl": 20
+			"lvl": 20,
+			"k": {
+				"radius": 9,
+				"scream": 150,
+				"scream_spirit": 120,
+				"fear_s": 2.5,
+				"beat": 30,
+				"beat_spirit": 25,
+				"every": 0.5,
+				"fall": 200,
+				"fall_spirit": 160,
+				"fall_r": 6.5,
+				"buff_s": 12
+			}
 		},
 		{
 			"id": "r_deathmark",
@@ -112,7 +176,7 @@
 			"name": "Death Mark",
 			"rarity": 1,
 			"direction": "Render",
-			"desc": "Mark the foe nearest the pointer. When the mark ends 3 seconds later it tears out half of everything you dealt it meanwhile (at least 150% weapon damage) as a soul you drink back.",
+			"desc": "Mark the foe nearest the pointer. After 3 s it takes half the damage you dealt it meanwhile (at least 150% weapon damage), and you heal.",
 			"mana": 10,
 			"cd": 10.0,
 			"range": 12.0,
@@ -121,7 +185,14 @@
 				"cc"
 			],
 			"lvl": 9,
-			"run": true
+			"run": true,
+			"k": {
+				"secs": 3,
+				"share": 50,
+				"least": 150,
+				"reach": 3.5,
+				"drink": 15
+			}
 		},
 		{
 			"id": "r_wail",
@@ -129,7 +200,7 @@
 			"name": "Banshee Wail",
 			"rarity": 0,
 			"direction": "Shadow",
-			"desc": "Scream: everything within 6 metres takes 60% weapon damage, is frozen in terror for 1.2 seconds and slowed by half for 2 more.",
+			"desc": "Scream: everything within 6 m takes 60% weapon damage, is frozen in terror for 1.2 s, then slowed by half for 2 s.",
 			"mana": 9,
 			"cd": 8.0,
 			"role": "terrify the crowd",
@@ -137,7 +208,14 @@
 				"cc"
 			],
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 60,
+				"radius": 6,
+				"fear_s": 1.2,
+				"slow": 50,
+				"slow_s": 2
+			}
 		},
 		{
 			"id": "r_reap",
@@ -145,14 +223,21 @@
 			"name": "Reaping Crescent",
 			"rarity": 0,
 			"direction": "Night",
-			"desc": "A great crescent of soul-fire sweeps out 5 metres in front of you: 170% weapon damage, and each foe it reaps heals you 2% of your life.",
+			"desc": "Sweep a crescent of soul-fire 5 m ahead for 170% weapon damage. Each foe hit heals you 2% of your life.",
 			"mana": 8,
 			"cd": 0.0,
 			"use": 0.9,
 			"range": 5.0,
 			"role": "sweep and sustain",
 			"lvl": 1,
-			"run": true
+			"run": true,
+			"k": {
+				"dmg": 170,
+				"radius": 5,
+				"arc": 80,
+				"heal": 2,
+				"most": 6
+			}
 		}
 	],
 	"rites": [
@@ -218,7 +303,7 @@
 			"fx": {
 				"crit": 3.0
 			},
-			"text": "+{crit}% chance to land a critical hit.",
+			"text": "+{crit}% critical chance.",
 			"icon": "t_star"
 		},
 		{
@@ -283,7 +368,7 @@
 			"fx": {
 				"siphon_dur": 0.3
 			},
-			"text": "Soul Siphon holds {siphon_dur} seconds longer.",
+			"text": "Soul Siphon holds {siphon_dur} s longer.",
 			"icon": "siphon"
 		},
 		{
@@ -297,7 +382,7 @@
 				"cd:step": 10.0,
 				"dmg:step": 10.0
 			},
-			"text": "Shadowstep recharges {cd:step}% faster and strikes {dmg:step}% harder.",
+			"text": "Shadow Step recharges {cd:step}% faster and strikes {dmg:step}% harder.",
 			"icon": "step"
 		},
 		{
@@ -338,7 +423,7 @@
 				"veil": 0.6,
 				"step_stun": 0.5
 			},
-			"text": "After Shadowstep you stay mist {veil} seconds longer, and its strike stuns {step_stun} seconds longer.",
+			"text": "After Shadow Step you stay mist {veil} s longer, and its strike stuns {step_stun} s longer.",
 			"icon": "step"
 		},
 		{
@@ -405,7 +490,7 @@
 				"buff_dur": 2.0,
 				"grasp_hold": 0.3
 			},
-			"text": "Eternal Night's power lasts {buff_dur} seconds longer and Haunting Grasp holds {grasp_hold} seconds longer.",
+			"text": "Eternal Night's power lasts {buff_dur} s longer and Haunting Grasp holds {grasp_hold} s longer.",
 			"icon": "t_hourglass"
 		},
 		{
@@ -418,7 +503,7 @@
 			"fx": {
 				"ls": 1.0
 			},
-			"text": "+{ls}% of the damage you deal comes back as life.",
+			"text": "+{ls}% life steal.",
 			"icon": "t_fang"
 		},
 		{
@@ -458,7 +543,7 @@
 			"run": true,
 			"direction": "Shadow",
 			"max": 1,
-			"text": "Banshee Wail reaches {wail_r}% further and terrifies {wail_t} seconds longer.",
+			"text": "Banshee Wail reaches {wail_r}% further and terrifies {wail_t} s longer.",
 			"icon": "r_wail",
 			"fx": {
 				"wail_r": 30.0,

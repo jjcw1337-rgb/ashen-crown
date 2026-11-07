@@ -1,5 +1,5 @@
 extends SceneTree
-## The players' Codex (scripts/codex_book.gd): every hero's directions with their skills and rites, the shared ones,
+## The players' Codex (game/ui/codex/codex_book.gd): every hero's directions with their skills and rites, the shared ones,
 ## gems and consumables; locked until a camp chest shows them; saved per PC (a test file here); the window opens from
 ## the run's build window and the multiplayer screen, and the open offer marks its choices.
 ##   godot --headless --path . -s tools/_late.gd -- res://tools/codex_book_test.gd   [-- shots <outdir>] (shots need a display)

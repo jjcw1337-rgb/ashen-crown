@@ -127,7 +127,7 @@ nk.register_rpc(admin_set, "admin_set")
 nk.register_req_before(guard_write, "WriteStorageObjects")
 nk.register_req_before(guard_delete, "DeleteStorageObjects")
 
--- Telemetry and error reports (docs/systems/telemetry.md, the game's scripts/telemetry.gd): performance samples and
+-- Telemetry and error reports (docs/systems/telemetry.md, the game's game/systems/telemetry/telemetry.gd): performance samples and
 -- errors go into two tables of Nakama's own database, which Grafana reads (role grafana_ro, SELECT only) and the
 -- nightly triage job queries. Players send with their session ("telemetry"), the dedicated servers with the runtime
 -- http_key ("telemetry_server"). A batch holds at most MAX_ROWS of each; long strings are cut.

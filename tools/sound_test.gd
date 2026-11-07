@@ -68,7 +68,7 @@ func _run() -> void:
 			await wait(1.4 if cls != "demon" else 2.4)     # his clips run long (the grip's lift)
 			h.end_channel() if h.has_method("end_channel") else null
 			if cls == "demon":
-				DemonSkills.clear(h)
+				Demon.clear(h)
 			var miss := (EXPECT[cls][sk] as Array).filter(func(n): return not sfx.counts.has(n))
 			if not miss.is_empty():
 				bad.append("%s:%s" % [sk, miss])

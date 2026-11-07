@@ -85,7 +85,7 @@ func _run() -> void:
 	g.hero.global_position = hp
 	# a Battlegrounds duo (Blaine, 2026-11-06): a pair never hurts itself, its foes still can; a teammate spawns by
 	# his pair; with no lobby (or a solo one) everyone is a foe
-	var mi = load("res://scripts/match_instance.gd").new()
+	var mi = load("res://game/systems/net/match_instance.gd").new()
 	mi.members = {2: {"team": 0}, 3: {"team": 0}, 4: {"team": 1}}
 	var f = _hero("demon", Vector3(4, 0, 2))
 	g.net.players = {2: {"name": "A", "hero": a}, 3: {"name": "T", "hero": t}, 4: {"name": "F", "hero": f}}

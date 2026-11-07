@@ -6,7 +6,7 @@ var checks:=0
 func _initialize():
  node_added.connect(func(n):
   if n is SubViewport:n.disable_3d=true)
- load("res://scripts/build_env.gd").forced={"cloud":"0","lobby_url":"http://127.0.0.1:7352"}
+ load("res://game/systems/net/build_env.gd").forced={"cloud":"0","lobby_url":"http://127.0.0.1:7352"}
  g=load("res://main.tscn").instantiate();g.char_dir="user://lobby_modes_test/";root.disable_3d=true;root.add_child(g);run()
 func check(ok: bool,label: String):
  checks+=1;print("[MODES] ","ok " if ok else "FAIL ",label)

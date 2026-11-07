@@ -10,7 +10,7 @@ func _initialize():
  team_size=int(args[0]);index=int(args[1])
  node_added.connect(func(n):
   if n is SubViewport:n.disable_3d=true)
- load("res://scripts/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":"http://127.0.0.1:7352"}
+ load("res://game/systems/net/build_env.gd").forced={"env":"local","cloud":"0","lobby_url":"http://127.0.0.1:7352"}
  g=load("res://main.tscn").instantiate();g.char_dir="user://lobby_team_%d_%d/"%[team_size,index]
  root.disable_3d=true;root.add_child(g);run()
 func check(ok: bool,label: String):

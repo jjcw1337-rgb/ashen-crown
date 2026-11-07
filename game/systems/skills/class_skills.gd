@@ -3,7 +3,7 @@ extends RefCounted
 ## The one place Hero hands a class's skills to that class's own script. Hero.use_skill, _impact, _process,
 ## take_hit, set_class and new_character call in here; nothing in hero.gd names a class's skill ids.
 ##
-## Every class's skills script (KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills) has
+## Every class's skills script (KnightSkills, Wraith, Demon, WarlockSkills, Archer, Plague) has
 ## the same static functions:
 ##   can_cast(h, id, aim) -> bool   checks before mana and the cooldown are spent (shows its own message on false)
 ##   cast(h, id, aim)               starts the skill: usually h._start_attack(style, id[, seconds])
@@ -24,19 +24,21 @@ extends RefCounted
 static func of(cls: String):
 	match cls:
 		"knight": return KnightSkills
-		"wraith": return WraithSkills
-		"demon": return DemonSkills
+		"wraith": return Wraith
+		"demon": return Demon
 		"warlock": return WarlockSkills
 		"archer": return Archer
-		"plague": return PlagueSkills
-		"doug": return DougSkills
-		"wyrm", "serpent", "wyvern": return DragonSkills
+		"plague": return Plague
+		"doug": return Doug
+		"wyrm": return Wyrm
+		"serpent": return Serpent
+		"wyvern": return Wyvern
 		"any": return SharedSkills       # the shared skills (Data.SKILLS "cls": "any")
 	return null
 
 ## Every class's skills script (update/clear/died run on all of them: each looks after its own state).
 static func all() -> Array:
-	return [KnightSkills, WraithSkills, DemonSkills, WarlockSkills, Archer, PlagueSkills, DougSkills, DragonSkills, SharedSkills]
+	return [KnightSkills, Wraith, Demon, WarlockSkills, Archer, Plague, Doug, Wyrm, Serpent, Wyvern, SharedSkills]
 
 ## The class a skill id belongs to ("any" for the common Attack and Block).
 static func owner(id: String) -> String:
@@ -67,8 +69,7 @@ static func update(h: Hero, delta: float) -> void:
 		m.update(h, delta)
 	# the skill objects (Hero.kit): on the hero's own game only, since a partner's copy of him only shows them
 	if not h.puppet:
-		for sk in h.kit.values():
-			sk.update(delta)
+		Skill.update_kit(h, delta)
 
 static func rooted(h: Hero) -> bool:
 	for m in all():
@@ -99,7 +100,7 @@ static func sound(h: Hero, skill: String, at: float) -> bool:
 # ---------------------------------------------------------------- optional hooks
 ## A class's script may also have any of these (Hero asks; without one, nothing changes). They keep a class's
 ## own ways out of hero.gd: the archer's bow shot, reach, pace and bow posing are his script's answers; the Warlock's
-## Drain Life channel, her shield and her body's glow are hers.
+## Drain Life channel, her shield and her body's glow are hers; the Knight's Charge and Holy Brands are his.
 
 ## Its own basic attack in place of the weapon swing (the archer's bow shot). True when it took it.
 static func attack(h: Hero, aim: Vector3, keep_target: bool) -> bool:
@@ -124,6 +125,12 @@ static func reach(h: Hero) -> float:
 static func pace(h: Hero) -> float:
 	var m = of(h.cls)
 	return float(m.pace(h)) if m != null and m.has_method("pace") else 1.0
+
+## Nothing stops or moves the hero right now: stuns and slows don't take (Doug in his clown car, the Demon's Crucible;
+## Hero.take_hit, PvpStatus).
+static func unstoppable(h: Hero) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("unstoppable") and bool(m.unstoppable(h))
 
 ## Its pace while attacking, times the usual (-1: everyone's slight slowing mid-swing).
 static func attack_pace(h: Hero) -> float:
@@ -163,10 +170,76 @@ static func absorb(h: Hero, dmg: float) -> float:
 	var m = of(h.cls)
 	return float(m.absorb(h, dmg)) if m != null and m.has_method("absorb") else dmg
 
+## A skill pressed again mid-skill (the Demon's Crucible ends early): true when the class took the press.
+static func recast(h: Hero, id: String) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("recast") and m.recast(h, id)
+
+## One stage of a skill of several clips has ended (Hero._update_attack): the class starts what follows it.
+static func stage_done(h: Hero, style: String, skill: String) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("stage_done"):
+		m.stage_done(h, style, skill)
+
+## A dash in progress (Hero.charge_t >= 0: the Knight's Charge), every frame in place of his walking: it moves him and
+## ends it (charge_t = -1).
+static func dash(h: Hero, delta: float) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("dash"):
+		m.dash(h, delta)
+	else:
+		h.charge_t = -1.0
+
+## A blow of the hero's landed (Hero._hit_enemy, wherever his hits are decided, after its damage): the class's own
+## mark on what it strikes (the Knight's Holy Brands).
+static func struck(h: Hero, e, src: String) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("struck"):
+		m.struck(h, e, src)
+
 ## The node the weapon hangs from, when the class holds it its own way (the ranger's bow in his left hand); else null.
 static func weapon_hand(h: Hero, J: Dictionary) -> Node3D:
 	var m = of(h.cls)
 	return m.weapon_hand(h, J) if m != null and m.has_method("weapon_hand") else null
+
+## Its weapon swing's blows, dealt its own way in place of Hero's (the plague doctor's cane: each blow leaves its
+## mark, and in a match his blows are decided on the server). True when it dealt them.
+static func swing(h: Hero, style: String) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("swing") and m.swing(h, style)
+
+## How much of a blow on the hero gets through (the plague doctor's Transfusion soaks part of it).
+static func taken(h: Hero, dmg: float) -> float:
+	var m = of(h.cls)
+	return float(m.taken(h, dmg)) if m != null and m.has_method("taken") else dmg
+
+## Before the body's pose each frame, on the hero himself: a pose of its own while he stands about (the plague
+## doctor peering at a vial).
+static func pose(h: Hero, st: Dictionary, delta: float) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("pose"):
+		m.pose(h, st, delta)
+
+## Its hands are on a skill: the weapon is put away meanwhile (the plague doctor's vials, censer and reliquary).
+static func hands_busy(h: Hero) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("hands_busy") and m.hands_busy(h)
+
+## A monster at `at` can't see the hero (the plague doctor in his fog). Asked on the game running the monsters.
+static func hidden_from_monster(h: Hero, at: Vector3) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("hidden_from_monster") and m.hidden_from_monster(h, at)
+
+## PvP: where the hero's breakable thing `oid` is (PvpObjects: the plague doctor's bloom, vat and creature), or null.
+static func obj_pos(h: Hero, oid: int) -> Variant:
+	var m = of(h.cls)
+	return m.obj_pos(h, oid) if m != null and m.has_method("obj_pos") else null
+
+## PvP: another player's blow on one of the hero's things, on the hero's own game (PvpObjects).
+static func obj_hit(h: Hero, oid: int, attacker: int) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("obj_hit"):
+		m.obj_hit(h, oid, attacker)
 
 ## The weapon trail's colour for a class (a unique weapon's glow overrides it, Hero._start_attack).
 static func trail_color(cls: String, skill: String) -> Color:
@@ -177,7 +250,7 @@ static func trail_color(cls: String, skill: String) -> Color:
 		"wraith": return WraithFx.SPIRIT
 		"demon": return DemonFx.EMBER
 		"warlock": return Warlock.FEL
-		"wyrm": return Color(1.0, 0.42, 0.15)
-		"serpent": return Color(0.55, 0.9, 1.0)
-		"wyvern": return Color(0.55, 0.95, 0.9)
+		"wyrm": return Wyrm.ACCENT
+		"serpent": return Serpent.ACCENT
+		"wyvern": return Wyvern.ACCENT
 	return Color(1.0, 0.85, 0.5) if skill == "cleave" else Color(0.85, 0.9, 1.0)

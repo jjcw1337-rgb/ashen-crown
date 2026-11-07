@@ -8,8 +8,10 @@ extends SceneTree
 ## b's gear drops, the server announces who killed whom, and a picks b's things up. Both raid as run characters
 ## (RunBuild, the multiplayer overhaul: fresh at level 0, each given its class's first skill here); b's saved
 ## character is untouched by the fall. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
-## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, and b checks it
-## was Pied by it (the crowd control crossing to another player: DougSkills._cc -> Net.send_pvp_effect).
+## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, then he
+## bounces onto b (Big Top Bounce), and b checks it was Pied, then launched (the crowd control crossing to another
+## player: Doug.cc -> Net.send_pvp_effect). His skills run on the server (ServerRules), as the Archer's do: the server
+## checks it made the pie and the flop; a checks its own game holds no pie.
 ## With "archer" instead, a plays the Archer and drops Thunderstep's sigil on b, and b checks it was stunned for its
 ## three seconds (Thunderstep -> PvpStatus "stagger" -> the server -> b). His skills, his wolf and his rites run on
 ## the server (ServerRules): the server checks it made them; a checks its own game holds none.
@@ -17,12 +19,48 @@ extends SceneTree
 ## skills run on the server: the server checks it made them and that her curse ticks there; a checks its own game holds
 ## no curse, fright or drain and that the drain's life came back to it from the server; b checks it was hurt and
 ## frightened through the server, and that her spells were aimed at it on its screen.
+## With "plague" instead, a plays the Plague Doctor and throws Pestilence Vial at b: the server's copy of him flies the
+## vial and lays the pool (ServerRules), whose poison is on b's stand-in there and whose Blight reaches b (PvpStatus
+## "blight" -> the server -> b); a checks its own game holds no vial, pool or poison.
+## With "wraith" instead, a plays the Wraith and casts his skills at b (Haunting Grasp, Soul Siphon, Phantom Assault,
+## Shadowstep): they run on the server too, which checks it made them; a checks its own game holds
+## none of their tethers, phantoms or shades; b checks it was held by the grasp (PvpStatus "stagger" through the
+## server) and slowed by the tether.
+## With "demon" instead, a plays the Demon: Molten Fists (his first skill) on b, then Infernal Charge, Fault of the Pit,
+## Hellgrip, Brimstone Hurl and Wrath of the Pit. His skills run on the server: the server checks it made them and that
+## his Brand lives there; a checks its own game holds none of their objects (a fault, a boulder, a charge's run, a
+## Brand, a held foe, a meteor); b checks it was hurt, staggered, thrown up, dragged and frightened through the server
+## (b keeps its life up until his kit is done, so the blows that follow can still fell it).
+## With "knight" (the attacker is the Knight without a mode too), a slams Holy Slam (his first skill) onto b from beside
+## them, then Holy Nova, Battle Cry and a Charge through them. His skills run on the server: the server checks it made
+## all four; a checks its own game ran no dash of its own and doesn't decide his hits; b checks it was hurt before any
+## blow and stunned through the server (PvpStatus "stagger").
+## With "dragon <wyrm|serpent|wyvern>" instead (on all three lines), a plays that dragon and uses every skill of its
+## kit and its run's on b, each from where it reaches (the Obsidian Wyrm has none yet: only its claws). A dragon's
+## skills run on the server: the server checks it made them and that its copy of a decides a's hits; a checks its own
+## game keeps none of their state (no breath held, no tomb, no cloud) and doesn't decide its hits; b checks it was
+## hurt, staggered and slowed through the server, and that the skills were aimed at it on its screen.
 
 var g
 var role := "a"
 var port := 24671
 var host := "127.0.0.1"
 var fails := 0
+
+## The dragon modes: each dragon's skills (its own, then its run's), how far from the other player a casts each, and
+## how long each takes to play out.
+const DRAGON_SKILLS := {"wyrm": [], "serpent": ["frost_breath", "s_tomb", "s_coil", "s_lance"],
+	"wyvern": ["storm_arc", "v_dive", "v_cloud", "v_gale"]}
+const DRAGON_FROM := {"frost_breath": 3.0, "s_tomb": 6.0, "s_coil": 2.0, "s_lance": 4.0, "storm_arc": 5.0, "v_dive": 8.0,
+	"v_cloud": 7.0, "v_gale": 3.0}
+const DRAGON_WAIT := {"frost_breath": 1.8, "s_tomb": 2.4, "s_coil": 1.4, "s_lance": 1.4, "storm_arc": 1.2, "v_dive": 1.4,
+	"v_cloud": 2.0, "v_gale": 1.2}
+
+## The dragon this run plays ("dragon <class>"), or "".
+func _dragon() -> String:
+	var a := OS.get_cmdline_user_args()
+	var i := a.find("dragon")
+	return str(a[i + 1]) if i >= 0 and i + 1 < a.size() and DRAGON_SKILLS.has(a[i + 1]) else ""
 
 func _initialize():
 	var a := OS.get_cmdline_user_args()
@@ -80,7 +118,7 @@ func _server() -> void:
 	check(await until(func(): return g.net.players.size() == 2, 60.0), "both players are in the crypt")
 	check(await until(func(): return g.bg.last_hit.size() > 0, 60.0), "a player struck another (through the server)")
 	if OS.get_cmdline_user_args().has("archer"):
-		check(await until(func(): return ServerRules.made_count >= 3, 30.0), "the Archer's skills ran here: the server made his arrow, his sigil and his flask's burst (%d)" % ServerRules.made_count)
+		check(await until(func(): return ServerRules.made_count >= 4, 30.0), "the Archer's skills ran here: the server made his arrow, his sigil, his flask's burst and his weapon swing (%d)" % ServerRules.made_count)
 		var arch = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "archer")
 		check(not arch.is_empty() and arch[0].decides() and await until(func(): return arch[0].beasts.any(func(w): return is_instance_valid(w) and w._deals()), 10.0), "his wolf runs here too, the one that bites, and his rites fire here (Hero.decides)")
 		# thorns: a server-run hero's game can only claim a blow the server sent it, once
@@ -97,6 +135,39 @@ func _server() -> void:
 			await process_frame
 		check(cursed, "her curse ticks here, on the other player's stand-in")
 		check(await until(func(): return ServerRules.made_count >= 3, 30.0), "the Warlock's skills ran here: the server made her drain's latch, her curse and her fright (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
+	if OS.get_cmdline_user_args().has("plague"):
+		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "the Plague Doctor's skills ran here: the server made his vials (%d)" % ServerRules.made_count)
+		var doc = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "plague")
+		check(not doc.is_empty() and doc[0].decides() and await until(func(): return _poisons_player(doc[0]), 20.0), "his pool's poison is on the other player's stand-in here (his rules: Hero.decides)")
+	if OS.get_cmdline_user_args().has("doug"):
+		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "Doug's skills ran here: the server made his pie and his belly-flop (%d)" % ServerRules.made_count)
+		var dougs = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "doug")
+		check(not dougs.is_empty() and dougs[0].decides(), "and his hits and rites are decided here (Hero.decides)")
+	if OS.get_cmdline_user_args().has("wraith"):
+		check(await until(func(): return ServerRules.made_count >= 6, 40.0), "the Wraith's skills ran here: the server made his grasp, tether, phantoms, strikes and shade (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
+		var wr = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "wraith" and h.kit.has("phantom"))
+		check(not wr.is_empty() and wr[0].decides(), "his blows are decided here (Hero.decides)")
+	if OS.get_cmdline_user_args().has("demon"):
+		var dm = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "demon")
+		check(not dm.is_empty() and dm[0].decides(), "the Demon's copy here decides his hits (Hero.decides)")
+		var branded := false
+		var t_end := Time.get_ticks_msec() + 40000
+		while Time.get_ticks_msec() < t_end and not branded:
+			branded = not dm.is_empty() and is_instance_valid(dm[0]) and dm[0].kit.has("brand") and not dm[0].kit["brand"].marks.is_empty()
+			await process_frame
+		check(branded, "his Brand lives here, on the other player's stand-in")
+		check(await until(func(): return ServerRules.made_count >= 6, 40.0), "the Demon's skills ran here: the server made his blow, his charge, his fault, his hook and smash, his boulder and his eruption (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
+	if OS.get_cmdline_user_args().has("knight"):
+		var kn = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "knight")
+		check(not kn.is_empty() and kn[0].decides(), "the Knight's copy here decides his hits (Hero.decides)")
+		check(await until(func(): return ServerRules.made_count >= 4, 30.0), "the Knight's skills ran here: the server made his slam, nova, cry and dash (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
+	var dcls := _dragon()
+	if dcls != "":
+		var drg = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == dcls)
+		check(not drg.is_empty() and drg[0].decides(), "the %s's copy here decides its hits (Hero.decides)" % dcls)
+		var n_sk: int = (DRAGON_SKILLS[dcls] as Array).size()
+		if n_sk > 0:
+			check(await until(func(): return ServerRules.made_count >= n_sk, 40.0), "the %s's skills ran here: the server made %s (%d made, %d refused)" % [dcls, str(DRAGON_SKILLS[dcls]), ServerRules.made_count, ServerRules.refused_count])
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
 	await until(func(): return g.net.players.is_empty(), 90.0)
 
@@ -111,7 +182,19 @@ func _player() -> void:
 	var doug := OS.get_cmdline_user_args().has("doug")
 	var archer := OS.get_cmdline_user_args().has("archer")
 	var warlock := OS.get_cmdline_user_args().has("warlock")
-	g.hero.set_class(("doug" if doug else ("archer" if archer else ("warlock" if warlock else "knight"))) if role == "a" else "wraith")
+	var knight := OS.get_cmdline_user_args().has("knight")
+	var demon := OS.get_cmdline_user_args().has("demon")
+	var wraith := OS.get_cmdline_user_args().has("wraith")
+	var plague := OS.get_cmdline_user_args().has("plague")
+	# the attacker plays the class named on the command line (a hero's mode), the Knight otherwise; b is the Wraith
+	var mode := "knight"
+	for c in ["doug", "archer", "warlock", "plague", "wraith", "demon", "knight", "wyrm", "serpent", "wyvern"]:
+		if OS.get_cmdline_user_args().has(c):
+			mode = c
+	g.hero.set_class(mode if role == "a" else "wraith")
+	var dcls := _dragon()
+	if role == "a" and dcls != "":
+		g.hero.set_class(dcls)
 	g.hero.new_character()
 	g.hero.set_level(8)
 	g.char_id = g.new_char_id()
@@ -122,7 +205,7 @@ func _player() -> void:
 	await g.start_battlegrounds("%s:%d" % [host, port], g.char_id)
 	check(await until(func(): return g.cur_zone == Battlegrounds.ZONE and not g._busy and not g.net.loading, 30.0), "entered the crypt")
 	var inv_saved := _saved_items(path)
-	if g.hero.run != null:
+	if g.hero.run != null and not g.hero.skill_list().is_empty():      # (the Obsidian Wyrm has none yet)
 		g.hero.run.add_skill(str(g.hero.skill_list()[0]["id"]), g.hero.binds)     # (as a camp chest would give it)
 		g.hero.run_changed()
 	# a round starts in the antechambers, PvP off behind the gates: ring a bell and wait for the raid
@@ -145,10 +228,7 @@ func _player() -> void:
 			g.net.send_chat("spam %d" % i, false)
 		await create_timer(1.5).timeout
 		check(chat._lines.filter(func(l): return (l[0] as RichTextLabel).text.contains("spam")).size() <= 3, "a flood is cut")
-	else:
-		check(await until(func(): return chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("hello from a")), 15.0), "b reads a's line")
-		await create_timer(1.0).timeout
-		check(not chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("just my team")), "a's team line doesn't reach a foe")
+	# (b reads the chat after the fight: waiting on it here would miss a short crowd control landing meanwhile)
 	if role == "a":
 		g.test_immortal = true
 		var foe = g.net.puppets()[0]
@@ -159,8 +239,18 @@ func _player() -> void:
 			# (Drain Life, her first skill, needs them within its reach)
 			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(4.0, 0, 0), 0.5)
 			await secs(0.6)
-		var sk: String = str(g.hero.skill_list()[0]["id"])
-		check(g.hero.use_skill(sk, foe.global_position), "cast %s at them" % sk)
+		if demon:
+			# (Molten Fists, his first skill, is a wedge right in front of him)
+			await _beside(foe, 1.8)
+		if knight:
+			# (Holy Slam, his first skill, leaps onto them from beside them: the server checks where it has me)
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(3.0, 0, 0), 0.5)
+			await secs(0.6)
+		if doug:
+			# (the Cream Pie, his first skill, is lobbed 12 m at most: thrown from across the map it falls short)
+			await _beside(foe, 5.0)
+		var sk: String = str(g.hero.skill_list()[0]["id"]) if not g.hero.skill_list().is_empty() else ""
+		check(sk == "" or g.hero.use_skill(sk, foe.global_position), "cast %s at them" % sk)
 		if archer:
 			# Thunderstep from beside them: the sigil drops where I stood, on them, as I flip away
 			await secs(1.0)
@@ -174,6 +264,13 @@ func _player() -> void:
 			check(Archer.skill(g.hero, "snare").sigils.is_empty() and Archer.skill(g.hero, "pierce").shots.is_empty(), "my game keeps no sigil or arrow of its own: the server's copy of me deals them")
 			check(not g.hero.decides() and not g.hero.beasts.is_empty() and not g.hero.beasts[0]._deals(), "and my wolf here is only seen (the server's bites)")
 			RunTalents.throw_flask(g.hero, "flask_fire", foe.global_position)      # (its burst is the server's too)
+			# a plain weapon swing at them: the server's copy of me strikes it (Hero._send_swing -> server_swing)
+			await secs(0.3)
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.0, 0, 0), 0.5)
+			await secs(0.6)
+			g.hero.atk_style = "swipe1"
+			g.hero.atk_dir = g.hero.dir_to(foe.global_position)
+			g.hero._swipe_impact()
 			await secs(1.7)
 		if warlock:
 			# Drain Life (above) lets go after its least time (no key held); then a curse and a fright from near them
@@ -192,7 +289,101 @@ func _player() -> void:
 			check(hx != null and hx.dots.is_empty() and hx.feared.is_empty() and dr != null and not dr.latched, "my game keeps no curse, fright or drain of its own: the server's copy of me deals them")
 			check(not g.hero.decides(), "and my game doesn't decide my hits (Hero.decides)")
 			check(await until(func(): return ServerRules.given_count > 0, 5.0), "the server's Drain Life gave me life back through my own game (%d)" % ServerRules.given_count)
-		var life_seen: Array = []
+		if plague:
+			# Pestilence Vial from a few steps off: it lands on them and its pool poisons and Blights them
+			await secs(1.0)
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(5.0, 0, 0), 0.5)
+			await secs(0.6)      # (the server hears where I am before the vial goes: it checks that)
+			g.hero.mana = g.hero.max_mana
+			check(g.hero.use_skill("toxic", foe.global_position), "Pestilence Vial thrown at them")
+			await secs(1.2)
+			var vial: PestilenceVial = Plague.skill(g.hero, "toxic")
+			check(vial.flights.is_empty() and vial.clouds.is_empty() and not g.hero.kit.has("poison") and not g.hero.decides(),
+				"my game keeps no vial, pool or poison of its own: the server's copy of me deals them")
+			check(not (g.hero.get_meta("plague_fx", {}) as Dictionary).get("pools", []).is_empty(), "and it shows its pool")
+			await secs(2.5)
+		if doug:
+			# the pie leaves my hands on its impact frame and is in the air on the server's copy of me
+			await secs(0.6)
+			var pie = g.hero.kit.get("pie")      # (his classes aren't named here: this script compiles before the Sfx autoload)
+			check(pie != null and pie.pies.is_empty() and not g.hero.decides(), "my game keeps no pie of its own: the server's copy of me throws it")
+			await secs(1.0)
+			# Big Top Bounce onto them: the server's copy of me lands the belly-flop
+			g.test_allskills = true
+			g.hero.mana = g.hero.max_mana
+			g.hero.cds.erase("bounce")
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(5.0, 0, 0), 0.5)
+			await secs(0.6)      # (the server hears where I am before I leap: it checks the landing against it)
+			check(g.hero.use_skill("bounce", foe.global_position), "Big Top Bounce onto them")
+			await secs(1.6)
+		var life_before: float = foe.life if is_instance_valid(foe) else 0.0
+		if wraith and role == "a":
+			# his skills from beside them: each is made on the server, which deals it (leaving them some life for
+			# the blows below)
+			g.test_allskills = true
+			for id in ["grasp", "siphon", "phantom", "step"]:
+				if not is_instance_valid(foe) or foe.dead or foe.life < foe.max_life * 0.3:
+					break
+				await until(func(): return g.hero.atk_t < 0.0, 4.0)      # (the last one's clip has ended)
+				g.hero.mana = g.hero.max_mana
+				g.hero.cds.erase(id)
+				g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.5, 0, 0), 0.5)
+				await secs(0.6)      # (the server hears where I am first: it checks that)
+				var p = _proxy()
+				check(p != null and g.hero.use_skill(id, p.global_position), "%s at them" % id)
+				await secs(1.4)
+			var k: Dictionary = g.hero.kit
+			check(k.has("grasp") and (not k.has("siphon") or k["siphon"].tether.is_empty()) and (not k.has("phantom") or k["phantom"].phantoms.is_empty())
+				and (not k.has("step") or k["step"].shades.is_empty()), "my game keeps no tether, phantom or shade of its own: the server's copy of me deals them")
+			check(not g.hero.decides(), "and decides none of my blows")
+		if demon:
+			await _demon_kit(foe)
+		if knight:
+			await secs(1.4)
+			g.test_allskills = true
+			for id in ["nova", "cry", "charge"]:
+				g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(3.0, 0, 0), 0.5)
+				await secs(0.6)      # (the server hears where I am: it checks every skill against it)
+				g.hero.mana = g.hero.max_mana
+				g.hero.cds.erase(id)
+				check(g.hero.use_skill(id, foe.global_position), "%s on them" % id)
+				await secs(1.2)
+			# (his classes aren't named here: this script compiles before the Sfx autoload they need)
+			var ch = g.hero.kit.get("charge")
+			check(ch != null and ch.run.is_empty() and g.hero.charge_t < 0.0, "my game carried me through the dash but ran no dash of its own: the server's copy of me deals it")
+			check(not g.hero.decides(), "and my game doesn't decide my hits (Hero.decides)")
+		if dcls != "":
+			if (DRAGON_SKILLS[dcls] as Array).is_empty():
+				# no skills yet: its claw, bite and tail spin (the common swing; every game sees its blows land)
+				g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.8, 0, 0), 0.5)
+				await secs(0.6)
+				for i in 3:
+					g.hero.swipe_attack(foe.global_position, false)
+					await secs(1.1)
+			# every skill of its kit and its run's, each from where it reaches them
+			g.test_allskills = true
+			for id in DRAGON_SKILLS[dcls]:
+				g.hero.mana = g.hero.max_mana
+				g.hero.cds.erase(id)
+				await until(func(): return g.hero.atk_t < 0.0, 3.0)      # (the cast before it done)
+				g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(float(DRAGON_FROM.get(id, 3.0)), 0, 0), 0.5)
+				await secs(0.6)      # (the server hears where I am: it checks every skill against it)
+				check(g.hero.use_skill(id, foe.global_position), "%s at them" % id)
+				await secs(float(DRAGON_WAIT.get(id, 1.2)))
+			# (its classes aren't named here: this script compiles before the Sfx autoload they need)
+			var held: Array = []
+			for id in DRAGON_SKILLS[dcls]:
+				var dsk = g.hero.kit.get(id)
+				if dsk == null:
+					continue
+				for prop in ["tombs", "clouds"]:
+					if dsk.get(prop) is Array and not (dsk.get(prop) as Array).is_empty():
+						held.append(id)
+				if dsk.get("latched") is bool and dsk.get("latched"):
+					held.append(id)
+			check(held.is_empty(), "my game keeps none of my skills' state: the server's copy of me deals them %s" % str(held))
+			check(not g.hero.decides(), "and my game doesn't decide my hits (Hero.decides)")
+		var life_seen: Array = [life_before] if wraith else []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
 				break
@@ -203,7 +394,8 @@ func _player() -> void:
 			if is_instance_valid(foe):
 				life_seen.append(foe.life)
 			await secs(0.25)
-		check(life_seen.size() > 1 and float(life_seen.back()) < float(life_seen.front()), "their life fell as I hit them (%d -> %d)" % [int(life_seen.front()), int(life_seen.back())])
+		var felled_first: bool = not is_instance_valid(foe) or foe.dead      # (a strong kit can fell them before the blows)
+		check(felled_first or (life_seen.size() > 1 and float(life_seen.back()) < float(life_seen.front())), "their life fell as I hit them (%d -> %d%s)" % [int(life_seen.front()) if not life_seen.is_empty() else 0, int(life_seen.back()) if not life_seen.is_empty() else 0, ", felled by my skills first" if felled_first else ""])
 		check(await until(func(): return not is_instance_valid(foe) or foe.dead, 15.0), "they fell")
 		var at: Vector3 = foe.global_position if is_instance_valid(foe) else g.hero.global_position     # (their puppet goes when they leave)
 		await secs(4.0)
@@ -229,13 +421,32 @@ func _player() -> void:
 		var l0: float = g.hero.max_life
 		if doug:
 			check(await until(func(): return g.hero.pied_t > 0.0, 60.0), "Doug's cream pie Pied me (through the server)")
+			check(await until(func(): return SkillFx.aimed_at_me > 0, 10.0), "and its splat was aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
+			check(await until(func(): return g.hero.daze_t > 0.0, 30.0), "his Big Top Bounce launched me through the server (%.1f s)" % g.hero.daze_t)
 		if archer:
 			check(await until(func(): return g.hero.daze_t > 2.0, 60.0), "Thunderstep stunned me through the server (%.1f s)" % g.hero.daze_t)
 			check(await until(func(): return SkillFx.aimed_at_me > 0, 10.0), "and its blast was aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
+		if demon:
+			await _demon_victim()
 		if warlock:
 			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "fear"), 60.0), "the Warlock's Terrify frightened me through the server (%s)" % str(PvpStatus.landed))
 			check(g.hero.life < l0, "her drain and curse hurt me through the server before any blow (%d of %d)" % [int(g.hero.life), int(l0)])
 			check(SkillFx.aimed_at_me > 0, "and her spells were aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
+		if plague:
+			check(await until(func(): return PvpStatus.has(g.hero, "blight"), 60.0), "the Plague Doctor's pool Blighted me through the server (%d stacks)" % int(PvpStatus.strength(g.hero, "blight")))
+			check(await until(func(): return g.hero.life < l0, 10.0), "and its poison hurt me (%d -> %d)" % [int(l0), int(g.hero.life)])
+		if wraith:
+			# (what landed, whenever it did: I may see the other player after his first holds have worn off)
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "stagger" and float(x[1]) > 2.0), 60.0), "Haunting Grasp held me through the server (%s)" % str(PvpStatus.landed))
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "slow"), 20.0), "and Soul Siphon's tether slowed me")
+		if knight:
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "stagger"), 60.0), "the Knight's Holy Slam stunned me through the server (%s)" % str(PvpStatus.landed))
+			check(await until(func(): return g.hero.life < l0, 2.0), "his skills hurt me through the server before any blow (%d of %d)" % [int(g.hero.life), int(l0)])
+		if dcls != "" and not (DRAGON_SKILLS[dcls] as Array).is_empty():
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "stagger"), 60.0), "the %s's skills staggered me through the server (%s)" % [dcls, str(PvpStatus.landed)])
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "slow"), 20.0), "and slowed me (%s)" % str(PvpStatus.landed))
+			check(await until(func(): return g.hero.life < l0, 20.0), "its skills hurt me through the server (%d of %d)" % [int(g.hero.life), int(l0)])
+			check(await until(func(): return SkillFx.aimed_at_me > 0, 10.0), "and were aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		# fallen, I watch the one still alive (Game.spectate_*), until they leave too
@@ -254,13 +465,103 @@ func _player() -> void:
 		var inv: Array = (h.get("inventory", []) as Array).filter(func(x): return x != null)
 		check(int(h.get("level", 0)) == 8 and inv.size() == inv_saved, "my saved character is untouched by the fall (level 8, %d items)" % inv.size())
 		check(g.net.fx_got > 0, "I saw the other player's skill effects (%d events, through the server)" % g.net.fx_got)
+		check(chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("hello from a")), "b read a's line")
+		check(not chat._lines.any(func(l): return (l[0] as RichTextLabel).text.contains("just my team")), "a's team line didn't reach a foe")
 	g.net.shutdown()
 	await secs(1.0)
+
+## a (the Demon): stands `dist` m from them on free ground, facing them, ready to cast (the server hears where he is
+## before he casts: it checks every skill against it).
+func _beside(foe, dist: float) -> void:
+	var h = g.hero
+	var bp: Vector3 = foe.global_position
+	var at: Vector3 = g.world.free_spot_near(bp + Vector3(dist, 0, 0), 0.5)
+	for k in 12:
+		var c: Vector3 = g.world.free_spot_near(bp + Vector3(dist, 0, 0).rotated(Vector3.UP, TAU * k / 12.0), 0.5)
+		if absf(c.distance_to(bp) - dist) < 0.6 and g.world.move(c, bp - c, 0.3).distance_to(bp) < 0.8:
+			at = c
+			break
+	h.global_position = at
+	h._face(bp - at)
+	await secs(0.6)
+
+## a (the Demon): the rest of his kit on them, each from where it reaches; then his game must hold none of what
+## the skills made (the server's copy of him does). (His classes aren't named here: this script compiles before the
+## Sfx autoload they need.)
+func _demon_kit(foe) -> void:
+	var h = g.hero
+	g.test_allskills = true
+	await secs(2.2)      # (Molten Fists' wind-up and blow)
+	# (the waits keep the chain's pull out of the charge's and the fault's diminishing-returns window: PvpStatus.DR_WINDOW)
+	for c in [["icharge", 5.0, 3.0], ["cslam", 3.0, 6.0], ["grip", 5.0, 4.0], ["hurl", 7.0, 3.0], ["wrath", 2.5, 0.0]]:
+		if not is_instance_valid(foe) or foe.dead:
+			break
+		var id: String = c[0]
+		await _beside(foe, float(c[1]))
+		h.mana = h.max_mana
+		h.cds.erase(id)
+		check(h.use_skill(id, foe.global_position), "%s at them" % id)
+		if id == "wrath":
+			await secs(0.6)
+			check(h.use_skill("wrath", foe.global_position), "and burst the Crucible")
+			await secs(1.5)
+		else:
+			await secs(float(c[2]))
+	var k: Dictionary = h.kit
+	var none: bool = k.has("cslam") and k["cslam"].fault.is_empty() and k.has("hurl") and k["hurl"].boulders.is_empty() \
+		and k.has("icharge") and k["icharge"].sweeps.is_empty() and k.has("brand") and k["brand"].marks.is_empty() \
+		and k.has("grip") and k["grip"].held == null and k.has("wrath") and k["wrath"].meteors.is_empty()
+	check(none, "my game keeps no fault, boulder, charge, Brand, held foe or meteor of its own: the server's copy of me deals them")
+	check(not h.decides(), "and my game doesn't decide my hits (Hero.decides)")
+	await secs(7.0)      # (Pit-born's rain falls on them: the victim keeps its life up till it's over)
+
+## b (the Demon's victim): hurt, staggered and Branded (the charge), thrown up (the fault), dragged (the chain) and
+## frightened (the eruption), every one through the server; its life kept up meanwhile, so the blows after can still fell it.
+func _demon_victim() -> void:
+	var h = g.hero
+	var hurt := false
+	var dragged := 0.0
+	var start: Vector3 = h.global_position
+	var want := ["stagger", "knockup", "pull", "fear", "brand"]
+	var t_end := Time.get_ticks_msec() + 90000
+	var fear_t := -1
+	while Time.get_ticks_msec() < t_end:
+		if h.life < h.max_life - 0.5:
+			hurt = true
+			h.life = h.max_life
+		if h.cc.has("pull"):
+			dragged = maxf(dragged, h.global_position.distance_to(start))
+		else:
+			start = h.global_position
+		if fear_t < 0 and PvpStatus.landed.any(func(x): return str(x[0]) == "fear"):
+			fear_t = Time.get_ticks_msec()
+		if fear_t >= 0 and Time.get_ticks_msec() - fear_t > 7500:
+			break
+		await process_frame
+	var kinds := {}
+	for x in PvpStatus.landed:
+		kinds[str(x[0])] = true
+	print("[B] landed: ", PvpStatus.landed)
+	check(hurt, "the Demon's skills hurt me through the server")
+	for kind in want:
+		check(kinds.has(kind), "his %s landed on me through the server" % kind)
+	check(dragged > 1.0, "Hellgrip's chain dragged me (%.1f m)" % dragged)
+	h.life = h.max_life
 
 func _saved_items(p: String) -> int:
 	var d = JSON.parse_string(FileAccess.get_file_as_string(p)) if FileAccess.file_exists(p) else null
 	var h: Dictionary = d.get("hero", {}) if d is Dictionary else {}
 	return (h.get("inventory", []) as Array).filter(func(x): return x != null).size()
+
+## Server: the Plague Doctor's poison (his rules, here) is on a player's stand-in.
+func _poisons_player(doc) -> bool:
+	var a = doc.kit.get("poison")
+	if a == null:
+		return false
+	for pz in a.poisoned.values():
+		if is_instance_valid(pz["e"]) and int(pz["e"].pvp_pid) > 0:
+			return true
+	return false
 
 func _proxy():
 	for e in g.world.enemies_root.get_children():

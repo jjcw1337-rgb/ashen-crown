@@ -1,5 +1,5 @@
 extends SceneTree
-## Telemetry and error reports (scripts/telemetry.gd) against a running Nakama:
+## Telemetry and error reports (game/systems/telemetry/telemetry.gd) against a running Nakama:
 ##   godot --headless --path . -s tools/telemetry_test.gd -- cloud <nakama url> <server key>
 ## Signs in, makes an error (push_error: it reaches Godot's log, which the reporter reads), a crash left by a fake
 ## earlier session, and a performance sample, sends them, and prints the session id ("[T] session ...") so the rows
@@ -29,7 +29,7 @@ func secs(t: float) -> void:
 		await process_frame
 
 func _run() -> void:
-	TM = load("res://scripts/telemetry.gd")
+	TM = load("res://game/systems/telemetry/telemetry.gd")
 	await secs(1.0)
 	while g._busy:
 		await process_frame
@@ -76,7 +76,7 @@ func _run() -> void:
 	check(t.samples.size() == 1 and t.samples[0]["hitches"] == 3 and t.samples[0].has("zone"), "a performance sample (hitches %d)" % (t.samples[0]["hitches"] if t.samples.size() else -1))
 	print("[T] session ", t.session)
 	if BuildEnv.cloud():
-		g.cloud = load("res://scripts/cloud_saves.gd").new(g)
+		g.cloud = load("res://game/systems/saves/cloud_saves.gd").new(g)
 		g.add_child(g.cloud)
 		await t._flush()
 		check(t.errors.is_empty() and t.samples.is_empty(), "sent to Nakama (the queues are empty)")
