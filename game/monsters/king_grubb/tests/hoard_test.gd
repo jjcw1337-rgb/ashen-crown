@@ -25,8 +25,15 @@ func _run() -> void:
 	h.level = 10
 	h.recalc()
 	g.test_immortal = true
-	var at: Vector3 = g.world.free_spot_near(g.world.spawns.get("start", Vector3.ZERO) + Vector3(0, 0, -14.0), 2.0)
-	var boss = g.spawn_enemy("goblin_king", at, 6, false, "", 900)
+	# his own camp, The Gilded Hoard (verdant_reach.gd CAMPS); a stand-in by the start glade on a map without it
+	var boss = null
+	for e in g.world.enemies_root.get_children():
+		if e is Enemy and e.kind == "goblin_king" and not e.dead:
+			boss = e
+	print("[H] the Verdant Reach has his camp: %s" % (boss != null))
+	if boss == null:
+		var at: Vector3 = g.world.free_spot_near(g.world.spawns.get("start", Vector3.ZERO) + Vector3(0, 0, -14.0), 2.0)
+		boss = g.spawn_enemy("goblin_king", at, 6, false, "", 900)
 	await wait(0.3)
 	for e in g.enemies_near(boss.global_position, 18.0):
 		if not e.boss and e.kind != "grabber":

@@ -8,7 +8,7 @@ extends RefCounted
 ##   the dark elf encampments (north-east): tents, carved totems, timber lookouts, a ritual circle
 ##   the frostfang hollow (north-west): pines, ice and rime on a raised hollow; Hrimgar the Frostbound
 ##   the old ruins (south-east and the middle): standing stones, broken walls, the barrow, the Sundered Circle
-## Sixteen camps (Camps: six tier I near the glades, five tier II, three tier III, two bosses), each its own
+## Seventeen camps (Camps: six tier I near the glades, five tier II, three tier III, three bosses), each its own
 ## clearing with a deliberate fight; extraction portals at the four edges. Every number placing things is here, the
 ## camps' encounters in CAMPS (swap the foes without touching the place).
 
@@ -65,6 +65,8 @@ const CAMPS := [
 			{"kind": "fallen_stalker", "count": 2, "at": Vector3(-5, 0, -2)}, {"kind": "skel_archer", "count": 2, "at": Vector3(0, 0, -8)}]},
 	{"id": "frostfang", "name": "Frostfang Hollow", "tier": 4, "at": Vector2(-50, -54), "r": 16.0, "region": "frost", "boss": "ice_troll",
 		"foes": [{"kind": "ice_troll", "count": 1}, {"kind": "spirit_beast", "count": 2, "at": Vector3(6, 0, 5)}]},
+	{"id": "gilded_hoard", "name": "The Gilded Hoard", "tier": 4, "at": Vector2(58, 30), "r": 16.0, "region": "ruins", "boss": "goblin_king",
+		"foes": [{"kind": "goblin_king", "count": 1}, {"kind": "goblin_guard", "count": 3, "at": Vector3(5, 0, 4)}]},
 	{"id": "grotto", "name": "Mycelial Grotto", "tier": 4, "at": Vector2(-72, 30), "r": 16.0, "region": "mush", "boss": "hermit",
 		"foes": [{"kind": "hermit", "count": 1}, {"kind": "spore_shroom", "count": 3, "at": Vector3(5, 0, -4)}]},
 ]
@@ -75,7 +77,7 @@ const TRAILS := [
 	["heartwood", "grotto"], ["sporefall", "grotto"], ["s1", "barrow"], ["barrow", "obsidian"], ["s2", "shadeleaf"], ["shadeleaf", "nightwhisper"],
 	["nightwhisper", "hollow_stump"], ["shadeleaf", "obsidian"], ["obsidian", "sundered"], ["nightwhisper", "obsidian"], ["s2", "barrow"],
 	["s3", "pinehollow"], ["pinehollow", "frostfang"], ["pinehollow", "hollow_stump"], ["s3", "rimewood"], ["rimewood", "grotto"],
-	["rimewood", "frostfang"], ["frostfang", "heartwood"], ["brookside", "barrow"],
+	["rimewood", "frostfang"], ["frostfang", "heartwood"], ["brookside", "barrow"], ["brookside", "gilded_hoard"], ["barrow", "gilded_hoard"],
 	["p0", "rimewood"], ["p1", "barrow"], ["p2", "hollow_stump"], ["p3", "thornbrook"],
 ]
 const TERRAIN := {
