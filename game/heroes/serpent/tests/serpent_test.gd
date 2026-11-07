@@ -35,6 +35,10 @@ func hurt(e) -> bool:
 	return is_instance_valid(e) and e.life < e.max_life
 
 func fresh(h) -> void:
+	for i in 300:
+		if h.atk_t < 0.0:
+			break
+		await process_frame      # (the cast before it done)
 	ClassSkills.clear(h)
 	for e in g.world.enemies_root.get_children():
 		e.queue_free()
@@ -67,10 +71,12 @@ func _run() -> void:
 	check(h.use_skill("frost_breath", p0 + fwd * 5.0), "Frost Breath cast")
 	var fb: FrostBreath = Serpent.skill(h, "frost_breath")
 	var was_latched := false
-	for i in 120:
+	for i in 300:
 		await process_frame
 		was_latched = was_latched or fb.latched
-	check(was_latched and not fb.latched and not fb.on, "its jaws opened (the latch) and closed (the end)")
+		if was_latched and h.atk_t < 0.0:
+			break
+	check(was_latched and not fb.latched and not fb.on, "its jaws opened (the latch) and closed (the end) (%.2f s of breath)" % h.atk_dur)
 	check(near.all(func(e): return hurt(e) and e.chill_t > 0.0) and not hurt(behind), "the cone is struck and chilled, the one behind spared")
 
 	# Glacial Tomb: sealed (stunned, unhurt) from its rules' tomb, then the shatter

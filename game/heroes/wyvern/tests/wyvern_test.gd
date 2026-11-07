@@ -35,6 +35,10 @@ func hurt(e) -> bool:
 	return is_instance_valid(e) and e.life < e.max_life
 
 func fresh(h) -> void:
+	for i in 300:
+		if h.atk_t < 0.0:
+			break
+		await process_frame      # (the cast before it done)
 	ClassSkills.clear(h)
 	SkillFx.clear(h)
 	for e in g.world.enemies_root.get_children():
