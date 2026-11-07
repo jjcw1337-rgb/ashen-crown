@@ -51,7 +51,7 @@ static func impact_at(style: String) -> float:
 		"bite": return 0.5
 		"lob": return 0.55
 		"smash": return 0.58
-		"fists": return 0.75          # the Demon's skills (DemonSkills; the clips' blows, Demon.SHOTS)
+		"fists": return 0.75          # the Demon's skills (Demon; the clips' blows, DemonBody.SHOTS)
 		"icharge": return 0.5
 		"cslam": return 0.58
 		"hurl": return 0.52

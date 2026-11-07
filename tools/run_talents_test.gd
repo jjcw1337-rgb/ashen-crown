@@ -515,7 +515,7 @@ func _skills(h) -> void:
 	ok = await _cast(h, "r_reap", h.global_position + Vector3(0, 0, -4), 1.5)
 	check(ok and reap.all(func(e): return e.life < e.max_life) and h.life > lf, "Reaping Crescent: reaps the arc in front and heals")
 	# the Demon's
-	var DS = load("res://scripts/demon_skills.gd")
+	var DS = load("res://game/heroes/demon/demon.gd")
 	await _fresh(h, "demon", {})
 	var vic := [_foe(h, Vector3(8, 0, 0), "zombie", 5000.0), _foe(h, Vector3(9, 0, 1.5), "zombie", 5000.0)]
 	ok = await _cast(h, "d_volcano", vic[0].global_position, 3.5)
@@ -523,9 +523,9 @@ func _skills(h) -> void:
 	await _fresh(h, "demon", {})
 	var br = _foe(h, Vector3(4, 0, 0), "zombie", 5000.0)
 	var plain = _foe(h, Vector3(-6, 0, 0), "zombie", 5000.0)
-	DS.brand(h, br)
+	DS.brands(h).mark(br)
 	ok = await _cast(h, "d_detonate", h.global_position, 1.2)
-	check(ok and br.life < br.max_life and not DS.branded(h, br) and is_equal_approx(plain.life, plain.max_life), "Hellbrand Detonation: the Branded foe erupts, the Brand spent, the unbranded spared")
+	check(ok and br.life < br.max_life and not DS.brands(h).has(br) and is_equal_approx(plain.life, plain.max_life), "Hellbrand Detonation: the Branded foe erupts, the Brand spent, the unbranded spared")
 	await _fresh(h, "demon", {})
 	var d0: float = h.talent("dmg")
 	var l0p: float = h.life

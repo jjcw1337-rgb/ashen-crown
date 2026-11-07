@@ -3,7 +3,7 @@ extends RefCounted
 ## The one place Hero hands a class's skills to that class's own script. Hero.use_skill, _impact, _process,
 ## take_hit, set_class and new_character call in here; nothing in hero.gd names a class's skill ids.
 ##
-## Every class's skills script (KnightSkills, Wraith, DemonSkills, WarlockSkills, Archer, Plague) has
+## Every class's skills script (KnightSkills, Wraith, Demon, WarlockSkills, Archer, Plague) has
 ## the same static functions:
 ##   can_cast(h, id, aim) -> bool   checks before mana and the cooldown are spent (shows its own message on false)
 ##   cast(h, id, aim)               starts the skill: usually h._start_attack(style, id[, seconds])
@@ -25,7 +25,7 @@ static func of(cls: String):
 	match cls:
 		"knight": return KnightSkills
 		"wraith": return Wraith
-		"demon": return DemonSkills
+		"demon": return Demon
 		"warlock": return WarlockSkills
 		"archer": return Archer
 		"plague": return Plague
@@ -36,7 +36,7 @@ static func of(cls: String):
 
 ## Every class's skills script (update/clear/died run on all of them: each looks after its own state).
 static func all() -> Array:
-	return [KnightSkills, Wraith, DemonSkills, WarlockSkills, Archer, Plague, Doug, DragonSkills, SharedSkills]
+	return [KnightSkills, Wraith, Demon, WarlockSkills, Archer, Plague, Doug, DragonSkills, SharedSkills]
 
 ## The class a skill id belongs to ("any" for the common Attack and Block).
 static func owner(id: String) -> String:
@@ -124,7 +124,8 @@ static func pace(h: Hero) -> float:
 	var m = of(h.cls)
 	return float(m.pace(h)) if m != null and m.has_method("pace") else 1.0
 
-## A skill of its makes the hero shrug off stuns and slows right now (Doug in his clown car): Hero.take_hit.
+## Nothing stops or moves the hero right now: stuns and slows don't take (Doug in his clown car, the Demon's Crucible;
+## Hero.take_hit, PvpStatus).
 static func unstoppable(h: Hero) -> bool:
 	var m = of(h.cls)
 	return m != null and m.has_method("unstoppable") and bool(m.unstoppable(h))
@@ -166,6 +167,17 @@ static func end_channel(h: Hero) -> void:
 static func absorb(h: Hero, dmg: float) -> float:
 	var m = of(h.cls)
 	return float(m.absorb(h, dmg)) if m != null and m.has_method("absorb") else dmg
+
+## A skill pressed again mid-skill (the Demon's Crucible ends early): true when the class took the press.
+static func recast(h: Hero, id: String) -> bool:
+	var m = of(h.cls)
+	return m != null and m.has_method("recast") and m.recast(h, id)
+
+## One stage of a skill of several clips has ended (Hero._update_attack): the class starts what follows it.
+static func stage_done(h: Hero, style: String, skill: String) -> void:
+	var m = of(h.cls)
+	if m != null and m.has_method("stage_done"):
+		m.stage_done(h, style, skill)
 
 ## The node the weapon hangs from, when the class holds it its own way (the ranger's bow in his left hand); else null.
 static func weapon_hand(h: Hero, J: Dictionary) -> Node3D:

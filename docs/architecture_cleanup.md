@@ -140,8 +140,9 @@ Touch points to coordinate:
 - Claude-2 (2026-11-07, one agent per hero, each on its own branch): the Plague Doctor, the Warlock, Doug, the Wraith
   and the Demon onto the Archer's template with their skills on the server; then the Knight and the dragons. Also
   click-to-cast for AoE skills (`game/systems/skills/aiming.gd`, JJ and Blaine).
-- Claude-1: the monsters into `game/monsters/<name>/` (the Verdant Reach's first; King Grubb as a boss any camp can
-  use), then the remaining cuts (the old Warlock, the co-op server).
+- Claude-1 (2026-11-07): archiving Enter World and the starting camp (`game/maps/camp/`, the shops, quests, the waypoint,
+  the title's character screens, world co-op); then the world system out of `scripts/` into `game/systems/world/`
+  (`world.gd`, `props.gd`, `flora.gd`, `grass*.gd`, `birds.gd`, `weather.gd`, `grade.gd`, `geo.gd`, `inter.gd`).
 
 ## Cutting an old system
 

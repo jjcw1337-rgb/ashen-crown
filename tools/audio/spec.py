@@ -241,6 +241,12 @@ SPEC = [
     dict(name="music_select", src="eleven", n=0, dur=30.0, hit=0, loop=True, label="haunting hero-select music",
          prompt="the haunting but gentle song of a camp in a forsaken dark forest, dark fantasy: a slow solo viola and soft "
                 "lute over a low hummed choir, sombre and tender, background music loop, no drums"),
+    # the Battlegrounds' fighting music (jj, 2026-11-07: "throw me some uplifting music while i fight"): three takes
+    # for jj to pick from; the forest bed plays under it
+    dict(name="music_bg", src="eleven", n=12, dur=30.0, hit=0, loop=True, label="uplifting battle music",
+         # (takes 0-2 the first prompt, 3-5 brighter folk, 6-8 a heroic anthem; jj: "lighten it up", takes 9-11 from this)
+         prompt="light cheerful upbeat adventure fight music: bouncy plucked strings, playful flutes and glockenspiel, "
+                "light hand percussion, a fun bright skipping melody, carefree and lively, seamless background music loop"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
     # the camp's bonfire takes what you throw in (gone for good), and a pick-up click in the inventory

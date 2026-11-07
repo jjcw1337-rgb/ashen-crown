@@ -120,7 +120,7 @@ func _run() -> void:
 					mine.append(pw)
 			SkillFx.clear(h)
 			Wraith.clear(h)
-			DemonSkills.clear(h)
+			Demon.clear(h)
 			PlagueFx.clear(h)
 			ClassSkills.clear(h)
 			h.atk_t = -1.0

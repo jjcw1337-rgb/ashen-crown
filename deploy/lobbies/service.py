@@ -19,6 +19,8 @@ COST = {'arena': (450, 0.15), 'battlegrounds': (480, 0.3), 'sandbox': (600, 0.3)
 LIMIT = {'arena': 45 * 60, 'battlegrounds': 3 * 3600, 'sandbox': 60 * 60}
 FULL = 'Servers are full right now. Your lobby stays open: press Start again in a moment.'
 class Rejected(Exception): pass
+OUTDATED = 'Your game (build %s) is out of date: update it in the itch app, then try again.'
+OTHER_BUILD = 'This match runs build %s and your game is build %s: everyone in a match needs the same build (update in the itch app).'
 
 class Lobbies:
     def __init__(self, path, launch, stop, slots=1, clock=time.time):
@@ -28,6 +30,8 @@ class Lobbies:
         self.receipts={key:dict(user=uid,**json.loads(data)) for key,uid,data in self.db.execute('SELECT id,user,data FROM receipts')}
         self.lock = threading.RLock(); self.launch = launch; self.stop = stop
         self.slots = slots; self.clock = clock; self.rooms = {}
+        # Which game builds have a match server here (Service: the deployed server builds); tests leave it open.
+        self.has_build = lambda rev: True
         for key, data in self.db.execute('SELECT id,data FROM state'):
             room = json.loads(data)
             # A controller restart never silently resumes an uncertain match.
@@ -90,8 +94,13 @@ class Lobbies:
                 if mode=='sandbox': team=1
                 if any(uid in r['members'] and not r['members'][uid].get('departed',False) and r['state'] in ('waiting','starting','playing') for r in self.rooms.values()): raise Rejected('Leave your current lobby first.')
                 if p.get('wager',False) and mode!='arena': raise Rejected('Optional stakes are for Arena; Battlegrounds already has its extraction rules.')
+                # (2026-11-07: a client on another build froze on "Joining…" at a match server whose network calls
+                # differ) a lobby runs the server build of the game that made it; a build with no server here is out
+                # of date. "dev" (a local build) is never gated.
+                rev = str(p.get('version','dev'))
+                if rev != 'dev' and not self.has_build(rev): raise Rejected(OUTDATED % rev)
                 rid = secrets.token_hex(8)
-                r = dict(id=rid,name=str(p.get('name','Adventure'))[:48],mode=mode,team_size=team,capacity=team*2 if mode=='arena' else MODES[mode][1],state='waiting',owner=uid,members={},created=self.clock(),touched=self.clock(),reason='',wager=bool(p.get('wager',False)))
+                r = dict(id=rid,name=str(p.get('name','Adventure'))[:48],mode=mode,team_size=team,capacity=team*2 if mode=='arena' else MODES[mode][1],state='waiting',owner=uid,members={},created=self.clock(),touched=self.clock(),reason='',wager=bool(p.get('wager',False)),version=rev)
                 self.rooms[rid]=r; self.add(r,uid,p)
             else:
                 r=self.room(str(p.get('id','')))
@@ -179,6 +188,8 @@ class Lobbies:
         if sum(not m.get('departed',False) for m in r['members'].values())>=r['capacity']: raise Rejected('Lobby full.')
         char=str(p.get('character',''))
         if not char or len(char)>100 or not all(c.isalnum() or c in '-_' for c in char): raise Rejected('Select a character first.')
+        mine=str(p.get('version','dev')); theirs=str(r.get('version','dev'))
+        if mine!='dev' and theirs!='dev' and mine!=theirs: raise Rejected(OTHER_BUILD % (theirs, mine))
         team=self.open_team(r)
         r['members'][uid]={'name':str(p.get('player','Adventurer'))[:32],'character':char,'team':team,'ready':False,'seen':self.clock()}
         for m in r['members'].values(): m['ready']=False
@@ -234,6 +245,12 @@ class Service:
         self.version=revision.read_text().strip() if revision.exists() else "dev"
         if not args.dev and self.version=="dev": raise RuntimeError("Deploy an imported release with DEPLOYED_REV before starting the public lobby service.")
         self.model=Lobbies(str(self.root/'lobbies.sqlite'),self.launch,self.stop,args.slots)
+        self.model.has_build=lambda rev: self.binary_for(rev) is not None
+    def binary_for(self,rev):
+        # the server builds sit side by side (update.sh keeps the newest three: <server>/<rev>/AshenCrown.x86_64)
+        if not self.args.server_binary: return None
+        b=Path(self.args.server_binary).resolve().parent.parent/str(rev)/'AshenCrown.x86_64'
+        return str(b) if b.is_file() else None
     def launch(self,r):
         # Room for one more? Free memory for this mode's world plus headroom, and a CPU budget across the running
         # matches (their measured cost, COST): no fixed slot count, so a bigger machine simply holds more.
@@ -252,8 +269,9 @@ class Service:
         log=(self.root/(r['id']+'.log')).open('ab')
         args=['--','--server','--port',str(port),'--match-config',str(path)]
         # the stripped dedicated-server export (one file, its pack inside) when deployed; else the game itself
-        lean=self.args.server_binary and os.path.isfile(self.args.server_binary)
-        cmd=[self.args.server_binary,'--headless']+args if lean else [self.args.godot,'--headless','--path',self.args.game]+args
+        binary=self.binary_for(r.get('version','dev')) or self.args.server_binary
+        lean=binary and os.path.isfile(binary)
+        cmd=[binary,'--headless']+args if lean else [self.args.godot,'--headless','--path',self.args.game]+args
         proc=subprocess.Popen(cmd,stdout=log,stderr=subprocess.STDOUT)
         log.close();self.processes[r['id']]=(proc,port,r['mode'])
         return '%s:%d'%(self.args.public_host,port)
@@ -302,8 +320,8 @@ class Handler(BaseHTTPRequestHandler):
                 if self.client_address[0] not in ('127.0.0.1','::1'): raise Rejected('Local workers only.')
                 result=svc.model.worker(str(p.get('id','')),self.headers.get('X-Worker-Key',''),str(p.get('op','')),p)
             elif self.path=='/lobbies':
-                # Private development: build revisions are diagnostic, not admission gates.
-                # Keep real session authentication and all lobby/ticket rules.
+                # A lobby keeps its creator's build (version) and runs that build's match server; a game on another
+                # build can't join it, and one whose build has no server here is told to update (Lobbies.call).
                 result=svc.model.call(svc.user(self.headers.get('Authorization','')),str(p.get('op','')),p)
             else: raise Rejected('Unknown endpoint.')
         except (Rejected,ValueError,KeyError,TypeError) as e: status=400;result={'error':str(e)}

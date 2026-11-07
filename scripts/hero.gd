@@ -107,7 +107,6 @@ var veil_t := 0.0            # Wraith: seconds he is mist, and blows pass throug
 var roll_t := -1.0          # the dodge roll on Space (Dodge): seconds into it, -1 when not rolling
 var roll_dir := Vector3.FORWARD
 var roll_cd := 0.0
-var dm := {}                 # Demon: the skills' state (DemonSkills: the charge, lava on the ground, fissures, boulders, the grip, the wrath)
 var phased := false          # (the Underworld's grade in game.gd reads it; no skill sets it now)
 var channel_t := -1.0        # a held channel (the Warlock's Drain Life): seconds held, -1 when none (ClassSkills.channel)
 ## A hero's skills that are objects (Skill, docs/content/skills.md), by skill id: made by his class's script
@@ -414,7 +413,7 @@ func _build_rig() -> void:
 	if is_wraith():
 		rig = WraithBody.build(wraith_gear())
 	elif is_demon():
-		rig = Demon.build(demon_gear())
+		rig = DemonBody.build(demon_gear())
 	elif is_warlock():
 		rig = Warlock.build(warlock_gear())
 	elif is_archer():
@@ -507,7 +506,7 @@ func _tint_aura() -> void:
 	(aura.process_material as ParticleProcessMaterial).color_ramp = gt
 
 func demon_gear() -> Dictionary:
-	var g := Demon.default_gear()
+	var g := DemonBody.default_gear()
 	var a = equipment.get("armor")
 	if a != null:
 		var p := Models.palette(a)
@@ -867,7 +866,7 @@ func refresh_gear() -> void:
 	if is_wraith():
 		WraithBody.rebuild_body(rig, wraith_gear())
 	elif is_demon():
-		Demon.rebuild_body(rig, demon_gear())
+		DemonBody.rebuild_body(rig, demon_gear())
 	elif is_warlock():
 		Warlock.rebuild_body(rig, warlock_gear())
 	elif is_dragon():
@@ -1385,7 +1384,7 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 	stop_chop()
 	if dead or charge_t >= 0.0 or daze_t > 0.0:
 		return false
-	if atk_t >= 0.0 and atk_skill != "" and is_demon() and DemonSkills.recast(self, id):
+	if atk_t >= 0.0 and atk_skill != "" and ClassSkills.recast(self, id):
 		return true
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
@@ -1419,7 +1418,7 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 		RunTalents.on_cooldown(self, id)
 	atk_aim = aim
 	_face(aim - global_position)
-	# the class's skills script starts it (ClassSkills.of: KnightSkills, Wraith, DemonSkills, ...)
+	# the class's skills script starts it (ClassSkills.of: KnightSkills, Wraith, Demon, ...)
 	ClassSkills.cast(self, id, aim)
 	SkillSpec.apply_timing(self, id)      # (a "use" in the skill's data sets its length)
 	# the cast itself, seen by everyone (SkillFx: the class draws it, or the default puff shows it)
@@ -1695,10 +1694,8 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 		dmg *= 120.0 / (120.0 + a)
 	else:
 		dmg *= 1.0 - res / 100.0
-	if is_demon():
-		dmg = DemonSkills.absorb(self, dmg)      # Wrath of the Pit's Crucible
 	dmg = maxf(1.0, dmg)
-	dmg = ClassSkills.absorb(self, dmg)      # a class's own ward (the Warlock's shield: Blood Ward, the Soul Feast)
+	dmg = ClassSkills.absorb(self, dmg)      # a class's own ward (the Warlock's shield; the Demon's Crucible)
 	if ward > 0.0:
 		var soak := minf(ward, dmg)
 		ward -= soak
@@ -2053,7 +2050,7 @@ func _process_body(delta: float) -> void:
 ## The Wraith floats a hand's breadth off the ground, bobbing slowly and leaning into motion.
 func _hover() -> void:
 	if is_demon():
-		Demon.animate(rig, anim_time, move_amt, self)
+		DemonBody.animate(rig, anim_time, move_amt, self)
 		return
 	if not is_wraith() or dead or _floats():
 		return
@@ -2257,8 +2254,8 @@ func _update_attack(delta: float) -> void:
 		var done_skill := atk_skill
 		atk_t = -1.0
 		atk_skill = ""
-		if is_demon() and done_skill != "":
-			DemonSkills.stage_done(self, done_style, done_skill)
+		if done_skill != "":
+			ClassSkills.stage_done(self, done_style, done_skill)     # (a skill of several clips: the Demon's)
 		if swipe and atk_style == "swipe3":
 			swipe_n = 0
 		if was_chop:
@@ -2691,7 +2688,7 @@ func from_save(d: Dictionary) -> void:
 	run = RunBuild.from_dict(d["run"]) if d.get("run") is Dictionary else null
 	binds = (d.get("binds", {}) as Dictionary).duplicate() if d.get("binds") is Dictionary else {}
 	Wraith.migrate_binds(binds)
-	DemonSkills.migrate_binds(binds)
+	Demon.migrate_binds(binds)
 	Plague.migrate_binds(binds)
 	# saves from before the Path of Exile controls had Block on right mouse by default: it becomes the first skill
 	if int(d.get("binds_v", 1)) < 2 and str(binds.get("rmb", "")) == "block":

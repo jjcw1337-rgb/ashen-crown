@@ -58,7 +58,7 @@ func _run() -> void:
 	var off := Vector3(0, 17.0, 16.5) * zoom
 	cam.global_transform = Transform3D(Basis(), off).looking_at(Vector3(0, 1.0, 0), Vector3.UP)
 	cam.current = true
-	var kfx = load("res://scripts/demon_kit_fx.gd")
+	var kfx = load("res://game/systems/fx/demon_kit_fx.gd")
 	var b: Array = kfx.BOOKS[kind]
 	var loop: bool = kind in ["comet", "steam"]
 	var at := Vector3(0, 1.4, 0) if kind == "comet" else Vector3.ZERO
