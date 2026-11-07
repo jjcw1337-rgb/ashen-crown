@@ -131,7 +131,7 @@ static func impact(h: Hero) -> bool:
 			off.y = 0
 			if off.length() > 12.0:
 				at = h.global_position + off.normalized() * 12.0
-			var foes: Array = h.game.enemies_near(at, 5.0).filter(func(e): return not e.dead)
+			var foes: Array = h.game.enemies_near(at, BARRAGE_R).filter(func(e): return not e.dead)
 			var n := 6 + int(h.talent("barrage_more"))
 			for i in n:
 				var to: Vector3
@@ -183,6 +183,7 @@ static func impact(h: Hero) -> bool:
 	return true
 
 const CANNON_R := 4.5
+const BARRAGE_R := 5.0      # Pie Barrage: the pies find the foes this close to the pointer
 
 ## A crowd-control effect on a foe: a monster stunned or slowed, another player told through the server.
 static func _cc(h: Hero, e, kind: String, secs: float) -> void:

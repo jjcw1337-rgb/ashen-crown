@@ -6,7 +6,8 @@ extends SceneTree
 var fails := 0
 const KEYS := ["id", "cls", "name", "key", "lvl", "mana", "cd", "aim", "range", "desc", "channel", "hold", "style", "use", "hit",
 	"speed", "lock", "cancel", "dmg", "base", "per_lvl", "type", "knock", "area", "dot", "tags", "power", "role", "pvp",
-	"rarity", "direction", "k"]   # (the last three: the Hero Codex, data/codex/; "k" is the skill's own numbers, Skill.val)
+	"rarity", "direction", "k", "aoe"]   # (rarity, direction, k: the Hero Codex, data/codex/; "k" is the skill's own numbers,
+	# Skill.val; "aoe": an area at the pointer, armed by its key and cast by the click, Aiming)
 
 ## Styles more than one user plays (the weapon swings, monsters' attacks, the shared skills): a skill's "hit" must
 ## not retime them.
@@ -23,6 +24,7 @@ var SS
 var DG
 var AN
 var SH
+var AM
 
 func _initialize():
 	_run()
@@ -68,6 +70,14 @@ func _validate(s: Dictionary) -> String:
 		return "%s: \"k\" is a dictionary of numbers >= 0" % id
 	if s.has("pvp") and not (s["pvp"] is Dictionary and (s["pvp"] as Dictionary).values().all(func(v): return _num(v) and float(v) >= 0.0)):
 		return "%s: \"pvp\" is a dictionary of numbers >= 0" % id
+	if s.has("aoe"):
+		var a = s["aoe"]
+		if not (a is Dictionary and str(a.get("r", "")) != "" and (a as Dictionary).keys().all(func(k): return k in ["r", "grow"])):
+			return "%s: \"aoe\" is {\"r\": the number its area's radius is, \"grow\": a rite key that widens it (optional)}" % id
+		if str(s.get("aim", "")) != "point" or float(s.get("range", 0.0)) <= 0.0:
+			return "%s: an \"aoe\" skill lands at the pointer: \"aim\": \"point\" and a \"range\"" % id
+		if AM.base_radius(id) <= 0.0:
+			return "%s: \"aoe\" \"r\" %s names no number (a key of its \"k\", or Class.CONSTANT in its code)" % [id, a["r"]]
 	return ""
 
 func _run() -> void:
@@ -76,6 +86,7 @@ func _run() -> void:
 	DG = load("res://game/systems/skills/dodge.gd")
 	AN = load("res://game/systems/bodies/anim.gd")
 	SH = load("res://game/systems/skills/shared_skills.gd")
+	AM = load("res://game/systems/skills/aiming.gd")
 	get_root().add_child(g)
 	while g.world == null or g._busy or g._intro_playing or not g.ui.title_panel.visible:
 		g._intro_skip = true

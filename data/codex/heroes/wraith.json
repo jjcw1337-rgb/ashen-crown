@@ -73,6 +73,9 @@
 			"mana": 16,
 			"cd": 10.0,
 			"range": 10.0,
+			"aoe": {
+				"r": "WraithSkills.GRASP_R"
+			},
 			"tags": [
 				"cc"
 			],

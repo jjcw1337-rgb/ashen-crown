@@ -123,6 +123,7 @@ var ground_pt := Vector3.ZERO
 var lmb_held := false
 var lmb_repeat := 0.0
 var rmb_held := false
+var aiming: Aiming        # click to cast for area skills (game/systems/skills/aiming.gd); AimIndicator draws it
 const BIND_KEYCODES := {"Q": KEY_Q, "E": KEY_E, "R": KEY_R, "F": KEY_F, "G": KEY_G, "V": KEY_V}
 var exit_grace := 0.0
 var test_block := false        # a tool holding the guard up (game/heroes/archer/tools/fire_range.gd's "block" take)
@@ -184,6 +185,10 @@ func _ready() -> void:
 	else:
 		set_sound(bool(_load_setting("audio", "sound_on", true)))
 	click_move = bool(_load_setting("controls", "click_move", false))
+	aiming = Aiming.new(self)
+	add_child(aiming)
+	if not args.has("--server"):
+		add_child(AimIndicator.new(aiming))
 	_setup_env()
 	weather = Weather.new()
 	weather.name = "Weather"
@@ -3775,6 +3780,10 @@ func _unhandled_input(ev: InputEvent) -> void:
 	if ev is InputEventMouseButton:
 		if ev.button_index == MOUSE_BUTTON_LEFT:
 			if ev.pressed and not paused:
+				if aiming.armed():
+					_update_hover()
+					aiming.confirm(_cursor_aim())      # (click to cast: the click casts the armed skill, no swing, no walk)
+					return
 				lmb_held = true
 				lmb_repeat = 0.12
 				_update_hover()
@@ -3806,7 +3815,9 @@ func _unhandled_input(ev: InputEvent) -> void:
 			return
 		match ev.keycode:
 			KEY_ESCAPE:
-				if not ui.close_all():
+				if aiming.armed():
+					aiming.cancel()
+				elif not ui.close_all():
 					toggle_pause()
 			KEY_I, KEY_B, KEY_K, KEY_N when hero.run != null:
 				# a run character's one build window (RunUI): skills, spellbook, passives, gear, consumables
@@ -3932,6 +3943,8 @@ func _use_bind(slot: String, first: bool) -> void:
 			_update_hover()
 			hero.swipe_attack(_cursor_aim())
 			return
+	if aiming.press(id, first, slot in Hero.BIND_KEYS):
+		return      # (click to cast: an area skill's key arms it, Aiming)
 	if first or hero.skill_ready(id):
 		cast_skill(id)
 

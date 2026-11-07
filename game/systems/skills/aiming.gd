@@ -83,10 +83,11 @@ static func _constant(path: String) -> float:
 	_consts[path] = v
 	return v
 
-## A skill's key (or right mouse) went down (`first`) or is still held. True when click to cast took it: it armed the
-## skill, let the aim go, or refused it with the cast's own message. False: the caller does what it always did.
-func press(id: String, first: bool) -> bool:
-	var area := click_cast and is_area(id)
+## A skill's button went down (`first`) or is still held: a key (Q E R F G V), or a mouse button (`key` false: a skill
+## there is cast by its own click, at the pointer). True when click to cast took it: it armed the skill, let the aim
+## go, or refused it with the cast's own message. False: the caller does what it always did.
+func press(id: String, first: bool, key := true) -> bool:
+	var area := click_cast and key and is_area(id)
 	if not first:
 		return area      # (held: an area skill neither re-arms nor casts on its own)
 	if armed():
@@ -129,5 +130,11 @@ func _process(_delta: float) -> void:
 		return
 	var h: Hero = game.hero
 	if h == null or h.dead or not game.playing or game.paused or game.loading.visible or game.ui.any_panel_open() \
-			or not h.skill_list().any(func(s: Dictionary) -> bool: return s["id"] == skill) and not Data.shared_skills().any(func(s: Dictionary) -> bool: return s["id"] == skill):
+			or not _his(h, skill):
 		cancel()
+
+static func _his(h: Hero, id: String) -> bool:
+	for s in h.skill_list() + Data.shared_skills():
+		if s["id"] == id:
+			return true
+	return false

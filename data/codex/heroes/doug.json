@@ -146,6 +146,9 @@
 			"cd": 0.0,
 			"use": 1.1,
 			"range": 12.0,
+			"aoe": {
+				"r": "DougSkills.BARRAGE_R"
+			},
 			"role": "pie a crowd",
 			"lvl": 1,
 			"run": true
