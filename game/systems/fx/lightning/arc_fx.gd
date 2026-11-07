@@ -1,7 +1,7 @@
 class_name ArcFx
 extends RefCounted
 ## Arc's lightning, rebuilt (jj, 2026-11-04: "redo the lightning coming off of it to look better"), for the shared
-## Arc (SharedFx) and the Storm Wyvern's Storm Arc (DragonSkills; `play_dragon`). Draws only, on the caster's game and
+## Arc (SharedFx), the Storm Wyvern's Storm Arc (DragonRunFx) and the Archer's storm arrows. Draws only, on the caster's game and
 ## his puppet's alike, from the skills' "cast" and "impact" {ps: the path, d} events.
 ##  - The bolts are real lightning: branching channels grown and rendered in Blender (tools/blender/fx/lightning_bolts.py,
 ##    Cycles + glare, packed by tools/fx_bolt_atlas.py into assets/textures/fx/storm/bolts.png, 4x4), each leap a
@@ -22,7 +22,6 @@ const LEAP_GAP := 0.05
 const LIGHT_CAP := 3
 ## palettes: core, glow
 const STORM := [Color(0.95, 0.97, 1.0), Color(0.45, 0.55, 1.0)]
-const WYVERN := [Color(0.92, 1.0, 0.98), Color(0.3, 0.9, 1.0)]
 
 static var _shaders := {}
 static var _tex := {}
@@ -40,23 +39,7 @@ static func _shader(key: String) -> Shader:
 		_shaders[key] = s
 	return _shaders[key]
 
-# ---------------------------------------------------------------- the events
-## The Storm Wyvern's Storm Arc (SkillFx.play hands a dragon's events here).
-static func play_dragon(h: Hero, ev: Dictionary) -> bool:
-	if str(ev["s"]) != "storm_arc":
-		return false
-	var root: Node3D = h.game.world.fx_root
-	match str(ev["e"]):
-		"cast":
-			charge(h, DragonSkills.jaws(h), WYVERN, 0.45)
-			_wing_crackle(h)
-		"impact":
-			chain(h, root, ev["ps"], ev["d"], WYVERN, 1.25)
-			SkillFx.shake(h, 0.12)
-		_:
-			return false
-	return true
-
+# ---------------------------------------------------------------- the pieces
 ## The charge: the plasma ball swelling where the lightning will leave him, filaments spitting off it.
 static func charge(h: Hero, at: Vector3, pal: Array, size := 0.3) -> void:
 	var root: Node3D = h.game.world.fx_root
@@ -81,23 +64,6 @@ static func charge(h: Hero, at: Vector3, pal: Array, size := 0.3) -> void:
 		var d := Vector3(randf_range(-1, 1), randf_range(-0.4, 1.0), randf_range(-1, 1)).normalized()
 		ElementalFx.bolt(root, at, at + d * randf_range(0.3, 0.7) * (size / 0.3), 0.16, 0.025, tr, pal[0], pal[1])
 	_flash(root, at, pal[1], 1.6, 0.25, 3.0)
-
-## The wyvern's wings crackling as it rears: arcs running out along each wing's bones.
-static func _wing_crackle(h: Hero) -> void:
-	var sk := h.rig.find_children("*", "Skeleton3D", true, false)
-	if sk.is_empty():
-		return
-	var s := sk[0] as Skeleton3D
-	var root: Node3D = h.game.world.fx_root
-	var tr := InfernalFx.tier(h.game)
-	for side in ["L", "R"]:
-		var chain_b: Array = []
-		for nm in ["arm_%s_0" % side, "arm_%s_1" % side, "fing0_%s_0" % side, "fing0_%s_1" % side, "fing1_%s_1" % side]:
-			var i := s.find_bone(nm)
-			if i >= 0:
-				chain_b.append(s.global_transform * s.get_bone_global_pose(i).origin)
-		for k in chain_b.size() - 1:
-			ElementalFx.bolt(root, chain_b[k], chain_b[k + 1], 0.3, 0.035, tr, WYVERN[0], WYVERN[1])
 
 ## The chain along the path: one leap after another, each a bolt, each target struck; a fizzle ahead if it found
 ## nobody.

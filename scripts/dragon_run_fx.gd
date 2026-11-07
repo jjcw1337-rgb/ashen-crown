@@ -82,18 +82,18 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 		["v_dive", "start"]:
 			h.fxs["drg_dive"] = {"t": 0.0, "dur": float(ev.get("x", 1.0))}
 			Dodge._wing_gust(h, 1.3)
-			ArcFx.charge(h, DragonSkills.jaws(h), ArcFx.WYVERN, 0.35)
+			ArcFx.charge(h, DragonSkills.jaws(h), WYVERN, 0.35)
 		["v_dive", "land"]:
 			_dive_end(h)
 			var p5: Vector3 = ev["p"]
 			var r2: float = float(ev.get("r", 4.0))
-			ArcFx.bolt(root, p5 + Vector3(randf_range(-1, 1), 16.0, randf_range(-1, 1)), p5 + Vector3(0, 0.2, 0), 0.35, 1.6, ArcFx.WYVERN, game)
+			ArcFx.bolt(root, p5 + Vector3(randf_range(-1, 1), 16.0, randf_range(-1, 1)), p5 + Vector3(0, 0.2, 0), 0.35, 1.6, WYVERN, game)
 			ElementalFx.ground_slam(game, root, p5, r2)
 			ArcFx._scorch(root, p5, r2 * 0.55)
 			for e in ev.get("t", []):
 				if is_instance_valid(e):
-					ArcFx._struck(h, root, (e as Node3D).global_position + Vector3(0, 1.0, 0), ArcFx.WYVERN)
-			ArcFx._flash(root, p5 + Vector3(0, 1.5, 0), ArcFx.WYVERN[1], 6.0, 0.3, r2 * 2.5)
+					ArcFx._struck(h, root, (e as Node3D).global_position + Vector3(0, 1.0, 0), WYVERN)
+			ArcFx._flash(root, p5 + Vector3(0, 1.5, 0), WYVERN[1], 6.0, 0.3, r2 * 2.5)
 			Dodge._wing_gust(h, 1.8)
 			SkillFx.snd(h, "thunder_blast", 0.0, 1.0)
 			SkillFx.shake(h, 0.45)
@@ -106,14 +106,14 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			var c2 := DemonKitFx.smoke(root, p6 + Vector3(1.5, CLOUD_Y + 0.6, -1.0), "ash", 8.0, secs + 1.0, true, STORM_TINT * 0.8)
 			clouds.append({"p": p6, "n": [c1, c2], "t": secs + 1.0})
 			h.fxs["drg_clouds"] = clouds
-			ArcFx.bolt(root, p6 + Vector3(0, CLOUD_Y, 0), p6 + Vector3(randf_range(-3, 3), CLOUD_Y - 2.0, randf_range(-3, 3)), 0.3, 0.8, ArcFx.WYVERN, game)
+			ArcFx.bolt(root, p6 + Vector3(0, CLOUD_Y, 0), p6 + Vector3(randf_range(-3, 3), CLOUD_Y - 2.0, randf_range(-3, 3)), 0.3, 0.8, WYVERN, game)
 			SkillFx.snd(h, "thunderhead", -2.0)
 		["v_cloud", "bolt"]:
 			var q: Vector3 = ev["q"]
 			var top: Vector3 = (ev["p"] as Vector3) + Vector3(randf_range(-2, 2), CLOUD_Y - 0.5, randf_range(-2, 2))
-			ArcFx.bolt(root, top, q + Vector3(0, 1.0, 0), 0.25, 1.1, ArcFx.WYVERN, game)
-			ArcFx._struck(h, root, q + Vector3(0, 1.0, 0), ArcFx.WYVERN)
-			ArcFx._flash(root, q + Vector3(0, 2.0, 0), ArcFx.WYVERN[1], 3.0, 0.18, 7.0)
+			ArcFx.bolt(root, top, q + Vector3(0, 1.0, 0), 0.25, 1.1, WYVERN, game)
+			ArcFx._struck(h, root, q + Vector3(0, 1.0, 0), WYVERN)
+			ArcFx._flash(root, q + Vector3(0, 2.0, 0), WYVERN[1], 3.0, 0.18, 7.0)
 			SkillFx.snd(h, "arc_zap", -5.0, randf_range(0.8, 0.95))
 		["v_cloud", "end"]:
 			var p7: Vector3 = ev["p"]
@@ -260,3 +260,40 @@ static func _spike(h: Hero, root: Node3D, at: Vector3, s: float, delay: float, t
 		t2.tween_callback(func():
 			if is_instance_valid(c) and is_instance_valid(h):
 				FrostVolleyFx._break(root, h.game.world, c, tr)))
+
+# ---------------------------------------------------------------- the Storm Wyvern's Storm Arc
+## The Storm Wyvern's lightning palette: core, glow (ArcFx).
+const WYVERN := [Color(0.92, 1.0, 0.98), Color(0.3, 0.9, 1.0)]
+
+## The Storm Wyvern's Storm Arc, drawn with the shared lightning (ArcFx; SkillFx.play hands a dragon's events here).
+static func storm_arc(h: Hero, ev: Dictionary) -> bool:
+	if str(ev["s"]) != "storm_arc":
+		return false
+	var root: Node3D = h.game.world.fx_root
+	match str(ev["e"]):
+		"cast":
+			ArcFx.charge(h, DragonSkills.jaws(h), WYVERN, 0.45)
+			_wing_crackle(h)
+		"impact":
+			ArcFx.chain(h, root, ev["ps"], ev["d"], WYVERN, 1.25)
+			SkillFx.shake(h, 0.12)
+		_:
+			return false
+	return true
+
+## The wyvern's wings crackling as it rears: arcs running out along each wing's bones.
+static func _wing_crackle(h: Hero) -> void:
+	var sk := h.rig.find_children("*", "Skeleton3D", true, false)
+	if sk.is_empty():
+		return
+	var s := sk[0] as Skeleton3D
+	var root: Node3D = h.game.world.fx_root
+	var tr := InfernalFx.tier(h.game)
+	for side in ["L", "R"]:
+		var chain_b: Array = []
+		for nm in ["arm_%s_0" % side, "arm_%s_1" % side, "fing0_%s_0" % side, "fing0_%s_1" % side, "fing1_%s_1" % side]:
+			var i := s.find_bone(nm)
+			if i >= 0:
+				chain_b.append(s.global_transform * s.get_bone_global_pose(i).origin)
+		for k in chain_b.size() - 1:
+			ElementalFx.bolt(root, chain_b[k], chain_b[k + 1], 0.3, 0.035, tr, WYVERN[0], WYVERN[1])
