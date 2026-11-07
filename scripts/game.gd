@@ -2166,7 +2166,7 @@ func exit_to_title(save_current := true) -> void:
 	ui.show_title()
 
 ## The tools/ harness (a SceneTree script) still gets the camp behind the title, as before 2026-11-06: ~170 test
-## scripts wait for a world at boot. `-- --real-boot` gives a tool the real start (tools/boot_flow_test.gd).
+## scripts wait for a world at boot. `-- --real-boot` gives a tool the real start (game/systems/loading/tests/boot_flow_test.gd).
 func _harness_camp() -> bool:
 	return get_tree().get_script() != null and not OS.get_cmdline_user_args().has("--real-boot")
 

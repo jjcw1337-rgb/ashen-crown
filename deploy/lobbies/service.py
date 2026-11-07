@@ -67,6 +67,9 @@ class Lobbies:
         out = json.loads(json.dumps(out))
         out['joined']=sum(not m.get('departed',False) for m in r['members'].values())
         out['joinable'] = r['state']=='waiting' or (r['state']=='playing' and r.get('joinable',False))
+        # (jj, 2026-11-07) a match you left (extracted, fell or quit) can't take you back: it isn't offered to you
+        if uid in r['members'] and r['members'][uid].get('departed',False):
+            out['joinable'] = False; out['left'] = True
         for m in out['members'].values(): m.pop('ticket', None)
         if uid in r['members'] and not r['members'][uid].get('departed',False) and r['state'] in ('starting','playing'):
             out['address'] = r.get('address','') if r.get('listening',False) else ''; out['ticket'] = r['members'][uid].get('ticket','')
@@ -79,7 +82,7 @@ class Lobbies:
                 receipt=self.receipts.get(str(p.get('receipt','')),{})
                 if receipt.get('user')!=uid: raise Rejected('Unknown reward receipt.')
                 receipt['acked']=True;self.persist();return {'ok':True}
-            if op == 'list': return {'lobbies':[self.public(r,uid) for r in self.rooms.values() if r['state'] in ('waiting','starting','playing')], 'slots':self.slots}
+            if op == 'list': return {'lobbies':[self.public(r,uid) for r in self.rooms.values() if r['state'] in ('waiting','starting','playing') and not (uid in r['members'] and r['members'][uid].get('departed',False))], 'slots':self.slots}
             if op == 'create':
                 mode = p.get('mode'); team = p.get('team_size',1)
                 if mode not in LIVE_MODES or type(team) is not int or team not in (1,2,3): raise Rejected('Choose a supported mode and team size.')
