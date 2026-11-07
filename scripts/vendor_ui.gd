@@ -4,7 +4,7 @@ extends RefCounted
 ## whoever you trade with, shown at the head of the trade window (ui.gd `_build_shop`).
 
 const ROLE_TITLES := {"smith": "Blacksmith", "armor": "Armourer", "alch": "Alchemist", "gamble": "Gambler",
-	"elder": "Keeper of the Camp", "lanista": "Master of the Games", "shipwright": "Shipwright"}
+	"elder": "Keeper of the Camp", "lanista": "Master of the Games"}
 
 static func title_for(it: Inter) -> String:
 	if it.kind == "lanista":

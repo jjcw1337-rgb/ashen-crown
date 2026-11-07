@@ -149,11 +149,6 @@ var xp_bonus_t := 0.0
 var shops := {}
 var rng := RandomNumberGenerator.new()
 var shot_path := ""
-## The boat in this zone (coast.gd / isles.gd zones; BoatRide): moored, or sailing with the hero aboard.
-var boat: BoatRide = null
-var sail_blend := 0.0          # 0 = the isometric camera, 1 = the sailing camera behind and above her
-var sail_cam_yaw := 0.0
-var water_pt := Vector3.ZERO   # where the mouse meets the sea's surface (steering by mouse)
 var shot_spawn := ""
 var shot_zone := "town"
 var shot_frames := 0
@@ -473,7 +468,7 @@ func _setup_env() -> void:
 ## A3: set the camp and the moor ablaze, with smoke columns rising beyond the trees.
 func _set_fires() -> void:
 	var r := RandomNumberGenerator.new()
-	r.seed = 99 + ["town", "wild", "lair", "coast"].find(cur_zone)
+	r.seed = 99 + ["town", "wild", "lair"].find(cur_zone)
 	var lit := 0
 	for bp in world.burn_points:
 		var pos: Vector3 = bp[0]
@@ -514,9 +509,6 @@ func zone_music() -> void:
 		return
 	if world == null:
 		return
-	if world.sea:
-		Sfx.play_music("wild", "surf")      # the coast and the islands: surf on the beaches (Game._sea_sounds fades it)
-		return
 	# the camp after dark: tonight's night bed (DayNight, one of five in turn), once the bed exists
 	var night_bed := cur_zone == "town" and day_night != null and day_night.on and day_night.night > 0.5
 	# the Verdant Reach (the Battlegrounds) has no song: its forest bed alone, not the old synthesized drone, which
@@ -524,24 +516,6 @@ func zone_music() -> void:
 	var song := "" if cur_zone == Battlegrounds.ZONE else ("fort" if cur_zone == "lair" and world.fort else cur_zone)
 	Sfx.play_music(song, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
 			day_night.night_take() if night_bed else 0)
-
-## In a sea zone the surf bed follows the shore: full on the beach, fading inland and out at sea (the boat's
-## own `sea` bed takes over out there, BoatRide._sounds).
-func _sea_sounds() -> void:
-	if world == null or not world.sea or Sfx.ambience == null:
-		return
-	var p := hero.global_position
-	var d := 0.0
-	var oc: Ocean = world.get_node_or_null("Ocean")
-	if oc and oc.depth_at(p.x, p.z) > 0.3:
-		d = oc.shore_at(p.x, p.z)                                 # out on the water: how far from land
-	elif cur_zone.begins_with("isle_"):
-		var isle := Isles.get_isle(Isles.id_of(cur_zone))
-		d = maxf(0.0, float(isle.get("r", 100.0)) - Vector2(p.x, p.z).length() - 10.0)   # inland
-	else:
-		d = maxf(0.0, absf(p.x - Coast.shore_x(p.z)) - 10.0)
-	var want := -4.0 - clampf((d - 8.0) / 70.0, 0.0, 1.0) * 18.0
-	Sfx.ambience.volume_db = move_toward(Sfx.ambience.volume_db, want, get_process_delta_time() * 6.0)
 
 ## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
 func indoor() -> bool:
@@ -681,8 +655,6 @@ func _zone_env(kind: String) -> void:
 			env.volumetric_fog_emission = Color(0.04, 0.03, 0.02)
 			sun.light_color = Color(1.0, 0.82, 0.6)
 			sun.light_energy = 1.05
-		if world.sea:
-			_sea_env()
 		if snowy:
 			# overcast winter: pale sky, cold light, snow bouncing light back up
 			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)
@@ -786,7 +758,7 @@ func _rim_kind() -> String:
 		return "inside"
 	if difficulty >= 2:
 		return "ash"
-	if difficulty == 1 or world.sea:
+	if difficulty == 1:
 		return "day"
 	return "dusk"
 
@@ -809,87 +781,12 @@ func _update_grade(delta: float) -> void:
 		Grade.tag_hero(hero)
 
 const SUN_DEFAULT := Vector3(-52, -38, 0)
-## The coast and the islands: a long golden evening over the sea. The sun hangs low in the west over
-## the open water so the waves catch it in a glittering path, the sky warms to amber at the horizon,
-## and the air is clear enough to see the far islands as hazy blue silhouettes.
-func _sea_env() -> void:
-	sky_mat.sky_top_color = Color(0.22, 0.32, 0.46)
-	sky_mat.sky_horizon_color = Color(0.86, 0.66, 0.46)
-	# below the horizon the sky is what wave backs reflect at low angles: keep it close to the horizon so
-	# the far water doesn't streak dark
-	sky_mat.ground_horizon_color = Color(0.8, 0.64, 0.48)
-	sky_mat.ground_bottom_color = Color(0.46, 0.5, 0.54)
-	sky_mat.sun_angle_max = 22.0
-	env.ambient_light_energy = 0.62
-	env.tonemap_exposure = 1.1
-	env.fog_light_color = Color(0.62, 0.6, 0.56)
-	env.fog_density = 0.0028
-	env.fog_sky_affect = 0.25
-	env.fog_height = 0.0
-	env.fog_height_density = 0.0
-	env.adjustment_saturation = 1.0
-	env.adjustment_contrast = 1.07
-	env.volumetric_fog_density = 0.006
-	env.volumetric_fog_albedo = Color(0.9, 0.82, 0.72)
-	env.volumetric_fog_emission = Color(0.02, 0.016, 0.012)
-	env.glow_intensity = 0.8
-	env.glow_bloom = 0.07
-	sun.rotation_degrees = Vector3(-24, -112, 0)
-	sun.light_color = Color(1.0, 0.8, 0.6)
-	sun.light_energy = 1.15
-	hero.light.light_energy = 0.7
-	_isle_mood()
-	_ocean_light()
-
-## An island with a "mood" in Isles.ISLANDS (the Bleak Isle) has its own water and air in its zone.
-func _isle_mood() -> void:
-	if not cur_zone.begins_with("isle_"):
-		return
-	var isle := Isles.get_isle(cur_zone.trim_prefix("isle_"))
-	if isle.is_empty() or not isle.has("mood"):
-		return
-	var m: Dictionary = isle["mood"]
-	sky_mat.sky_top_color = m["sky_top"]
-	sky_mat.sky_horizon_color = m["horizon"]
-	sky_mat.ground_horizon_color = m["horizon"]
-	sky_mat.ground_bottom_color = (m["horizon"] as Color).darkened(0.3)
-	env.fog_light_color = m["fog"]
-	env.fog_density = m["fog_density"]
-	env.fog_sky_affect = 0.6
-	env.fog_height = m["fog_height"]
-	env.fog_height_density = m["fog_height_density"]
-	env.volumetric_fog_albedo = m["vol_albedo"]
-	env.volumetric_fog_density = m["vol_density"]
-	env.volumetric_fog_emission = Color(0.01, 0.014, 0.01)
-	env.adjustment_saturation = m["sat"]
-	env.adjustment_contrast = m["contrast"]
-	env.ambient_light_energy = m["ambient"]
-	env.glow_intensity = 0.5
-	sun.light_color = m["sun"]
-	sun.light_energy = m["sun_energy"]
-	if world and world.has_node("Ocean"):
-		(world.get_node("Ocean") as Ocean).set_tint(m["shallow"], m["deep"], m["absorb"])
-
-## Hands the sea the sun and the sky's colour (Ocean.set_light).
-func _ocean_light() -> void:
-	if world == null or not world.has_node("Ocean"):
-		return
-	(world.get_node("Ocean") as Ocean).set_light(sun.global_basis.z, sun.light_color * sun.light_energy, sky_mat.sky_horizon_color.lerp(sky_mat.sky_top_color, 0.5))
-
-## A sea zone (the coast, an island) gets the ocean: its map covers the whole sea on the coast
-## (2 m cells) and the island's waters on an island (1 m).
-func _add_ocean(zone: String) -> void:
+## Every zone starts from the default sun, sky floor and view distance (_zone_env then sets its own light).
+func _reset_sky() -> void:
 	sun.rotation_degrees = SUN_DEFAULT
 	sky_mat.ground_bottom_color = Color(0.16, 0.18, 0.15)
 	sky_mat.sun_angle_max = 30.0
 	cam.far = 300.0
-	if not world.sea:
-		return
-	cam.far = 900.0
-	var oc := Ocean.new()
-	var r: Rect2 = world.get_meta("sea_rect") if zone == "coast" else world.bounds.grow(World.MARGIN + 28.0 + Ocean.MAP_MARGIN)
-	world.add_child(oc)
-	oc.setup(world, r, 2.0 if zone == "coast" else 1.0, quality, is_forward(), zone)
 
 const SETTINGS_PATH := "user://settings.cfg"
 const QUALITY_NAMES := ["Low", "Medium", "High", "Ultra"]
@@ -956,8 +853,6 @@ func apply_quality(q: int) -> void:
 		if not g.has_meta("grass3d"):
 			(g as MultiMeshInstance3D).visibility_range_end = [32.0, 45.0, 60.0, 95.0][q]
 	Grass.apply_quality(self, q)
-	if world != null and world.has_node("Ocean"):
-		(world.get_node("Ocean") as Ocean).set_quality(q)
 	apply_render_scale()
 
 ## How many pixels the 3D view may draw at most on Low and Medium (High and Ultra draw every pixel). The UI is
@@ -990,8 +885,7 @@ func apply_render_scale() -> void:
 ## lens and the last on ground past the top of the screen, so one 2048 cascade (2.5 cm a texel) covered the whole play
 ## area; Low and Medium's two splits put it all in one cascade 63 m deep (11 cm a texel). Fitted, the hero stands in
 ## the middle of his own cascade (2.0 cm on High, 1.0 cm on Ultra, 4.8 cm on Low/Medium), and nothing beyond the view
-## is drawn into the shadow maps. Distances follow the zoom; the sailing camera, which looks out to the horizon, keeps
-## the long default split.
+## is drawn into the shadow maps. Distances follow the zoom.
 const SHADOW_FIT_4 := [48.0, 0.3474, 0.6105, 0.7895]   # max distance (m) at zoom 1, then the three split fractions
 const SHADOW_FIT_2 := [46.0, 0.6374]
 var _shadow_hold := false      # the minimap capture sets its own shadow distance for a few frames
@@ -1000,18 +894,11 @@ var _shadow_reach := -2.0
 func _fit_shadows(force := false) -> void:
 	if sun == null or cam == null or _shadow_hold:
 		return
-	var reach := -1.0              # -1: the sailing camera
-	if sail_blend <= 0.0:
-		reach = snappedf(clampf(cam.position.length() / CAM_OFFSET.length(), 0.6, 2.0), 0.05)
+	var reach := snappedf(clampf(cam.position.length() / CAM_OFFSET.length(), 0.6, 2.0), 0.05)
 	if is_equal_approx(reach, _shadow_reach) and not force:
 		return
 	_shadow_reach = reach
-	if reach < 0.0:
-		sun.directional_shadow_max_distance = 90.0 if quality >= 3 else 70.0
-		sun.directional_shadow_split_1 = 0.1
-		sun.directional_shadow_split_2 = 0.2
-		sun.directional_shadow_split_3 = 0.5
-	elif sun.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS:
+	if sun.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS:
 		sun.directional_shadow_max_distance = float(SHADOW_FIT_4[0]) * reach
 		sun.directional_shadow_split_1 = float(SHADOW_FIT_4[1])
 		sun.directional_shadow_split_2 = float(SHADOW_FIT_4[2])
@@ -1230,12 +1117,9 @@ func zone_title(act: int, zone: String) -> String:
 		"town": return a["town"] + tag
 		"wild": return a["wild"] + tag
 		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
-		"coast": return str(a.get("coast", "The Coast")) + tag
 		Battlegrounds.ZONE: return Battlegrounds.map_title()
 		"arena": return "The Proving Arena"
 		Sandbox.ZONE: return Sandbox.TITLE
-	if zone.begins_with("isle_"):
-		return str(Isles.get_isle(Isles.id_of(zone)).get("name", "An Island")) + tag
 	return ""
 
 ## The current run's multipliers on Act I (Data.RUNS).
@@ -1398,10 +1282,10 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	world.run = difficulty                 # A2 builds its own road and Aurelia
 	world.living_grass = true              # the living grass everywhere outdoors (its shader chars it under A3's ash)
 	add_child(world)
-	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair", "coast"].find(zone) * 7 + (zone.hash() % 997 if zone.begins_with("isle_") else 0))
+	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
 	ResCache.prepare(scope, _monster_paths())     # (on the threads while the minimap is drawn)
 	_restore_harvest()
-	_add_ocean(zone)
+	_reset_sky()
 	_end_underworld_now()
 	_zone_env(zone)
 	_grass_zone(zone)
@@ -1456,14 +1340,12 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		if zone != Battlegrounds.ZONE:
 			var birds := Birds.new()
 			birds.game = self
-			birds.sea = world.sea
 			birds.name = "birds"
 			world.add_child(birds)
 		# the camp's ravens on the roofs and the ground (camp_ravens.gd)
 		if zone == "town" and world.has_meta("roosts"):
 			CampRavens.add_to(world)
 			CampSocial.add_to(world)
-	_add_boat(zone, spawn)
 	# the class's skill effects played once, unseen, under the loading screen: no freeze on a first cast (SkillWarm)
 	await SkillWarm.run(self)
 	# the monsters that can still turn up here (MonsterWarm), the windows and the sheet's portrait, drawn once
@@ -1496,10 +1378,6 @@ func _monster_paths() -> Array:
 
 ## Photographs the freshly built zone from straight above for the minimap.
 func _capture_map(zone: String) -> void:
-	ui.minimap.chart = false
-	if zone == "coast":
-		_sea_chart()
-		return
 	var b: Rect2 = world.bounds.grow(6.0)
 	if DisplayServer.get_name() == "headless":
 		ui.minimap.set_map(null, b, zone != "town")
@@ -1560,54 +1438,6 @@ func _capture_map(zone: String) -> void:
 		tex = ImageTexture.create_from_image(img)
 	ui.minimap.set_map(tex, b, zone != "town")
 
-## The coast's corner map is a sea chart painted from the sea's ground (Coast.ground through the zone's
-## height grid): the deep and the shallows, sand, land shaded by height, cliffs and the isles, from the
-## pier out past all five, with no fog (a chart is already known). Made once a session (2 m a pixel).
-static var _chart_tex: Texture2D
-static var _chart_rect: Rect2
-func _sea_chart() -> void:
-	if _chart_tex == null:
-		var r: Rect2 = world.bounds
-		for isle in Isles.ISLANDS:
-			var ce := Isles.centre(isle)
-			var rr := float(isle["r"]) * 1.2
-			r = r.merge(Rect2(ce - Vector2(rr, rr), Vector2(rr, rr) * 2.0))
-		r = r.grow(20.0)
-		var step := 2.0
-		var w := int(r.size.x / step)
-		var h := int(r.size.y / step)
-		var img := Image.create(w, h, false, Image.FORMAT_RGB8)
-		var hs := PackedFloat32Array()
-		hs.resize(w * h)
-		for y in h:
-			for x in w:
-				hs[y * w + x] = world.ground_h(r.position.x + (x + 0.5) * step, r.position.y + (y + 0.5) * step)
-		for y in h:
-			for x in w:
-				var g: float = hs[y * w + x]
-				var gx: float = hs[y * w + mini(x + 1, w - 1)] - hs[y * w + maxi(x - 1, 0)]
-				var gy: float = hs[mini(y + 1, h - 1) * w + x] - hs[maxi(y - 1, 0) * w + x]
-				var slope: float = sqrt(gx * gx + gy * gy) / (2.0 * step)
-				var c: Color
-				if g < 0.0:
-					# water: pale turquoise shallows to dark deep, a lighter rim right at the shore
-					var dk := clampf(-g / 16.0, 0.0, 1.0)
-					c = Color(0.22, 0.46, 0.46).lerp(Color(0.05, 0.12, 0.17), sqrt(dk))
-					if g > -0.8:
-						c = c.lerp(Color(0.62, 0.7, 0.62), 0.45)
-				elif g < 1.3 and slope < 0.5:
-					c = Color(0.62, 0.56, 0.42)                              # sand
-				else:
-					c = Color(0.26, 0.32, 0.17).lerp(Color(0.42, 0.4, 0.28), clampf(g / 24.0, 0.0, 1.0))
-					c = c.lerp(Color(0.2, 0.19, 0.18), clampf(slope * 0.9, 0.0, 0.85))    # cliffs
-					c = c.darkened(clampf(gx * 0.08, -0.15, 0.25))           # light from the west
-				img.set_pixel(x, y, c)
-		img.generate_mipmaps()
-		_chart_tex = ImageTexture.create_from_image(img)
-		_chart_rect = Rect2(r.position, Vector2(w, h) * step)
-	ui.minimap.set_map(_chart_tex, _chart_rect, false)
-	ui.minimap.chart = true
-
 ## The living grass (Act I, outdoors): its wind for the zone, and its touch on.
 func _grass_zone(zone: String) -> void:
 	if grass_field == null or world == null:
@@ -1620,8 +1450,6 @@ func _grass_zone(zone: String) -> void:
 		w = "camp"
 	elif zone == "wild":
 		w = "moor"
-	elif world.sea:
-		w = "sea"
 	elif world.fort:
 		w = "fort"
 	grass_field.set_wind(w, 0.05)
@@ -3075,9 +2903,6 @@ func guard_fell(kind: String) -> void:
 ## A camp vendor's own talk: the elder's news, a trader's greeting and Trade.
 func _vendor_talk(t: Inter) -> void:
 	var role: String = t.data.get("role", "")
-	if role == "shipwright":
-		_shipwright_talk(t)
-		return
 	if role == "auction":
 		ui.open_dialog(t.label, "Elixirs, friend: the finest brews in the Wilds, and the rarest. The hall holds every coin until the hammer falls.",
 			[["See the auctions", func(): AuctionUI.open(ui, ui.auction_panel)], ["Leave", func(): pass]])
@@ -3099,214 +2924,6 @@ func _vendor_talk(t: Inter) -> void:
 			btns.append(["Enchant armor", func(): ui.open_enchant(t.label)])
 		btns.append(["Leave", func(): pass])
 		ui.open_dialog(t.label, lines.get(role, ""), btns)
-
-# ---------------------------------------------------------------- the boat (boat_ride.gd)
-func sailing() -> bool:
-	return boat != null and is_instance_valid(boat) and boat.sailing
-
-## A sea zone's boat. On the coast she lies alongside the pier (for sale until the hero owns her); if he
-## arrives sailing from an island ("sail_from_<id>") she's off that island's jetty with him at the tiller.
-## On an island she's moored at its jetty: boarding her sails him back out onto the Mournwater.
-func _add_boat(zone: String, spawn: String) -> void:
-	boat = null
-	sail_blend = 0.0
-	hero.aboard = false
-	ui.set_sail_prompt("")
-	if not world.sea:
-		return
-	var b := BoatRide.new()
-	world.add_child(b)
-	b.setup(self, hero.best_boat())
-	boat = b
-	if zone == "coast":
-		b.docks.append({"name": "the pier", "kind": "pier", "pos": Vector2(Coast.MOOR.x, Coast.MOOR.z), "yaw": PI * 0.5})
-		for isle in Isles.ISLANDS:
-			var m := isle_mooring(isle, Vector2.ZERO, true)
-			b.docks.append({"name": isle["name"], "kind": "isle", "id": isle["id"], "pos": Vector2(m.x, m.z), "yaw": m.w, "level": int(isle.get("level", 0))})
-		if spawn.begins_with("sail_from_") and hero.boats.is_empty():
-			# a partner brought along by the party's trip with no boat of his own: he's set down on the pier
-			b.moor(Coast.MOOR, PI * 0.5)
-			var dp: Vector3 = world.spawns.get("dock", Vector3(2, 0, 0))
-			hero.global_position = Vector3(dp.x, world.height_at(dp.x, dp.z), dp.z)
-			cam_target = hero.global_position
-		elif spawn.begins_with("sail_from_"):
-			var isle := Isles.get_isle(spawn.trim_prefix("sail_from_"))
-			var m := isle_mooring(isle, Vector2.ZERO, true)
-			# the whole party sails out together: each his own boat, the others a few lengths further out ahead
-			var r := _party_rank()
-			# spaced for the longest boat any of them may sail (each game knows only its own)
-			var gap := 9.0
-			for bid in Data.BOATS:
-				gap = maxf(gap, 9.0 * float(Boat.dims(str(bid))["length"]) / Boat.LENGTH)
-			var off := Vector3(-sin(m.w), 0, -cos(m.w)) * gap * float(r)
-			b.moor(Vector3(m.x, 0, m.z) + off, m.w)
-			b.board(hero)
-			sail_blend = 1.0
-			sail_cam_yaw = b.yaw
-			cam_target = b.global_position
-		else:
-			b.moor(Coast.MOOR, PI * 0.5)
-	else:
-		var isle := Isles.get_isle(Isles.id_of(zone))
-		var m := isle_mooring(isle, Vector2.ZERO, false)
-		b.moor(Vector3(m.x, 0, m.z), m.w)
-
-## This player's place in the party (0 = the lowest peer id), so things placed per player don't overlap.
-func _party_rank() -> int:
-	if net == null or not net.active or multiplayer.multiplayer_peer == null:
-		return 0
-	var me := multiplayer.get_unique_id()
-	var r := 0
-	for pid in net.players.keys():
-		if int(pid) < me:
-			r += 1
-	return r
-
-## Where a boat lies at an island's jetty (alongside its end), bow out toward the dock: x, z and her
-## yaw in w. `coast`: in the coast's frame; else in the island's own zone (the island at the origin).
-func isle_mooring(isle: Dictionary, _o: Vector2, coast: bool) -> Vector4:
-	var l := Isles.jetty_end(isle) + Vector2(-3.0, 3.4)
-	var p := Isles.to_coast(isle, l)
-	if not coast:
-		p -= Isles.centre(isle)
-	var u: Vector2 = Isles.axes(isle)[0]
-	return Vector4(p.x, 0.0, p.y, atan2(-u.x, -u.y))
-
-func _boat_clicked() -> void:
-	if boat == null:
-		return
-	if not hero.owns_boat(boat.id):
-		ui.message("That's Osric's boat. Talk to him if you want her.", Color(0.85, 0.75, 0.5))
-		return
-	if cur_zone.begins_with("isle_"):
-		# back out to sea: the coast loads with her off this island's jetty and him at the tiller
-		travel(cur_act, "coast", "sail_from_" + Isles.id_of(cur_zone))
-		return
-	boat.board(hero)
-	Sfx.play("click")
-	if not hero.sailed:
-		hero.sailed = true
-		ui.open_dialog("Sailing", "W  sail on; she holds her speed when you let go.\nS  ease off, then back her.\nA / D  steer.   Space  heave to.\nOr hold the left mouse button on the water to sail toward it.\n\nBring her alongside an island's jetty (or back to this pier), slow, and press E to step ashore.", [["Cast off", func(): pass]])
-	else:
-		ui.message("Cast off: W to sail, A / D to steer", Color(0.75, 0.88, 1.0))
-
-## Keys and mouse to the boat while sailing.
-func _sail_input() -> void:
-	var thr := 0
-	if Input.is_key_pressed(KEY_W): thr += 1
-	if Input.is_key_pressed(KEY_S): thr -= 1
-	var steer := 0.0
-	if Input.is_key_pressed(KEY_A): steer -= 1.0
-	if Input.is_key_pressed(KEY_D): steer += 1.0
-	var pt: Variant = null
-	if lmb_held and not ui.any_panel_open():
-		_update_hover()
-		pt = water_pt
-	boat.drive = {"throttle": thr, "steer": steer, "stop": Input.is_key_pressed(KEY_SPACE), "point": pt}
-	var d := boat.dock_near()
-	ui.set_sail_prompt(_ashore_prompt(d))
-
-## Steps ashore where she is, if she's at a dock and slow (E, or the prompt's button).
-func try_land() -> bool:
-	if not sailing():
-		return false
-	var d := boat.dock_near()
-	if d.is_empty():
-		ui.message("Bring her alongside a jetty first, and slow", Color(0.75, 0.88, 1.0))
-		return false
-	var need := int(d.get("level", 0))
-	if hero.level < need and not test_allskills:
-		ui.message("%s is for heroes of level %d and up (you're %d)" % [d["name"], need, hero.level], Color(1.0, 0.6, 0.35))
-		Sfx.play("deny")
-		return false
-	land_boat(d)
-	return true
-
-## The sail prompt at a dock: where, and the level it asks for.
-func _ashore_prompt(d: Dictionary) -> String:
-	if d.is_empty():
-		return ""
-	var need := int(d.get("level", 0))
-	if need > 0 and hero.level < need and not test_allskills:
-		return "%s (level %d: you're %d)" % [d["name"], need, hero.level]
-	return "Step ashore at " + str(d["name"])
-
-func land_boat(d: Dictionary) -> void:
-	ui.set_sail_prompt("")
-	boat.leave(hero)
-	if d["kind"] == "pier":
-		boat.moor(Coast.MOOR, PI * 0.5)
-		var on := Vector3(Coast.DOCK.x + 1.0, 0, -0.6)
-		hero.global_position = Vector3(on.x, world.height_at(on.x, on.z), on.z)
-		cam_target = hero.global_position
-	else:
-		travel(cur_act, Isles.zone_of(d["id"]), "jetty")
-
-## The sailing camera: behind her and high, looking past the bow to the horizon so the isles show
-## ahead; it eases in when he takes the tiller and back to the isometric view when he steps ashore.
-func _sail_camera(dt: float, sh: Vector3) -> void:
-	var want := 1.0 if sailing() else 0.0
-	sail_blend = move_toward(sail_blend, want, dt / 1.3)
-	if sail_blend <= 0.0:
-		cam.basis = Basis.looking_at(Vector3(0, 1.0, 0) - cam.position, Vector3.UP)    # (turned by the orbit, if any)
-		return
-	if boat == null or not is_instance_valid(boat):
-		return
-	sail_cam_yaw = lerp_angle(sail_cam_yaw, boat.yaw, clampf(dt * 1.6, 0.0, 1.0))
-	var f := Vector3(-sin(sail_cam_yaw), 0, -cos(sail_cam_yaw))
-	var bp := Vector3(boat.global_position.x, 0, boat.global_position.z)
-	cam_target = bp
-	cam_pivot.position = bp
-	var k := smoothstep(0.0, 1.0, sail_blend)
-	var iso_pos := cam_pivot.global_position + CAM_OFFSET * zoom
-	var iso_look := cam_pivot.global_position + Vector3(0, 1.0, 0)
-	# over her port quarter, so the sail doesn't hide the way ahead and he's in view at the tiller
-	var sd := Vector3(cos(sail_cam_yaw), 0, -sin(sail_cam_yaw))
-	# framed for the Gull; a bigger boat (BoatRide.kl, her length against the Gull's) pulls the camera back with her
-	var bk: float = boat.kl
-	var sail_pos := bp + (-f * 16.0 * zoom - sd * 5.5 * zoom + Vector3(0, 7.0 * zoom, 0)) * bk
-	var sail_look := bp + (f * 11.0 + sd * 1.0 + Vector3(0, 0.3, 0)) * bk
-	cam.global_position = iso_pos.lerp(sail_pos, k) + sh
-	cam.look_at(iso_look.lerp(sail_look, k), Vector3.UP)
-
-## Osric Saltmarrow, the shipwright on the Mournwater Coast: a word about the isles, then his boat
-## (BoatShop). Once you own her, he tells you where she's moored.
-func _shipwright_talk(t: Inter) -> void:
-	var owned := not hero.boats.is_empty()
-	var txt := "The Mournwater, they call it. Five isles out there, each a fair sail: the Verdant Isle with its great oak, the old ruins on their terraces, the Lost Isle with its black stone, the Bleak Isle where the fog never lifts, and the Merchant's Reach, empty since the night its people left. No bridge, no ferry. A boat, or nothing. I've built a good one."
-	if owned:
-		txt = "She's lying alongside the pier, ready when you are. Mind the rocks off the Bleak Isle, and bring her back in one piece."
-	# one button per boat in Data.BOATS, cheapest first
-	var ids: Array = Data.BOATS.keys()
-	ids.sort_custom(func(a, b): return int(Data.BOATS[a]["price"]) < int(Data.BOATS[b]["price"]))
-	var btns: Array = []
-	for id in ids:
-		var bid := str(id)
-		var nm := str(Data.BOATS[bid]["name"])
-		btns.append([("Look over " if hero.owns_boat(bid) else "See ") + nm, func(): ui.boat_shop.open(t, bid)])
-	btns.append(["Leave", func(): pass])
-	ui.open_dialog(t.label, txt, btns)
-
-## Buys a boat (Data.BOATS) from the shipwright: pays, owns it from now on (saved with the character).
-func buy_boat(id: String) -> bool:
-	var spec: Dictionary = Data.BOATS[id]
-	var price := int(spec["price"])
-	if hero.owns_boat(id) or hero.gold < price:
-		return false
-	hero.gold -= price
-	hero.boats.append(id)
-	hero.stats_changed.emit()
-	Sfx.play("gold")
-	ui.big_message("%s is yours" % spec["name"])
-	ui.message("She's moored at the end of the pier. Click her to go aboard.", Color(0.75, 0.88, 1.0), 4.0)
-	save_game()
-	# a better boat takes the old one's place at the dock (not while he's out sailing)
-	if boat != null and is_instance_valid(boat) and not hero.aboard and boat.id != hero.best_boat():
-		boat.queue_free()
-		if boat.inter != null and is_instance_valid(boat.inter):
-			boat.inter.queue_free()
-		_add_boat(cur_zone, "")
-	return true
 
 func _interact(t: Inter) -> void:
 	match t.kind:
@@ -3350,8 +2967,6 @@ func _interact(t: Inter) -> void:
 			# a quest to hand in or on offer comes before their trade (Quests.talk)
 			if not quests.talk(str(t.data.get("role", "")), t.label, rest):
 				rest.call()
-		"boat":
-			_boat_clicked()
 		"stash":
 			ui.open_stash()
 			if ui.stash_panel.visible:
@@ -3428,9 +3043,6 @@ func _interact(t: Inter) -> void:
 			_open_chest(t)
 			if net.active:
 				net.inter_used(t)
-		"dwarves":
-			if not t.used:
-				DwarfGame.talk(self, t)
 		"bell":
 			# the antechamber's bell: the server starts the countdown (Net.sv_inter -> use_inter_remote)
 			Sfx.play("anvil", -2.0, 0.6)
@@ -3447,13 +3059,6 @@ func travel_waypoint(dest: Dictionary) -> void:
 ## Available activities are rebuilt from content data, never from a second UI-only list.
 func waypoint_activities() -> Array:
 	var entries: Array = Data.WAYPOINT_ACTIVITIES.duplicate(true)
-	for isle in Isles.ISLANDS:
-		if not Isles.ISLE_SCRIPTS.has(str(isle["id"])):
-			continue
-		entries.append({"id": "isle_" + str(isle["id"]), "group": "pve", "name": isle["name"],
-			"kind": "Island", "description": isle.get("lore", ""), "route": "zone", "run": 0,
-			"zone": Isles.zone_of(str(isle["id"])), "spawn": "start", "level": isle.get("level", 1),
-			"enabled": isle.get("enabled", true)})
 	for act in Data.WAYPOINT_ACTS:
 		var run := int(act["run"])
 		var info := Data.act_info(0, run)
@@ -3475,7 +3080,7 @@ func waypoint_activities() -> Array:
 func waypoint_activity_valid(entry: Dictionary) -> bool:
 	if str(entry.get("name", "")) == "": return false
 	var zone := str(entry.get("zone", ""))
-	return str(entry.get("group", "")) in ["pve", "daily"] and str(entry.get("route", "")) == "zone" and not Data.waypoint_act(int(entry.get("run", -1))).is_empty() and (zone in ["town", "wild", "lair", "coast"] or (zone.begins_with("isle_") and Isles.ISLE_SCRIPTS.has(Isles.id_of(zone))))
+	return str(entry.get("group", "")) in ["pve", "daily"] and str(entry.get("route", "")) == "zone" and not Data.waypoint_act(int(entry.get("run", -1))).is_empty() and zone in ["town", "wild", "lair"]
 
 func waypoint_activity(id: String) -> Dictionary:
 	for entry in waypoint_activities():
@@ -3922,8 +3527,6 @@ func _update_hover() -> void:
 	var o := cam.project_ray_origin(mp)
 	var d := cam.project_ray_normal(mp)
 	ground_pt = _ground_from_ray(o, d)
-	if absf(d.y) > 0.0001:
-		water_pt = o + d * (-o.y / d.y)
 	var best = pick_enemy(o, d)
 	if best == null:
 		for g in world.items_root.get_children():
@@ -4247,9 +3850,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				_update_hover()
 				# a skill other than Attack on left mouse casts on a foe (or anywhere with Shift);
 				# clicking the ground, an item or an NPC still walks there
-				if sailing():
-					pass                      # steering: Game._sail_input reads the held button
-				elif hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
+				if hero.bound("lmb") not in ["attack", ""] and (hovered is Enemy or Input.is_key_pressed(KEY_SHIFT)):
 					_use_bind("lmb", true)
 				elif not click_move and hero.bound("lmb") == "attack" and not (hovered is GroundItem or hovered is Inter) \
 						and (wasd_dir().length() > 0.1 or not (hovered is Enemy)):
@@ -4260,7 +3861,7 @@ func _unhandled_input(ev: InputEvent) -> void:
 				else:
 					_click_world()
 		elif ev.button_index == MOUSE_BUTTON_RIGHT:
-			if ev.pressed and not paused and not sailing():
+			if ev.pressed and not paused:
 				rmb_held = true
 				_use_bind("rmb", true)
 		elif ev.button_index == MOUSE_BUTTON_WHEEL_UP and ev.pressed:
@@ -4294,10 +3895,6 @@ func _unhandled_input(ev: InputEvent) -> void:
 				dodge_roll()
 			KEY_1, KEY_2, KEY_3, KEY_4:
 				hero.drink(ev.keycode - KEY_1)
-			KEY_E when sailing():
-				try_land()
-			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V when sailing():
-				pass
 			KEY_G, KEY_V when hero.run != null:
 				pass      # (a run has five slots: right mouse and Q E R F)
 			KEY_Q, KEY_E, KEY_R, KEY_F, KEY_G, KEY_V:
@@ -4354,8 +3951,8 @@ func wasd_dir() -> Vector3:
 
 ## Space: roll the way the keys point, or toward the pointer with no key held.
 func dodge_roll() -> void:
-	if hero == null or hero.arena_waiting() or paused or ui.any_panel_open() or sailing():
-		return       # (aboard, Space heaves the boat to: _sail_input)
+	if hero == null or hero.arena_waiting() or paused or ui.any_panel_open():
+		return
 	var d := wasd_dir()
 	if d.length() < 0.1:
 		_update_hover()
@@ -4492,22 +4089,17 @@ func _process(delta: float) -> void:
 		_update_hover()
 		hero.cursor = _cursor_aim()     # the pointer aims everything (see Hero's aiming notes)
 		_check_ambushes()
-		if sailing():
-			_sail_input()
-		hero.blocking = (skill_held("block") or test_block) and not ui.any_panel_open() and not sailing()
+		hero.blocking = (skill_held("block") or test_block) and not ui.any_panel_open()
 		for slot in Hero.BIND_SLOTS:
-			if sailing():
-				break
 			if slot != "lmb" and slot_held(slot):
 				_use_bind(slot, false)
-		# Shift sprints; so does Space held on after a dodge roll (Path of Exile 2). Aboard, WASD and Space sail
-		# the boat (_sail_input) instead of moving or rolling the hero.
+		# Shift sprints; so does Space held on after a dodge roll (Path of Exile 2).
 		if not Input.is_key_pressed(KEY_SPACE):
 			roll_sprint = false
 		hero.sprint = Input.is_key_pressed(KEY_SHIFT) or (roll_sprint and hero.roll_t < 0.0)
 		var wasd := wasd_dir()
-		hero.cmd_wasd(wasd if not sailing() else Vector3.ZERO)
-		if lmb_held and not hero.dead and not sailing():
+		hero.cmd_wasd(wasd)
+		if lmb_held and not hero.dead:
 			lmb_repeat -= delta
 			if lmb_repeat <= 0.0:
 				lmb_repeat = 0.12
@@ -4530,7 +4122,7 @@ func _process(delta: float) -> void:
 				if g.item["base"] == "gold" and g._toss >= 1.0 and not hero.dead:
 					if g.global_position.distance_to(hero.global_position) < 1.0:
 						_pickup(g)
-		if exit_grace <= 0.0 and not hero.dead and not hero.aboard:
+		if exit_grace <= 0.0 and not hero.dead:
 			for ex in world.exits:
 				var dd: Vector3 = ex["pos"] - hero.global_position
 				if Vector2(dd.x, dd.z).length() < ex["radius"]:
@@ -4577,10 +4169,8 @@ func _process(delta: float) -> void:
 		shake = maxf(0.0, shake - real_dt * 2.2)
 		var sh := Vector3(randf_range(-1, 1), randf_range(-1, 1), 0) * shake * shake * 0.35
 		cam.position = _orbit_offset(CAM_OFFSET * zoom * lerpf(1.0, focus_zoom, fw)) + sh
-		_sail_camera(real_dt, sh)
+		cam.basis = Basis.looking_at(Vector3(0, 1.0, 0) - cam.position, Vector3.UP)    # (turned by the orbit, if any)
 		_fit_shadows()
-		if playing:
-			_sea_sounds()
 		RenderingServer.global_shader_parameter_set("player_pos", watched.global_position if watched != null else hero.global_position)
 		if grass_field:
 			grass_field.center = cam_target

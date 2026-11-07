@@ -1,7 +1,7 @@
 extends SceneTree
 ## Scene census for the visual overhaul (headless, no GPU needed):
 ##   godot --headless --path . -s tools/visual_audit/scene_census.gd -- out_dir [zone ...]
-## Zones: town wild lair coast a2_wild a2_town a2_lair a3_wild bg (default: all). For each zone it builds the
+## Zones: town wild lair a2_wild a2_town a2_lair a3_wild bg (default: all). For each zone it builds the
 ## world exactly as the game does, then walks every GeometryInstance3D, light, particle system and decal and
 ## writes <out_dir>/<zone>.json plus a printed summary: triangles (LOD0) x instances, how many LOD levels each
 ## mesh has, multimeshes whose bounds are so big they can't be culled or LOD-ed (one draw for the whole map),
@@ -11,7 +11,7 @@ extends SceneTree
 var g
 var out_dir := "build/visual_audit"
 const ZONES := {
-	"town": [0, "town"], "wild": [0, "wild"], "lair": [0, "lair"], "coast": [0, "coast"],
+	"town": [0, "town"], "wild": [0, "wild"], "lair": [0, "lair"],
 	"a2_wild": [1, "wild"], "a2_town": [1, "town"], "a2_lair": [1, "lair"],
 	"a3_wild": [2, "wild"], "bg": [0, "bg"],
 }
@@ -54,13 +54,12 @@ func _run(zones: Array) -> void:
 static var _headless := DisplayServer.get_name() == "headless"
 static var _labels := {}
 
-## Names for meshes built in code, from the game's own caches (Flora, ForestCamp, Geo, Fort, Isles, Grass, Boat).
+## Names for meshes built in code, from the game's own caches (Flora, ForestCamp, Geo, Fort, Grass).
 static func build_labels() -> void:
 	_labels.clear()
 	# loaded by path at run time: naming the classes here would compile them before the Sfx autoload exists
 	var caches := {"Flora": ["flora", "_cache"], "ForestCamp": ["forest_camp", "_meshes"], "Geo": ["geo", "_cache"],
-		"Fort": ["fort", "_models"], "Isles": ["isles", "_cache"], "Grass": ["grass", "_meshes"], "GrassGlb": ["grass", "_glb"],
-		"Boat": ["boat", "_cache"]}
+		"Fort": ["fort", "_models"], "Grass": ["grass", "_meshes"], "GrassGlb": ["grass", "_glb"]}
 	for cname in caches.keys():
 		var sc: GDScript = load("res://scripts/%s.gd" % caches[cname][0])
 		var d = sc.get(caches[cname][1])

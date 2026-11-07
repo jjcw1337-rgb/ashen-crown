@@ -343,22 +343,13 @@ func _hero_packet(h: Hero) -> PackedFloat32Array:
 	return PackedFloat32Array([h.global_position.x, h.global_position.y, h.global_position.z, h.rig.rotation.y,
 		h.phase, st.get("move", 0.0), st.get("atk", -1.0), float(maxi(0, STYLES.find(st.get("style", "over")))),
 		st.get("block", 0.0), st.get("hit", 0.0), 1.0 if h.dead else 0.0, h.dead_t, h.life, h.max_life,
-		_flags(h)]) + _boat_packet(h)
+		_flags(h)])
 
 ## p[14] of the state: bit 1 his battle buff, 2 unseen (Hero.invis_t), then the PvP statuses on him (PvpStatusFx bits
 ## << 2: rooted, harried, slowed, revealed) and his Blight stacks (<< 6), so his puppet shows them on every screen
 ## (Hero.apply_net_state). A float holds these small integers exactly.
 func _flags(h: Hero) -> float:
 	return float((1 if h.buff_t > 0.0 else 0) | (2 if h.invis_t > 0.0 else 0) | (PvpStatusFx.bits_of(h) << 2) | (PvpStatusFx.blight_of(h) << 6))     # (bit 10: the antechamber stash's slow)
-
-## A sailing player's boat rides along at the end of his state (aboard, x, z, yaw, speed); partners draw it
-## under his puppet (BoatRide.puppet_update). Older builds read only the first 15 numbers.
-func _boat_packet(h: Hero) -> PackedFloat32Array:
-	var b = game.boat
-	if not h.aboard or b == null or not is_instance_valid(b):
-		return PackedFloat32Array()
-	# last: which boat (her index in Data.BOATS; every peer runs the same build), so partners draw the right one
-	return PackedFloat32Array([1.0, b.global_position.x, b.global_position.z, b.yaw, b.speed, float(Data.BOATS.keys().find(b.id))])
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func pl_state(p: PackedFloat32Array) -> void:

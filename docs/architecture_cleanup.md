@@ -138,7 +138,7 @@ Touch points to coordinate:
 - Claude-2: the Archer, end to end (`game/heroes/archer/**`, `game/systems/**`, plus the Archer's places in `hero.gd`,
   `class_skills.gd`, `skill_fx.gd` and `run_talents.gd`).
 - Claude-1: the monsters into `game/monsters/<name>/` (the Verdant Reach's first; King Grubb as a boss any camp can
-  use), then the remaining cuts (Act II, the moor and fort, sailing and the Last Flame to `archive/`).
+  use), then the remaining cuts (Act II, the moor and fort).
 
 ## Cutting an old system
 
@@ -160,12 +160,11 @@ of three buckets:
    history.
 
 **Archived whole, code included** (Blaine, 2026-11-06):
-- **The Last Flame**: `vigil.gd`, `flame_board.gd`, its sanctum, waves and leaderboard. It goes to
-  `archive/last_flame/`.
-- **Sailing** ("we don't want to lose the boat stuff"). That means the
-ocean (`ocean.gd`: waves, shore and depth), the boats (`boat.gd`, `boat_ride.gd`, `boat_shop.gd`, `Data.BOATS`),
-the coast and the five islands (`coast.gd`, `isles.gd`, `isle_*.gd`, `height_grid.gd`), Osric the shipwright, and
-their models, textures and sounds. They go to `archive/sailing/`.
+- **The Last Flame**: `vigil.gd`, `flame_board.gd`, its sanctum, waves and leaderboard, in `archive/last_flame/`.
+- **Sailing** ("we don't want to lose the boat stuff"): the ocean (`ocean.gd`: waves, shore and depth), the boats
+  (`boat.gd`, `boat_ride.gd`, `boat_shop.gd`, `Data.BOATS`), the coast and the five islands (`coast.gd`, `isles.gd`,
+  `isle_*.gd`, `height_grid.gd`, the Verdant Isle's `dwarf_game.gd`), Osric the shipwright, and their models and
+  sounds, in `archive/sailing/`. The islands' monsters (the dinosaurs, trolls and dwarves) stay live as monsters.
 
 Each archived feature gets a short `REVIVE.md` listing the hooks it had in `game.gd`, `hero.gd`, `net.gd` and
 `ui.gd`, so it can be wired back in. Other features to keep this way need an admin's say-so: add them here.
@@ -227,6 +226,9 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   waypoint's walk down go too: the lobby browser is the only way in (2026-11-06).
 - [ ] Monsters into `game/monsters/<monster>/`: done: Hrimgar and Old Mossbeard (on a shared `BossBrain`).
 - [x] The Last Flame archived whole: `archive/last_flame/` with its REVIVE.md (2026-11-06).
+- [x] Sailing archived whole: the ocean, boats, coast, five islands, Osric and their models and sounds in
+  `archive/sailing/` with its REVIVE.md; the waypoint's coast and islands and the camp's way to the coast go
+  (2026-11-06).
 - [x] Maps: the starting camp is `game/maps/camp/` (its builder, people, island, waypoint, models, tests; 2026-11-06).
 - [x] Maps: the Verdant Reach is `game/maps/verdant_reach/` (its builder, camps, life, the Battlegrounds' rules,
   the bosses' brains, props, tests; 2026-11-06).

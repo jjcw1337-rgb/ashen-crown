@@ -2,7 +2,7 @@ extends SceneTree
 ## Frame statistics and screenshots per zone and graphics preset, for the visual overhaul's before/after:
 ##   xvfb-run -a godot --path . --rendering-driver vulkan --resolution 1280x720 -s tools/visual_audit/frame_stats.gd -- \
 ##       out_dir zone[,zone...] [--quality 0,1,2,3] [--frames N] [--noshot] [--class knight] [--zoom 1.0] [--at x,z]
-## Zones as in scene_census.gd (town wild lair coast a2_wild a2_town a2_lair a3_wild bg). For each preset it loads the
+## Zones as in scene_census.gd (town wild lair a2_wild a2_town a2_lair a3_wild bg). For each preset it loads the
 ## zone (so per-preset grass density applies), lets it settle, then averages N frames of what the renderer reports:
 ## draw calls, primitives and objects for the scene pass and the shadow passes separately
 ## (RenderingServer.viewport_get_render_info), video memory, and saves <zone>_q<N>.png. Writes <out_dir>/stats.json
@@ -12,7 +12,7 @@ extends SceneTree
 var g
 var out_dir := "build/visual_audit/frames"
 const ZONES := {
-	"town": [0, "town"], "wild": [0, "wild"], "lair": [0, "lair"], "coast": [0, "coast"],
+	"town": [0, "town"], "wild": [0, "wild"], "lair": [0, "lair"],
 	"a2_wild": [1, "wild"], "a2_town": [1, "town"], "a2_lair": [1, "lair"],
 	"a3_wild": [2, "wild"], "bg": [0, "bg"],
 }

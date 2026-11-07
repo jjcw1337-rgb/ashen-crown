@@ -25,10 +25,6 @@ var hill_noise := FastNoiseLite.new()
 var flat_floor := false
 ## Extra ground shaping for a zone (Fort: the ditch and rampart): f(x, z) -> metres added to the height.
 var ground_fn := Callable()
-## A zone that shapes all of its ground itself (the coast: seabed, beaches, islands): f(x, z) -> height.
-var height_fn := Callable()
-## The coast: the sea is at y = 0; walkers stop where the water gets deeper than WADE (coast.gd).
-var sea := false
 ## The camp as an island adrift in space (ForestCamp.ISLAND, camp_island.gd): nothing grows or stands past its edge,
 ## a jagged circle round island_c of radius island_r (0 = no island).
 var island_c := Vector2.ZERO
@@ -53,14 +49,6 @@ func island_clip(x: float, z: float, y: float) -> Vector3:
 		return Vector3(x, y, z)
 	var q := island_c + d.normalized() * e
 	return Vector3(q.x, y - 0.25, q.y)
-const WADE := -0.18
-## Ground steeper than this (rise per metre) is a wall in a sea zone: the islands' cliffs (0 = off).
-var steep := 0.0
-
-func _too_steep(x: float, z: float) -> bool:
-	var gx := ground_h(x + 0.4, z) - ground_h(x - 0.4, z)
-	var gz := ground_h(x, z + 0.4) - ground_h(x, z - 0.4)
-	return Vector2(gx, gz).length() / 0.8 > steep
 ## Act I: the lair is King Grubb's goblin fort (fort.gd) and the moor's road ends at its trail.
 var fort := false
 ## Which run (Game.difficulty) this zone is for: A2 (1) has its own wild zone (via.gd) and lair (aurelia.gd).
@@ -108,15 +96,15 @@ func _init() -> void:
 func in_bounds(x: float, z: float) -> bool:
 	return bounds.has_point(Vector2(x, z))
 
-## Where things stand: the ground, or a pier's or jetty's deck over it (decks).
+## Where things stand: the ground, or a bridge's deck over it (decks).
 func height_at(x: float, z: float) -> float:
 	if decks.is_empty():
 		return ground_h(x, z)
 	return maxf(ground_h(x, z), deck_at(x, z))
 
-## Walkable decks over the water (piers, jetties): [centre Vector2, half size Vector2 (x across its
-## length's normal frame like add_box), yaw, height]. The ground itself (terrain, the sea's depth map,
-## grass) ignores them: they read ground_h.
+## Walkable decks over water or a gap (the Verdant Reach's bridges): [centre Vector2, half size Vector2 (x across its
+## length's normal frame like add_box), yaw, height]. The ground itself (terrain, grass) ignores them: they read
+## ground_h.
 var decks: Array = []
 
 func add_deck(c: Vector2, half: Vector2, yaw: float, h: float) -> void:
@@ -135,8 +123,6 @@ func deck_at(x: float, z: float) -> float:
 func ground_h(x: float, z: float) -> float:
 	if flat_floor:
 		return 0.0
-	if height_fn.is_valid():
-		return float(height_fn.call(x, z))
 	var inner := hnoise.get_noise_2d(x, z) * 0.35
 	var dx := maxf(bounds.position.x - x, x - bounds.end.x)
 	var dz := maxf(bounds.position.y - z, z - bounds.end.y)
@@ -419,8 +405,6 @@ func solid_at(x: float, z: float, r := 0.0) -> bool:
 ## Map edge, or dungeon rock (the same cells the wall blocks are built on). Probes the
 ## body's four sides.
 func _wall_at(x: float, z: float, r := 0.0) -> bool:
-	if sea and deck_at(x, z) == -INF and (ground_h(x, z) < WADE or steep > 0.0 and _too_steep(x, z)):
-		return true
 	if rock.is_empty():
 		return not bounds.grow(-1.0 - r).has_point(Vector2(x, z))
 	return _rock_at(x, z) or r > 0.0 and (_rock_at(x - r, z) or _rock_at(x + r, z) or _rock_at(x, z - r) or _rock_at(x, z + r))
@@ -475,7 +459,7 @@ func _rasterize() -> void:
 		for x in gw:
 			var wx := origin.x + (x + 0.5) * CELL
 			var wz := origin.y + (y + 0.5) * CELL
-			if not bounds.grow(-1.0).has_point(Vector2(wx, wz)) or sea and deck_at(wx, wz) == -INF and (ground_h(wx, wz) < WADE + 0.1 or steep > 0.0 and _too_steep(wx, wz)):
+			if not bounds.grow(-1.0).has_point(Vector2(wx, wz)):
 				blocked[y * gw + x] = 1
 	var pad := 0.45
 	for o in obstacles:
@@ -549,9 +533,8 @@ func mm_chunked(mesh: Mesh, xforms: Array, shadows := true, chunk := 28.0, vis_e
 func _build_terrain(tcol: Dictionary) -> void:
 	terrain_patch(bounds.grow(MARGIN), 1.0, tcol, "Terrain")
 
-## A piece of ground over `r`, `step` metres between vertices (the coast builds its distant islands and
-## shores coarser than the ground under the hero). Cells wholly deeper than `floor_y` are left out:
-## nobody sees the bottom of the open sea.
+## A piece of ground over `r`, `step` metres between vertices (far ground can be coarser than the ground under the
+## hero). Cells wholly deeper than `floor_y` are left out.
 func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", floor_y := -INF, own := Callable(), drop := 0.0, clip := Callable()) -> MeshInstance3D:
 	if not masks_ready:
 		_bake_masks()
@@ -718,12 +701,6 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 ## Grass (grass.gd) asks the zone three things about a spot. How much grass can grow (0 bare .. 1 full):
 ## none on the road, under solid things or in a Sloth's clearing, thinning toward the edges of paths.
 func grass_ground(x: float, z: float) -> float:
-	if sea:
-		var hy := ground_h(x, z)
-		if hy < 1.0:
-			return 0.0           # sand and sea
-		if hy < 1.5:
-			return (hy - 1.0) * 2.0 * (1.0 - clampf((dirt_at(x, z) + cobble_at(x, z)) * 1.6, 0.0, 1.0))
 	if island_r > 0.0 and off_island(x, z, 0.6):
 		return 0.0
 	var dm := dirt_at(x, z) + cobble_at(x, z)
@@ -894,8 +871,6 @@ func _scatter_ferns(count: int) -> void:
 			continue
 		if _in_lair(x, z, 0.85) or off_island(x, z, 1.0):
 			continue
-		if sea and grass_ground(x, z) < 0.3:
-			continue
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35)), Vector3(x, height_at(x, z) - 0.03, z)))
 	var parts := [[], []]
 	for i in xf.size():
@@ -1037,7 +1012,6 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 		Sandbox.ZONE, "arena": ArenaMap.build(self)
 		"town": _build_town()
 		"wild": Via.build(self) if run == 1 else _build_wild()
-		"coast": Coast.build(self)
 		"lair":
 			if run == 1:
 				Aurelia.build(self)
@@ -1045,9 +1019,6 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 				Fort.build(self)
 			else:
 				_build_lair()
-		_:
-			if kind.begins_with("isle_"):
-				Isles.build_zone(self, Isles.id_of(kind))
 	# the Meshy pieces that keep their glb's own material dither away round the hero too, like every code-built prop
 	Props.see_through(self)
 	Props.shadow_twins(self)

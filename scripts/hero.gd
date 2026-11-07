@@ -22,26 +22,6 @@ var ene := 10
 var stat_points := 0
 var talents := {}            # talent id -> ranks taken (Talents); a point per level from level 2
 var gold := 120
-## Boats this character owns (Data.BOATS ids; bought from the shipwright on the Mournwater Coast, saved).
-var boats: Array = []
-## Aboard a boat (BoatRide): he stands at the tiller; the boat moves him, so his own moving stops.
-var aboard := false
-## He has sailed before (the controls guide shows the first time only; saved).
-var sailed := false
-var dwarves := ""              # the Verdant Isle's drunken dwarves (DwarfGame): "" not met, "won", "lost", "fought"
-
-func owns_boat(id: String) -> bool:
-	return boats.has(id)
-
-## The boat he sails: the dearest one he owns (Data.BOATS), or the Gull (moored at the pier before he buys her).
-func best_boat() -> String:
-	var best := "gull"
-	var price := -1
-	for b in boats:
-		if Data.BOATS.has(str(b)) and int(Data.BOATS[str(b)]["price"]) > price:
-			best = str(b)
-			price = int(Data.BOATS[str(b)]["price"])
-	return best
 var equipment := {}
 var inventory: Array = []
 var belt: Array = [null, null, null, null]
@@ -225,9 +205,6 @@ var net_yaw := 0.0
 var net_phase_rate := 0.0
 var net_st := {}
 var net_buff := false
-var net_boat_st: Variant = null      # a partner sailing: Vector4(x, z, yaw, speed) of his boat (Net._boat_packet)
-var net_boat_id := "gull"            # and which boat she is (Data.BOATS)
-var net_boat: BoatRide               # the boat drawn under his puppet (BoatRide.puppet_update)
 var _net_last_t := 0.0
 ## Skill effects that linger (SkillFx: the Siphon tether, Drain Life's beams, Eternal Night, phantoms, arrows
 ## in flight), on the local hero and on a puppet alike; started and ended by fx events, moved by SkillFx.update.
@@ -1845,17 +1822,6 @@ func _process_body(delta: float) -> void:
 		life = minf(max_life, life + regen * delta)
 	mana = minf(max_mana, mana + (1.0 + ene * 0.06) * delta)
 
-	if aboard:
-		# at the tiller: standing, swaying a little with the boat; BoatRide places him
-		move_amt = move_toward(move_amt, 0.0, delta * 6.0)
-		block_amt = 0.0
-		var stand := {"time": anim_time, "phase": phase, "move": move_amt, "atk": -1.0, "style": atk_style, "block": 0.0, "hit": 0.0, "look": 0.0}
-		if not puppet:
-			carry.update(self, delta)
-			stand.merge(carry.anim_state(), true)
-		Anim.pose(rig, stand)
-		last_pose = stand
-		return
 	var want_block := blocking and atk_t < 0.0 and charge_t < 0.0
 	block_amt = move_toward(block_amt, 1.0 if (want_block or block_flash > 0.0) else 0.0, delta * 9.0)
 	var vel := Vector3.ZERO
@@ -2161,10 +2127,6 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 	max_life = maxf(p[13], 1.0)
 	net_buff = int(p[14]) & 1 != 0
 	net_invis = int(p[14]) & 2 != 0
-	net_boat_st = Vector4(p[16], p[17], p[18], p[19]) if p.size() >= 20 and p[15] > 0.5 else null
-	var bi := int(p[20]) if p.size() >= 21 else 0
-	var bk: Array = Data.BOATS.keys()
-	net_boat_id = str(bk[bi]) if bi >= 0 and bi < bk.size() else "gull"
 	net_pvs_bits = (int(p[14]) >> 2) & 15      # the PvP statuses on him (Net._flags), shown by PvpStatusFx
 	net_pvs_blight = (int(p[14]) >> 6) & 3
 	if was_dead and not dead:
@@ -2178,10 +2140,6 @@ func apply_net_state(p: PackedFloat32Array) -> void:
 ## The zone changed under a puppet: its lingering effects belonged to the old one.
 func net_zone_reset() -> void:
 	Dodge.cancel(self)
-	net_boat_st = null
-	if net_boat and is_instance_valid(net_boat):
-		net_boat.queue_free()
-	net_boat = null
 	visible = false
 	net_has = false
 	SkillFx.clear(self)
@@ -2197,7 +2155,6 @@ func _puppet_process(delta: float) -> void:
 	var k := clampf(delta * 14.0, 0.0, 1.0)
 	global_position = global_position.lerp(net_pos, k)
 	rig.rotation.y = lerp_angle(rig.rotation.y, net_yaw, k)
-	BoatRide.puppet_update(self, delta)      # a partner at sea: his boat, and him at its tiller
 	aura.emitting = net_buff and not net_invis
 	_show_invis(net_invis, false)
 	if net_pvs_bits != 0 or net_pvs_blight != 0 or pvs_shown > 0:
@@ -2677,7 +2634,7 @@ func unequip(slot: String) -> void:
 
 func to_save() -> Dictionary:
 	return {"cls": cls, "level": level, "xp": xp, "str": str_, "dex": dex, "vit": vit, "ene": ene, "points": stat_points, "gold": gold,
-		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boats": boats, "sailed": sailed, "dwarves": dwarves, "boss_luck": boss_luck, "boosted": boosted}.merged({"run": run.to_dict()} if run != null else {})
+		"equipment": equipment, "inventory": inventory, "belt": belt, "stash": stash, "show_helm": show_helm, "binds": binds, "binds_v": 2, "talents": talents, "axe_given": true, "boss_luck": boss_luck, "boosted": boosted}.merged({"run": run.to_dict()} if run != null else {})
 
 func from_save(d: Dictionary) -> void:
 	set_class(str(d.get("cls", "knight")))
@@ -2689,9 +2646,6 @@ func from_save(d: Dictionary) -> void:
 	ene = int(d.get("ene", 10))
 	stat_points = int(d.get("points", 0))
 	gold = int(d.get("gold", 0))
-	boats = (d.get("boats", []) as Array).filter(func(b): return Data.BOATS.has(str(b))) if d.get("boats") is Array else []
-	sailed = bool(d.get("sailed", false))
-	dwarves = str(d.get("dwarves", ""))
 	boss_luck = (d.get("boss_luck", {}) as Dictionary).duplicate() if d.get("boss_luck") is Dictionary else {}
 	boosted = bool(d.get("boosted", false))
 	show_helm = bool(d.get("show_helm", true))

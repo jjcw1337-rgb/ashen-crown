@@ -91,11 +91,6 @@ var char_labels := {}
 var plus_btns: Array = []
 var shop_panel: PanelContainer
 var auction_panel: PanelContainer
-## The shipwright's window (boat_shop.gd): the boat, its price, how to sail it, Buy.
-var boat_shop: BoatShop
-var boat_panel: PanelContainer
-## Sailing: "E  Step ashore at …" over the action bar when the boat is at a dock (Game.try_land).
-var sail_prompt: Button
 var shop_title: Label
 var shop_grid: GridContainer
 var shop_items: Array = []
@@ -195,9 +190,6 @@ func setup(g: Node) -> void:
 	_build_character()
 	_build_shop()
 	auction_panel = AuctionUI.build(self)    # the Gilded Hall's window (auction_ui.gd)
-	boat_shop = BoatShop.new()
-	boat_panel = boat_shop.build(self)
-	_build_sail_prompt()
 	_build_stash()
 	_build_burn()
 	furnace_ui = FurnaceUI.new()
@@ -2445,38 +2437,6 @@ func _add_stat(stat: String) -> void:
 	hero.recalc()
 
 # ---------------------------------------------------------------- shops & stash
-func _build_sail_prompt() -> void:
-	sail_prompt = Button.new()
-	sail_prompt.anchor_left = 0.5
-	sail_prompt.anchor_right = 0.5
-	sail_prompt.anchor_top = 1.0
-	sail_prompt.anchor_bottom = 1.0
-	sail_prompt.offset_left = -190
-	sail_prompt.offset_right = 190
-	sail_prompt.offset_top = -250
-	sail_prompt.offset_bottom = -210
-	sail_prompt.add_theme_font_override("font", font_title)
-	sail_prompt.add_theme_font_size_override("font_size", 18)
-	sail_prompt.add_theme_color_override("font_color", GOLD)
-	sail_prompt.add_theme_stylebox_override("normal", _box(Color(0.045, 0.035, 0.025, 0.88), Color(0.62, 0.48, 0.26), 2, 4, 8))
-	sail_prompt.add_theme_stylebox_override("hover", _box(Color(0.09, 0.07, 0.04, 0.95), Color(0.86, 0.68, 0.36), 2, 4, 8))
-	sail_prompt.visible = false
-	sail_prompt.pressed.connect(func():
-		accept_event_safe()
-		game.try_land())
-	hud.add_child(sail_prompt)
-
-func accept_event_safe() -> void:
-	if is_inside_tree():
-		get_viewport().set_input_as_handled()
-
-func set_sail_prompt(t: String) -> void:
-	if sail_prompt == null:
-		return
-	sail_prompt.visible = t != ""
-	if t != "":
-		sail_prompt.text = "E   " + t
-
 func _build_shop() -> void:
 	shop_panel = _panel("Merchant", true, 500, 600)
 	var vb: VBoxContainer = shop_panel.get_node("vb")
@@ -5187,14 +5147,14 @@ func toggle(panel: Control) -> void:
 func _walked_off() -> void:
 	if trade_with == null:
 		return
-	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or dialog_panel.visible or ench_panel.visible or boat_panel.visible
+	var open := shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or dialog_panel.visible or ench_panel.visible
 	if not open or not is_instance_valid(trade_with) or hero == null:
 		trade_with = null
 		return
 	var d: Vector3 = hero.global_position - trade_with.global_position
 	if Vector2(d.x, d.z).length() > trade_with.radius + 3.0:
 		trade_with = null
-		for p in [shop_panel, stash_panel, burn_panel, furnace_ui, dialog_panel, ench_panel, inv_panel, boat_panel]:
+		for p in [shop_panel, stash_panel, burn_panel, furnace_ui, dialog_panel, ench_panel, inv_panel]:
 			p.visible = false
 		shop_mode = ""
 		tooltip.visible = false
@@ -5206,7 +5166,7 @@ func close_all() -> bool:
 	if game.lobby_client != null and game.lobby_client.panel.visible:
 		game.lobby_client.panel.hide()
 		any = true
-	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, skills_panel, talent_panel, quest_panel, boat_panel, auction_panel]:
+	for p in [inv_panel, char_panel, shop_panel, stash_panel, burn_panel, furnace_ui, wp_panel, dialog_panel, ench_panel, skills_panel, talent_panel, quest_panel, auction_panel]:
 		if p.visible:
 			p.visible = false
 			any = true
@@ -5220,7 +5180,7 @@ func title_idle() -> bool:
 		and not join_panel.visible and not (game.lobby_client != null and game.lobby_client.panel.visible)
 
 func any_panel_open() -> bool:
-	return (run_ui != null and run_ui.visible) or (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or boat_panel.visible or auction_panel.visible
+	return (run_ui != null and run_ui.visible) or (game.lobby_client != null and game.lobby_client.panel.visible) or inv_panel.visible or char_panel.visible or shop_panel.visible or stash_panel.visible or burn_panel.visible or furnace_ui.visible or wp_panel.visible or dialog_panel.visible or ench_panel.visible or skills_panel.visible or talent_panel.visible or quest_panel.visible or auction_panel.visible
 
 func message(t: String, col := Color(1, 1, 1), dur := 2.5) -> void:
 	msg_lbl.text = t
@@ -5343,8 +5303,6 @@ func refresh() -> void:
 		char_labels["gf"].text = "%d%%" % hero.gf
 
 func _process(delta: float) -> void:
-	if boat_shop:
-		boat_shop.tick(delta)
 	_update_drag(delta)
 	_walked_off()
 	if class_stage != null and class_stage.is_visible_in_tree():
@@ -5951,7 +5909,6 @@ class Minimap extends Control:
 	var view_m := 80.0
 	var _reveal_t := 0.0
 	var has_map := false
-	var chart := false        # the coast's sea chart (Game._sea_chart): a wider view, more so while sailing
 
 	func _init() -> void:
 		var sh := Shader.new()
@@ -6027,9 +5984,7 @@ class Minimap extends Control:
 		if g == null or g.hero == null or g.world == null:
 			return
 		if big:
-			view_m = clampf(maxf(map_rect.size.x, map_rect.size.y) * 0.95, 60.0, 520.0 if chart else 130.0)
-		elif chart:
-			view_m = lerpf(view_m, 240.0 if g.sailing() else 110.0, clampf(delta * 2.0, 0.0, 1.0))
+			view_m = clampf(maxf(map_rect.size.x, map_rect.size.y) * 0.95, 60.0, 130.0)
 		var hp: Vector3 = g.hero.global_position
 		_reveal_t -= delta
 		if _reveal_t <= 0.0:

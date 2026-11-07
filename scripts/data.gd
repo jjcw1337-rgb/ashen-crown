@@ -3,7 +3,7 @@ extends RefCounted
 ## Static game data: acts, monsters, item bases, affixes, uniques, vendors.
 
 const ACTS := [
-	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort", "coast": "The Mournwater Coast",
+	{"name": "The Ashen Moors", "town": "The Forsaken Wilds", "wild": "Cairnfell Moor", "lair": "Grubb's Fort",
 		"boss": "goblin_king", "lvl": 1, "theme": "moor", "foes": ["fallen_skirmisher", "fallen_reaver", "fallen_stalker", "zombie", "skel_archer"]},
 	{"name": "The Sunscar Wastes", "town": "Lut Khemar", "wild": "Dunes of Sorrow", "lair": "Tomb of Sekhmun",
 		"boss": "sekhmun", "lvl": 8, "theme": "desert", "foes": ["raider", "mummy", "scarab"]},
@@ -67,12 +67,8 @@ const WAYPOINT_BATTLEGROUNDS := [
 ## Activity registration: add/remove entries here, not buttons in the waypoint panel.
 ## group: pve | daily; route: zone; run, zone, spawn; optional level, enabled,
 ## starts_at / ends_at (UTC Unix seconds). Scheduled entries disappear outside their window.
-## Islands and act lairs are derived from their existing content tables by Game.
-static var WAYPOINT_ACTIVITIES: Array = [
-	{"id": "coast", "group": "pve", "name": "The Mournwater Coast", "kind": "Exploration",
-		"route": "zone", "run": 0, "zone": "coast", "spawn": "from_town",
-		"description": "Explore the coast, visit the shipwright and sail to the islands."},
-]
+## Act lairs are derived from their existing content tables by Game.
+static var WAYPOINT_ACTIVITIES: Array = []
 
 static func waypoint_available(entry: Dictionary, now: float) -> bool:
 	return bool(entry.get("enabled", true)) and now >= float(entry.get("starts_at", 0)) and (not entry.has("ends_at") or now < float(entry["ends_at"]))
@@ -175,29 +171,11 @@ const WEAPON_PROFILES := {
 }
 
 const VENDORS := [
-	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth", "shipwright": "Osric Saltmarrow"},
+	{"smith": "Halvar Emberhammer", "armor": "Hedda Ironhand", "alch": "Agnes Grimwood", "gamble": "Tarrow the Dice", "stash": "Stash", "elder": "Captain Roth"},
 	{"smith": "Kadir Forgebrand", "armor": "Saphra", "alch": "Iskander the Wise", "gamble": "Jamal Two-Coins", "stash": "Stash", "elder": "Vizier Hasun"},
 	{"smith": "Ombo Stonejaw", "armor": "Teyla of the Reeds", "alch": "Mother Ashka", "gamble": "Quill", "stash": "Stash", "elder": "Archivist Nel"},
 	{"smith": "Brother Halvard", "armor": "Seraph Aldwen", "alch": "Lumen the Pure", "gamble": "The Faceless", "stash": "Stash", "elder": "High Paladin Corin"},
 ]
-
-## Boats the shipwright on the Mournwater Coast sells (coast.gd, boat.gd, boat_ride.gd). One today; more
-## boats, faster hulls or upgrades are new entries here. speed: cruising m/s (the island routes are
-## planned for 8: Isles.ISLANDS "sail" / speed ~ the crossing's seconds), accel: m/s per second,
-## turn: radians per second at speed, crew: how many it carries (co-op: each player sails their own).
-const BOATS := {
-	"gull": {"name": "The Gull", "price": 1000000, "speed": 8.0, "accel": 3.2, "turn": 0.95, "crew": 1,
-		"paint": Color(0.16, 0.3, 0.42),
-		"desc": "A single-masted cutter of tarred oak, seven paces long, built here on the strand. Quick on the wind, steady in a swell, and she'll put you ashore at any jetty on the Mournwater."},
-	# Imported boats: "glb" is a model prepared by tools/blender/prep_boat.py (bow toward -z, waterline y = 0); its
-	# printout gives length, beam, sheer and draft. "deck" is where the hero stands at the helm, "lamps" the lanterns'
-	# lights. Swap the model by changing "glb" (and the sizes); without the file she's drawn as the Gull.
-	"sloop": {"name": "The Ember Sloop", "price": 10000000, "speed": 45.0, "accel": 13.0, "turn": 0.8, "crew": 2,
-		"glb": "res://assets/models/boats/sloop.glb", "length": 14.0, "beam": 4.6, "sheer": 1.74, "draft": 1.3,
-		"deck": Vector3(0.6, 1.15, 2.6), "lamps": [[Vector3(1.21, 2.85, 6.73), 1.2], [Vector3(-1.21, 2.85, 6.73), 1.2]],
-		"paint": Color(0.3, 0.06, 0.04),
-		"desc": "A gaff-rigged sloop of black-tarred oak with patched rust-red canvas, fourteen paces stem to stern. Roomier and a knot faster than the Gull, with a cabin aft and lanterns at her stern."},
-}
 
 ## look keys: skin, cloth, cloth2, armor, height, bulk, head, eyes, horns, cape, thin, tail, wings, weapon, shield
 const ENEMIES := {
@@ -992,6 +970,4 @@ static func zone_level(act: int, kind: String) -> int:
 	match kind:
 		"wild": return base + 2
 		"lair": return base + 5
-	if kind == "coast" or kind.begins_with("isle_"):
-		return base + 3
 	return base

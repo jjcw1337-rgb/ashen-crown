@@ -49,8 +49,7 @@ func walk_to(p: Vector3, then := Callable()) -> void:
 	_path.remove_at(0)
 
 ## A keeper who gets about (clips "patrol": {"points": [Vector3...], "walk": clip, "speed": m/s, "face": [yaw per point],
-## "chance", "works": [clips per point]}; Osric between his
-## hull and the pier with a plank): after a spell of work, off to the next point at a walk, turning the way he goes;
+## "chance", "works": [clips per point]}): after a spell of work, off to the next point at a walk, turning the way he goes;
 ## a hero coming near stops him, and he turns and talks as the others do. Cosmetic and local to each game.
 func _patrol(delta: float, near: bool) -> bool:
 	var pt: Dictionary = clips.get("patrol", {})

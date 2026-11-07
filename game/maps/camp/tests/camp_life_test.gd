@@ -119,9 +119,9 @@ func _run() -> void:
 		check(w.island_r > 0.0 and w.get_node_or_null("island") != null, "the camp is the World-Tree Island")
 		var outs := 0
 		for e in w.exits:
-			if str(e["to"]) in ["wild", "coast"]:
+			if str(e["to"]) == "wild":
 				outs += 1
-		check(outs == 0, "the gates to the moor and the coast are barred")
+		check(outs == 0, "the gates are barred")
 		check(g.waypoint_known(0, "wild"), "... and the waypoint takes you to the moor")
 		check(w.off_island(ForestCamp.CENTER.x + ForestCamp.ISLAND_R + 4.0, ForestCamp.CENTER.y), "past the edge is the void")
 		check(w.grass_ground(ForestCamp.CENTER.x + ForestCamp.ISLAND_R + 2.0, ForestCamp.CENTER.y) == 0.0, "nothing grows past it")

@@ -341,18 +341,6 @@ SPEC = [
          prompt="a damp stone crypt, slow water drips echoing, faint distant wind, no music"),
 ]
 
-# The sea's sounds (the Mournwater Coast and its isles), made in code by tools/audio/make_sea.py until recordings or
-# ElevenLabs takes replace them under the same names: src "made" (eleven.py and the Kenney build skip them).
-SPEC += [
-    dict(name="surf", src="made", loop=True, hit=0, label="ocean waves breaking on a beach"),
-    dict(name="sea", src="made", loop=True, hit=0, label="open sea water lapping round a boat"),
-    dict(name="splash", src="made", hit=0, label="small water splash"),
-    dict(name="gull", src="made", hit=0, label="seagull calling"),
-    dict(name="hull_creak", src="made", hit=0, label="wooden boat creaking"),
-    dict(name="hull_slap", src="made", hit=0, label="water slapping a boat hull"),
-    dict(name="mallet", src="made", hit=0, label="wooden mallet knocking on wood"),
-]
-
 # Doug the clown (DougSkills.sound / DougFx): slapstick, but real and weighty, not cartoon beeps
 SPEC += [
     dict(name="doug_splat", src="eleven", n=4, dur=0.8, hit=0, label="a cream pie splatting into a face",

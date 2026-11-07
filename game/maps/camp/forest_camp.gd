@@ -20,9 +20,9 @@ static func grand_waypoint() -> bool:
 	return not OS.get_cmdline_user_args().has("--old-waypoint")
 const RADIUS := 25.0
 ## jj, 2026-11-04 ("Nice lets use number 2"): the camp is the World-Tree Island, adrift in space (camp_island.gd): the
-## ground ends ISLAND_R from the middle in a cliff with roots and waterfalls falling into the void, the west (coast) and
-## north (moor) gates are barred for now (the waypoint is the way out), and the coast and the moor hang far off as
-## small islands of their own.
+## ground ends ISLAND_R from the middle in a cliff with roots and waterfalls falling into the void, the west and
+## north (moor) gates are barred (the waypoint is the way out), and the coast and the moor hang far off as small
+## islands of their own (scenery: sailing and the coast are archived, archive/sailing/).
 const ISLAND := true
 const ISLAND_R := RADIUS + 11.0
 ## the Gilded Hall (jj, 2026-11-04: the auction house), on the open ground west of the waypoint, facing east; its
@@ -30,7 +30,7 @@ const ISLAND_R := RADIUS + 11.0
 const AUCTION_AT := Vector2(-15.0, 6.5)
 const AUCTION_HALF := Vector2(4.4, 4.45)
 const GATE_HALF := 0.23         # half the gap in the ring for the gatehouse (radians)
-const WEST := PI * 1.5          # the west gate (ring angle): the path to the coast (coast.gd)
+const WEST := PI * 1.5          # the west gate (ring angle), barred: it led to the coast (archive/sailing/)
 const DIR := "res://game/maps/camp/props/camp/"
 const STALL_SCALE := 1.45     # the stalls, tents and gatehouse read small from the game's camera at true size
 const NPC_DIR := "res://assets/models/npc/"
@@ -239,7 +239,7 @@ static func build(w: World) -> void:
 		CampIsland.bar_gate(w, Vector3(0, 0, gate_z), 0.0)
 	else:
 		w.exits.append({"pos": Vector3(0, 0, gate_z - 3.5), "radius": 3.5, "to": "wild", "label": w.act_name("wild")})
-	# the west gate and the track down to the Mournwater Coast
+	# the west gate, barred (the track beyond it led to the coast, archived: archive/sailing/)
 	var wg := ring_pt(WEST, RADIUS)
 	var wgate := model("gate")
 	w._place(wgate, Vector3(wg.x, 0, wg.y))
@@ -251,8 +251,6 @@ static func build(w: World) -> void:
 	_lantern(w, Vector3(wg.x + 0.4, w.height_at(wg.x, wg.y) + 4.7, wg.y), true)
 	if ISLAND:
 		CampIsland.bar_gate(w, Vector3(wg.x, 0, wg.y), PI * 0.5)
-	else:
-		w.exits.append({"pos": Vector3(wg.x - 6.0, 0, wg.y), "radius": 3.2, "to": "coast", "label": w.act_name("coast")})
 	w.dirt_lines.append([CENTER, Vector2(wg.x - 9.0, wg.y), 2.6])
 
 	# --- rune stones standing in the trees outside the wall, glowing faintly
@@ -477,7 +475,6 @@ static func build(w: World) -> void:
 	w.spawns["start"] = Vector3(0, 0, 5)
 	w.spawns["new_player"] = NEW_PLAYER_AT
 	w.spawns["from_wild"] = Vector3(0, 0, gate_z + 4.5)
-	w.spawns["from_coast"] = Vector3(-RADIUS + 4.5, 0, CENTER.y)
 	w.spawns["portal"] = Vector3(4, 0, 8)
 	w.spawns["alch"] = Vector3(-11.5, 0, -9)
 	w.spawns["forge"] = Vector3(13.5, 0, -10.5)

@@ -1,0 +1,121 @@
+{
+ "gull": [
+  {
+   "detail": "herring gull cries, two to four calls",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "herring gull cries, two to four calls",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "herring gull cries, two to four calls",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "herring gull cries, two to four calls",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ],
+ "hull_creak": [
+  {
+   "detail": "a small wooden boat's planks creaking in a seaway",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "a small wooden boat's planks creaking in a seaway",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "a small wooden boat's planks creaking in a seaway",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "a small wooden boat's planks creaking in a seaway",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ],
+ "hull_slap": [
+  {
+   "detail": "the bow dropping into a wave: a hollow thump and spray",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "the bow dropping into a wave: a hollow thump and spray",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "the bow dropping into a wave: a hollow thump and spray",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ],
+ "mallet": [
+  {
+   "detail": "a wooden mallet knocking into an oak plank",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "a wooden mallet knocking into an oak plank",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "a wooden mallet knocking into an oak plank",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "a wooden mallet knocking into an oak plank",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ],
+ "sea": [
+  {
+   "detail": "open water round a small boat: the swell's heave, lapping wavelets, far whitecaps (loop)",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ],
+ "splash": [
+  {
+   "detail": "a fish breaking the surface: plop, spray, droplets",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "a fish breaking the surface: plop, spray, droplets",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "a fish breaking the surface: plop, spray, droplets",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ],
+ "surf": [
+  {
+   "detail": "surf breaking on a beach: swell, crash, wash back over sand and shingle (loop)",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  },
+  {
+   "detail": "surf breaking on a beach: swell, crash, wash back over sand and shingle (loop)",
+   "license": "CC0 1.0 (made for the game)",
+   "source": "Procedural (tools/audio/make_sea.py)"
+  }
+ ]
+}

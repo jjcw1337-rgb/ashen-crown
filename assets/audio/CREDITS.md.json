@@ -757,28 +757,6 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
- "gull": [
-  {
-   "detail": "herring gull cries, two to four calls",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "herring gull cries, two to four calls",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "herring gull cries, two to four calls",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "herring gull cries, two to four calls",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  }
- ],
  "hellclaw": [
   {
    "detail": "three fast vicious claw slashes tearing flesh, with a short burst of roaring fire, close mic, dry, isolated sound effect, no music",
@@ -815,45 +793,6 @@
    "detail": "a host of ghosts summoned, many spirits rising with eerie overlapping whispers, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
-  }
- ],
- "hull_creak": [
-  {
-   "detail": "a small wooden boat's planks creaking in a seaway",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "a small wooden boat's planks creaking in a seaway",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "a small wooden boat's planks creaking in a seaway",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "a small wooden boat's planks creaking in a seaway",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  }
- ],
- "hull_slap": [
-  {
-   "detail": "the bow dropping into a wave: a hollow thump and spray",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "the bow dropping into a wave: a hollow thump and spray",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "the bow dropping into a wave: a hollow thump and spray",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
   }
  ],
  "hunter_mark": [
@@ -1049,28 +988,6 @@
    "detail": "a fel green skull bolt fired: a howling ghostly shriek whooshing past and a sharp eerie impact, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
-  }
- ],
- "mallet": [
-  {
-   "detail": "a wooden mallet knocking into an oak plank",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "a wooden mallet knocking into an oak plank",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "a wooden mallet knocking into an oak plank",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "a wooden mallet knocking into an oak plank",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
   }
  ],
  "miasma_burst": [
@@ -1333,13 +1250,6 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
- "sea": [
-  {
-   "detail": "open water round a small boat: the swell's heave, lapping wavelets, far whitecaps (loop)",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  }
- ],
  "shackles": [
   {
    "detail": "magical iron chains whipping around a victim, heavy chains rattling and locking shut, close mic, dry, isolated sound effect, no music",
@@ -1437,23 +1347,6 @@
    "source": "ElevenLabs Sound Effects"
   }
  ],
- "splash": [
-  {
-   "detail": "a fish breaking the surface: plop, spray, droplets",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "a fish breaking the surface: plop, spray, droplets",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "a fish breaking the surface: plop, spray, droplets",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  }
- ],
  "storm_shot": [
   {
    "detail": "a bowstring snapping and an arrow flying off wrapped in crackling electricity, a rising electric whine and snap, close mic, dry, isolated sound effect, no music",
@@ -1478,18 +1371,6 @@
    "detail": "a demon summoned from a burning rift, rumble of cracking ground then a beastly roar, close mic, dry, isolated sound effect, no music",
    "license": "ElevenLabs paid plan, commercial use",
    "source": "ElevenLabs Sound Effects"
-  }
- ],
- "surf": [
-  {
-   "detail": "surf breaking on a beach: swell, crash, wash back over sand and shingle (loop)",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
-  },
-  {
-   "detail": "surf breaking on a beach: swell, crash, wash back over sand and shingle (loop)",
-   "license": "CC0 1.0 (made for the game)",
-   "source": "Procedural (tools/audio/make_sea.py)"
   }
  ],
  "swing": [

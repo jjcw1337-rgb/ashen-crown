@@ -40,8 +40,11 @@ func _run():
  g.max_run = 0
  g.hero.level = 1
  g.waypoints_known = ["town"]
- ok(g.waypoint_activities().size() == data.WAYPOINT_ACTIVITIES.size() + load("res://scripts/isles.gd").ISLANDS.size() + data.WAYPOINT_ACTS.size(), "all live activities, islands and act dungeons listed (Endless Waves retired: MpMode)")
- ok(g.waypoint_activity_lock(g.waypoint_activity("isle_verdant")) != "", "island level gate retained")
+ ok(g.waypoint_activities().size() == data.WAYPOINT_ACTIVITIES.size() + data.WAYPOINT_ACTS.size(), "all live activities and act dungeons listed")
+ var gated := {"id": "test_gated", "name": "Gated Moor", "group": "pve", "route": "zone", "run": 0, "zone": "wild", "spawn": "start", "level": 99}
+ data.WAYPOINT_ACTIVITIES.append(gated)
+ ok(g.waypoint_activity_lock(g.waypoint_activity("test_gated")) != "", "level gate retained")
+ data.WAYPOINT_ACTIVITIES.erase(gated)
  ok(g.waypoint_activity_lock(g.waypoint_activity("lair_0")) != "", "dungeon discovery gate retained")
  ok(g.waypoint_activity_lock(g.waypoint_activity("lair_1")) != "", "sealed act cannot be entered")
  g.waypoint_activity_go("missing")

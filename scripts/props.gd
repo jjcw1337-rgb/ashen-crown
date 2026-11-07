@@ -195,7 +195,7 @@ void fragment(){
 """
 
 ## The see-through for the Meshy buildings and props that keep their glb's own material (the camp's palisade, gate
-## and tents, the fort's walls, towers and hall, the coast's hamlet, the islands' landmarks, the lairs, the crypt's
+## and tents, the fort's walls, towers and hall, the lairs, the crypt's
 ## dressing): `World.build` hands the finished zone here. Every static mesh tall enough to stand between the camera
 ## and the hero, on a plain opaque StandardMaterial3D, gets SEE_THROUGH_SHADER with the same textures and numbers, so
 ## it looks the same and dithers away round the hero as the code-built props do (Mats.PROP_SHADER). One copy per
