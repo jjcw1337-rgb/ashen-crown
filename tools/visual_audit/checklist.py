@@ -45,11 +45,6 @@ A = {
 	"monsters/champion.glb": ((4, 5, 4, 4, 3, 2, 4, 3), "P3", "", "In-game testing", "A2 boss Aurelius, Champion of the Arena (stage 3, Meshy): lion-faced bronze cuirass, lion pauldron, crimson crest and pteruges, rigged on the game's 13 joints (rig_monster.py, crotch hint for the skirt). Was the code-built humanoid in red cloth. 30k tris, 2K."),
 	"monsters/gladiator.glb": ((4, 4, 4, 4, 3, 2, 4, 4), "P3", "", "In-game testing", "A2 arena Gladiator (stage 3, Meshy): bronze helm, manica, loincloth, greaves. Was the code-built humanoid. 20k tris, 1K."),
 	# added on staging the same night (Blaine's Verdant Isle and Battlegrounds work), inspected after the merge
-	"monsters/dino/raptor.glb": ((4, 4, 3, 3, 3, 2, 4, 3), "P4", "", "Inspected", "Feathered raptor (Verdant Isle packs): detailed, dark (colour map 0.20); posed in code (theropod.gd). 30k tris, 2K."),
-	"monsters/dino/trex.glb": ((4, 4, 3, 3, 3, 2, 4, 2), "P3", "O", "Inspected", "Gorehide the Tyrant: bony, spiked-tail T-rex; strong silhouette. 45k tris is heavy for a roaming boss (no LOD)."),
-	"monsters/dino/triceratops.glb": ((4, 4, 3, 3, 3, 2, 4, 3), "P4", "T", "Inspected", "Mother triceratops: good; weak normal map (4.6 deg)."),
-	"monsters/dino/baby_trike.glb": ((4, 4, 3, 3, 3, 2, 4, 4), "P4", "", "Inspected", "Baby triceratops: charming, clean (198 UV islands). 15k tris."),
-	"monsters/dwarf.glb": ((4, 4, 3, 3, 3, 2, 4, 3), "P4", "", "Inspected", "The Drunken Dwarf: hammer, fur cape, braided beard; reads well. 22k tris."),
 	"monsters/hermit.glb": ((4, 5, 3, 3, 3, 2, 4, 3), "P4", "", "Inspected", "Old Mossbeard, the thorn hermit (Battlegrounds boss): mushroom cap and moss beard, a memorable silhouette. 28k tris."),
 	"monsters/ice_troll.glb": ((4, 5, 4, 3, 3, 2, 4, 3), "P4", "", "Inspected", "Hrimgar the Frostbound (Battlegrounds boss): ice crystals down the back, strong. 40k tris, 2K."),
 	"monsters/troll_shaman.glb": ((4, 4, 3, 3, 3, 2, 4, 3), "P4", "", "Inspected", "Troll Beast-Tamer: feathered headdress, tribal straps; dark at game distance. 22k tris."),

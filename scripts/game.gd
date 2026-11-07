@@ -2172,6 +2172,8 @@ func _harness_camp() -> bool:
 
 ## Leave the current zone with nothing in its place (back to the title). load_zone does the same before it builds.
 func unload_world() -> void:
+	if ui.chat != null:
+		ui.chat.clear()      # (a match's chat ends with it)
 	if world == null:
 		return
 	_store_harvest()
@@ -3546,6 +3548,8 @@ var roll_sprint := false
 ## The movement keys as a flat direction on the ground (W = up the screen).
 func wasd_dir() -> Vector3:
 	var v := Vector3.ZERO
+	if ui.chat != null and ui.chat.typing:
+		return v      # (typing a chat line: the keys spell, the hero stands)
 	if Input.is_key_pressed(KEY_W): v.z -= 1
 	if Input.is_key_pressed(KEY_S): v.z += 1
 	if Input.is_key_pressed(KEY_A): v.x -= 1
