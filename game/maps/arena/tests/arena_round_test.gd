@@ -30,7 +30,7 @@ func check(ok: bool,label: String):
  checks+=1;print("[ARENA] ","ok " if ok else "FAIL ",label)
  if not ok:fails+=1
 func run():
- var script=load("res://scripts/arena_match.gd")
+ var script=load("res://game/maps/arena/arena_match.gd")
  for size in [1,2,3]:
   var arena=script.new();root.add_child(arena);arena.set_process(false)
   var transport=Transport.new();var instance=Instance.new();var parked=Fighter.new();root.add_child(parked)

@@ -38,7 +38,7 @@ func run() -> void:
  check(g.list_characters().size()==original_count,"practice does not create a saved hero")
  # A roster switch while delayed effects are alive exercises the shared callback/cleanup contracts.
  for cls in ["serpent","wyvern","warlock"]:
-  load("res://scripts/sandbox.gd").outfit(g,g.hero,cls,20,"geared")
+  load("res://game/maps/arena/sandbox.gd").outfit(g,g.hero,cls,20,"geared")
   for ev in SkillWarmData.EVENTS.get(cls,[]):
    if ev is Dictionary:SkillFx.play(g.hero,SkillWarm._rebuild(ev,g.hero.global_position))
   for i in 3:await physics_frame

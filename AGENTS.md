@@ -38,6 +38,7 @@ still in `scripts/` and `assets/`.
 | Shared rites, gems, consumables | `data/codex/shared.json`, `gems.json`, `consumables.json` |
 | Monsters | stats in `scripts/data.gd` `ENEMIES`; behaviour in `scripts/enemy.gd` and the monster's own script (`bear.gd`, `sloth.gd`, `bg_boss.gd`…) |
 | The map and its camps | `scripts/bg_forest.gd`, `camps.gd` |
+| A map: its builder, props, the modes played on it, tests | `game/maps/<map>/`. The Arena is the example. |
 | Screens (title, class picker, lobby, HUD) | `scripts/ui.gd`, `title_*.gd`, `class_stage.gd`, `mp_lobby_view.gd`, `run_ui.gd` |
 | Shared systems | `scripts/` today, moving to `game/systems/` |
 | Sounds, skill and rite icons | `assets/audio/sfx/` (built by `tools/audio/`), `assets/textures/skills/`, `talents/` |

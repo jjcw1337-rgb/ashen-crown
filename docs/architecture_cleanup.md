@@ -137,6 +137,8 @@ Touch points to coordinate:
 
 - Claude-2: the Archer, end to end (`game/heroes/archer/**`, `game/systems/**`, plus the Archer's places in `hero.gd`,
   `class_skills.gd`, `skill_fx.gd` and `run_talents.gd`).
+- Claude-1: cutting the old Battlegrounds (the crypt map, its floors, antechamber and stash chests; `battlegrounds.gd`,
+  `bg_floors.gd`, `crypt_props.gd`, `stash_*.gd`, `world.gd`'s crypt helpers).
 
 ## Cutting an old system
 
@@ -213,3 +215,5 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [ ] 6. Real ids
 - [x] `concepts/` removed (2026-11-06)
 - [x] Docs by concept: one root `AGENTS.md`, and a doc per piece of content, system and pipeline (2026-11-06)
+- [x] Maps: the Arena is `game/maps/arena/` (the template for every map: its map, props, modes, tests, README;
+  2026-11-06).

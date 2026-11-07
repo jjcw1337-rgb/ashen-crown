@@ -13,7 +13,6 @@ extends Node
 
 const ZONE := "sandbox"
 const TITLE := "PvP Sandbox"
-const HALL := Rect2(-20.0, -20.0, 40.0, 40.0)
 const LEVELS := [1, 5, 10, 20]
 const GEARS := ["fresh", "geared"]
 ## Stat points per level by class (as tools/pvp_sim.gd spends them).
@@ -44,36 +43,6 @@ var _meter_t := 0.0
 # the panel's picks
 var pick_me := {"cls": "knight", "lvl": 20, "gear": "geared"}
 var pick_bot := {"cls": "knight", "lvl": 20, "gear": "geared"}
-
-static func build(w: World) -> void:
-	w.flat_floor = true
-	w.theme = {"name": "bg"}
-	w.floor_rects.append(HALL)
-	w.bounds = HALL.grow(3.0)
-	w.dirt_blobs = [[w.bounds.get_center(), 9999.0, 1.0]]
-	w.dirt_lines = []
-	# a ring of pillars to fight round and break line of sight, torches, braziers, light enough to read the fight
-	for i in 8:
-		var a := TAU * (i + 0.5) / 8.0
-		w._pillar(Vector3(cos(a) * 11.0, 0, sin(a) * 11.0), 5.0)
-	for k in 4:
-		w._wall_torch(Vector3(lerpf(HALL.position.x + 4.0, HALL.end.x - 4.0, k / 3.0), 0, HALL.position.y + 0.15), k == 1 or k == 2)
-	for sx in [-1.0, 1.0]:
-		for sz in [-1.0, 1.0]:
-			Vigil._brazier(w, Vector3(sx * 15.0, 0, sz * 15.0))
-	for k in 4:
-		var fill := OmniLight3D.new()
-		fill.light_color = Color(1.0, 0.75, 0.5)
-		fill.light_energy = 0.9
-		fill.omni_range = 16.0
-		fill.shadow_enabled = false
-		fill.position = Vector3(cos(TAU * k / 4.0) * 9.0, 4.0, sin(TAU * k / 4.0) * 9.0)
-		w.props_root.add_child(fill)
-	w._candles(Vector3(0, 0, 0), true)
-	for k in 8:
-		w._bones(Vector3(w.rng.randf_range(-17, 17), 0, w.rng.randf_range(-17, 17)))
-	w.crypt_shell()
-	w.spawns["start"] = Vector3(0, 0, 12)
 
 ## A hero dressed for a test: class, level (its stat points spent the class's way, the auto talents), and either
 ## its starting kit ("fresh") or rare gear of its level in every slot ("geared", Game._boost_base), full potions.

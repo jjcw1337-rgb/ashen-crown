@@ -25,7 +25,7 @@ func start(g, path: String, port: int) -> void:
  if mode=="battlegrounds":
   await Battlegrounds.start_server(game,port)
  elif mode in ["arena","sandbox"]:
-  game.bg=load("res://scripts/sandbox_match.gd" if mode=="sandbox" else "res://scripts/arena_match.gd").new()
+  game.bg=load("res://game/maps/arena/sandbox_match.gd" if mode=="sandbox" else "res://game/maps/arena/arena_match.gd").new()
   game.bg.game=game
   game.add_child(game.bg)
   game.net.host(port,int(config.capacity))
@@ -70,12 +70,11 @@ func admit(pid: int, ticket: String) -> bool:
 
 func spawn(pid: int) -> Vector3:
  if str(config.mode)=="sandbox":
-  var angle:=TAU*float(game.net.players.keys().find(pid))/float(maxi(1,int(config.capacity)))
-  return game.world.free_spot_near(Vector3(cos(angle)*13,0,sin(angle)*13),1.5)
+  return ArenaMap.ring_spawn(game.world,game.net.players.keys().find(pid),int(config.capacity))
  if str(config.mode)=="arena":
   var team:=int(members.get(pid,{}).get("team",0))
   var peers:Array=members.keys().filter(func(peer):return int(members[peer].team)==team)
-  return Vector3(-12 if team==0 else 12,0,(peers.find(pid)-(int(config.team_size)-1)*0.5)*5)
+  return ArenaMap.team_spawn(team,peers.find(pid),int(config.team_size))
  if game.bg!=null:return game.bg.spawn_point()
  return game.world.free_spot_near(game.world.spawns.get("start",Vector3.ZERO),2)
 

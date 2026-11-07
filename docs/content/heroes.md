@@ -56,7 +56,7 @@ Heroes not moved yet still live in `scripts/<hero>*.gd` and `assets/models/`.
 - `Data.CLASSES` and `Data.SKILLS` (`scripts/data.gd`);
 - `Talents.TREES` and `AUTO` (`scripts/talents.gd`); `RunTalents`' themes and `TREE_THEME` (`scripts/run_talents.gd`);
 - the class picker, `ClassStage` (`CLASSES`, `ACCENTS`, `EMBLEMS`, `SIGNATURE`, `SKILL_SHOW`, `PICK_SOUND`);
-- `MpLobbyView.PLAYSTYLE`, `BgMatchup.ACCENTS`, and the Sandbox's stats (`scripts/sandbox.gd`).
+- `MpLobbyView.PLAYSTYLE`, `BgMatchup.ACCENTS`, and the Sandbox's stats (`game/maps/arena/sandbox.gd`).
 
 The Archer's rebuild aims to shrink this list ([the plan](../architecture_cleanup.md), step 2).
 

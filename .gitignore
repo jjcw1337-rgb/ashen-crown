@@ -50,3 +50,13 @@ game/heroes/**/*_albedo.jpg.import
 game/heroes/**/*_metal_rough.jpg.import
 game/heroes/**/*_emission.jpg.import
 game/heroes/**/*_Material_*
+
+# map folders (game/maps/<name>/): Godot's import files for their models and the textures it extracts (props/), like heroes/
+game/maps/**/*.glb.import
+game/maps/**/props/*_Image_*
+game/maps/**/props/*_albedo.jpg*
+game/maps/**/props/*_metal_rough.jpg*
+game/maps/**/props/*_normal.png*
+game/maps/**/props/*_normal.jpg*
+game/maps/**/props/*_emission.jpg*
+game/maps/**/props/*_Material_*

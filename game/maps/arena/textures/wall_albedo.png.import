@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://duorsvxqqm8sm"
-path="res://.godot/imported/wall_normal.png-7f0582ebd1730548935f9da62a5b7d0b.ctex"
+uid="uid://dswye67osntnv"
+path="res://.godot/imported/wall_albedo.png-386a311926c66e48ced5447e134f30ac.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/textures/crypt/wall_normal.png"
-dest_files=["res://.godot/imported/wall_normal.png-7f0582ebd1730548935f9da62a5b7d0b.ctex"]
+source_file="res://game/maps/arena/textures/wall_albedo.png"
+dest_files=["res://.godot/imported/wall_albedo.png-386a311926c66e48ced5447e134f30ac.ctex"]
 
 [params]
 
@@ -19,7 +19,7 @@ compress/mode=1
 compress/high_quality=false
 compress/lossy_quality=0.9
 compress/hdr_compression=1
-compress/normal_map=1
+compress/normal_map=0
 compress/channel_pack=0
 mipmaps/generate=true
 mipmaps/limit=-1
