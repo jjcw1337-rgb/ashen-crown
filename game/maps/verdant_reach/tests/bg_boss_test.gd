@@ -1,5 +1,5 @@
 extends SceneTree
-## The Battlegrounds bosses' fights (bg_boss.gd), offline on the raid map: Hrimgar, near a hero, aggroes and uses
+## The Battlegrounds bosses' fights (game/monsters/hrimgar/, mossbeard/), offline on the raid map: Hrimgar, near a hero, aggroes and uses
 ## his moves (slam, lances, roar, swing; the avalanche under half life), and they hurt and freeze; Mossbeard
 ## sprouts poison mushrooms that hurt in their clouds, snares, bolts, steps out of a mushroom when hurt; when he
 ## dies his mushrooms wither, his camp's chest is no longer sealed, and no story ending plays (no Act I Complete screen,

@@ -56,8 +56,8 @@ var enraged := false
 var hoard: Hoard = null
 ## The Hollow Sloth's brain (sloth.gd), when this is one
 var sloth: Sloth = null
-## The Battlegrounds bosses' brain (bg_boss.gd): Hrimgar, Mossbeard and his poison mushrooms
-var brain: BgBoss = null
+## A boss's brain (BossBrain, game/monsters/): Hrimgar, Mossbeard and his poison mushrooms
+var brain: BossBrain = null
 var _sloth_phase := 0.0
 ## Factions (Data.ENEMIES "faction"): goblins and the undead fight each other on sight (and both fight you).
 ## Not inside a camp (pack_id from Camps.FIRST_PACK): a camp's monsters are one encounter, whatever their factions.
@@ -148,8 +148,10 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	var look: Dictionary = def["look"]
 	height = look.get("height", look.get("size", 1.0))
 	rig = build_rig(k, Feral.variant_at(global_position))
-	if kind in ["ice_troll", "hermit", "spore_shroom"]:
-		brain = BgBoss.new(self)
+	match kind:
+		"ice_troll": brain = Hrimgar.new(self)
+		"hermit": brain = Mossbeard.new(self)
+		"spore_shroom": brain = PoisonMushroom.new(self)
 	if rig.has_meta("feral"):
 		slot_a = randf_range(-1.6, 1.6)
 		lunge_cd = randf_range(0.3, 3.0)
@@ -613,7 +615,10 @@ func special_fx(ev: String) -> void:
 		Sloth.fx(self, ev)
 		return
 	if ev.begins_with("bb_"):
-		BgBoss.fx(self, ev)
+		if kind == "ice_troll":
+			HrimgarFx.fx(self, ev)
+		else:
+			MossbeardFx.fx(self, ev)
 		return
 	var col := Color(0.4, 1.0, 0.3) if def.get("nova", "") == "poison" else Color(1.0, 0.4, 0.1)
 	match ev:
