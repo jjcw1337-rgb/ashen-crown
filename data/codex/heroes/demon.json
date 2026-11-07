@@ -122,6 +122,9 @@
 			"use": 1.6,
 			"power": 0.43,
 			"range": 14.0,
+			"aoe": {
+				"r": "radius"
+			},
 			"role": "Ranged pressure",
 			"tags": [
 				"attack",
@@ -234,6 +237,9 @@
 			"cd": 0.0,
 			"use": 1.2,
 			"range": 13.0,
+			"aoe": {
+				"r": "radius"
+			},
 			"role": "bombard an area",
 			"lvl": 9,
 			"run": true,

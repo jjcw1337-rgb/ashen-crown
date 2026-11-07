@@ -75,6 +75,9 @@
 			"cd": 0.0,
 			"use": 1.1,
 			"range": 13.0,
+			"aoe": {
+				"r": "r"
+			},
 			"role": "a storm over a crowd",
 			"lvl": 9,
 			"run": true,

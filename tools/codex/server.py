@@ -124,6 +124,10 @@ class Codex:
                 for f in ("mana", "cd", "use", "power", "range", "max", "lvl"):
                     if f in e and e[f] is not None and (not isinstance(e[f], NUM) or e[f] < 0):
                         raise ValueError(f"{i}: {f} must be a number of 0 or more")
+                a = e.get("aoe")
+                if a is not None and not (isinstance(a, dict) and isinstance(a.get("r"), str) and a["r"].strip()
+                                          and set(a) <= {"r", "grow"} and isinstance(a.get("grow", ""), str)):
+                    raise ValueError(f"{i}: aoe is {{\"r\": the number its area's radius is, \"grow\": a rite key (optional)}}")
                 if "fx" in e and not (isinstance(e["fx"], dict) and all(isinstance(v, NUM) for v in e["fx"].values())):
                     raise ValueError(f"{i}: every fx value must be a number")
                 if "k" in e:

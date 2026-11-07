@@ -162,6 +162,9 @@
 			"cd": 0.0,
 			"use": 1.0,
 			"range": 14.0,
+			"aoe": {
+				"r": "radius"
+			},
 			"role": "cash in the brands",
 			"lvl": 9,
 			"run": true,

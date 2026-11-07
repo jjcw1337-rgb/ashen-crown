@@ -30,6 +30,10 @@
 			"mana": 7,
 			"cd": 0.0,
 			"range": 12.0,
+			"aoe": {
+				"r": "radius",
+				"grow": "cloud_size"
+			},
 			"lvl": 1,
 			"k": {
 				"cast_s": 0.85,
@@ -60,6 +64,10 @@
 			"mana": 16,
 			"cd": 12.0,
 			"range": 13.0,
+			"aoe": {
+				"r": "radius",
+				"grow": "swarm_size"
+			},
 			"tags": [
 				"summon",
 				"cc"
@@ -90,6 +98,10 @@
 			"mana": 14,
 			"cd": 10.0,
 			"range": 9.0,
+			"aoe": {
+				"r": "radius",
+				"grow": "bloom_size"
+			},
 			"tags": [
 				"trap",
 				"cc"
@@ -166,6 +178,10 @@
 			"mana": 40,
 			"cd": 45.0,
 			"range": 7.0,
+			"aoe": {
+				"r": "radius",
+				"grow": "exp_size"
+			},
 			"tags": [
 				"ultimate"
 			],
@@ -250,6 +266,9 @@
 			"mana": 10,
 			"cd": 9.0,
 			"range": 12.0,
+			"aoe": {
+				"r": "radius"
+			},
 			"role": "heal from foes",
 			"tags": [
 				"sustain"

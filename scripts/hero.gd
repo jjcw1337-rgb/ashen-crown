@@ -999,7 +999,8 @@ func cmd_move(p: Vector3, direct := false) -> void:
 ## aims, and the two are independent, so he can run one way and cast another. Facing never decides
 ## where anything goes; the body only turns to show it (see _process). Each skill says in
 ## Data.SKILLS how it uses the pointer:
-##   "point"  lands on the pointer (each skill still clamps to its own range: Volley, Grasp, Hurl...)
+##   "point"  lands on the pointer (each skill still clamps to its own range: Volley, Grasp, Hurl...; an area
+##            skill, "aoe" in its data, is clamped here to its "range" too, so Aiming shows the spot it lands on)
 ##   "facing" directional: goes from the hero toward the pointer, out to the skill's "range" (projectiles,
 ##            beams, charges, lunges, frontal arcs). The name is kept for old data; it means "toward
 ##            the pointer" now. Short melee skills (range < MELEE_RANGE) bend onto a foe within AIM_CONE_MELEE
@@ -1059,6 +1060,8 @@ func skill_aim(id: String, at: Vector3) -> Vector3:
 		return at
 	match String(s.get("aim", "facing")):
 		"point":
+			if s.has("aoe"):
+				return _in_range(at, float(s.get("range", 0.0)))
 			return at
 		"self":
 			return global_position + facing()
@@ -1073,6 +1076,16 @@ func skill_aim(id: String, at: Vector3) -> Vector3:
 	# the pointer itself when it's in range (so a beam or a tether latches on what's under it), else
 	# the point on its line at full range; either way the direction is the pointer's
 	var p := global_position + dir * minf(maxf(to.length(), 0.5), rng)
+	p.y = game.world.height_at(p.x, p.z) if game != null and game.world != null else at.y
+	return p
+
+## An area skill's spot ("aoe" in its data): the pointer, or the point on its line at the skill's range when it is
+## further (where its rules put it; Aiming shows the same spot before the click).
+func _in_range(at: Vector3, rng: float) -> Vector3:
+	var to := (at - global_position) * Vector3(1, 0, 1)
+	if rng <= 0.0 or to.length() <= rng:
+		return at
+	var p := global_position + to.limit_length(rng)
 	p.y = game.world.height_at(p.x, p.z) if game != null and game.world != null else at.y
 	return p
 
@@ -1383,22 +1396,7 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 		return true
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
-	var sk: Dictionary = {}
-	for s in skill_list() + Data.shared_skills():
-		if s["id"] == id:
-			sk = s
-	if sk.is_empty() or (skill_locked(sk) and not game.test_allskills):
-		if _mine():
-			game.ui.message(("%s isn't learned yet" % sk["name"]) if run != null else ("Requires level %d" % sk.get("lvl", 1)), Color(1, 0.4, 0.3))
-		return false
-	if cds.get(id, 0.0) > 0.0:
-		if _mine():
-			game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
-		return false
-	if mana < skill_cost(id):
-		if _mine():
-			game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
-		Sfx.play("deny")
+	if skill_denied(id):
 		return false
 	# the class's own checks (a foe to latch onto or seize, ...) before anything is spent
 	if not ClassSkills.can_cast(self, id, aim):
@@ -1419,6 +1417,28 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 	# the cast itself, seen by everyone (SkillFx: the class draws it, or the default puff shows it)
 	fx(id, "cast", {"p": atk_aim})
 	return true
+
+## Is the skill kept from casting by its lock, its cooldown or its mana? Tells his player why. A cast checks this, and
+## so does arming an area skill for click to cast (Aiming).
+func skill_denied(id: String) -> bool:
+	var sk: Dictionary = {}
+	for s in skill_list() + Data.shared_skills():
+		if s["id"] == id:
+			sk = s
+	if sk.is_empty() or (skill_locked(sk) and not game.test_allskills):
+		if _mine():
+			game.ui.message(("%s isn't learned yet" % sk.get("name", id)) if run != null else ("Requires level %d" % sk.get("lvl", 1)), Color(1, 0.4, 0.3))
+		return true
+	if cds.get(id, 0.0) > 0.0:
+		if _mine():
+			game.ui.message("%s is recharging" % sk["name"], Color(0.8, 0.8, 0.8))
+		return true
+	if mana < skill_cost(id):
+		if _mine():
+			game.ui.message("Not enough mana", Color(0.4, 0.5, 1.0))
+		Sfx.play("deny")
+		return true
+	return false
 
 func drink(slot: int) -> void:
 	if dead or slot < 0 or slot > 3 or belt[slot] == null:

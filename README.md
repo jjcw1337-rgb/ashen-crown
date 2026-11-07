@@ -50,12 +50,13 @@ has access to the private `ashen-crown-staging` page, and install it. The app up
 | Mouse | Aim. Everything goes toward the pointer |
 | Left mouse | Basic attack |
 | Right mouse, Q E R F | Skills |
+| Q E R F on an area skill | Shows where it will land; left mouse casts it there, Esc or the key again cancels (the pause menu's "Quick cast" casts it on the key) |
 | Space | Dodge roll (hold to sprint after it) |
 | Shift (hold) | Sprint |
 | 1–4 | Use a belt consumable |
 | I / K / N | Your run's build: skills, rites, gear, gems |
 | Tab / M | Large map / minimap |
-| Esc | Close windows, pause menu |
+| Esc | Cancel an aimed skill, close windows, pause menu |
 
 ## Working on it
 

@@ -50,6 +50,10 @@
 			"cd": 0.0,
 			"use": 1.1,
 			"range": 14.0,
+			"aoe": {
+				"r": "radius",
+				"grow": "volley_size"
+			},
 			"lvl": 3,
 			"k": {
 				"dmg": 35,
@@ -235,6 +239,9 @@
 			"cd": 0.0,
 			"use": 1.2,
 			"range": 14.0,
+			"aoe": {
+				"r": "radius"
+			},
 			"role": "area rain",
 			"lvl": 16,
 			"run": true,

@@ -408,6 +408,8 @@ function editor(rel, list, e, type, isNew) {
     f += field("Mana", "mana", e.mana, "number") + field("Cooldown (s, 0 = none)", "cd", e.cd, "number") +
       field("Use time (s)", "use", e.use, "number") + field("Power (damage ×)", "power", e.power, "number") +
       field("Range (m)", "range", e.range, "number") + field("Role", "role", e.role || "") +
+      field(`Area at the pointer (click to cast): its radius <span style="color:var(--faint)">a key of its numbers below (e.g. radius), or Class.CONSTANT in its code; empty if it isn't one</span>`, "aoe_r", (e.aoe || {}).r || "") +
+      field(`Area widened by <span style="color:var(--faint)">a rite key, in % (optional)</span>`, "aoe_grow", (e.aoe || {}).grow || "") +
       field("Tags (comma separated)", "tags", (e.tags || []).join(", "), "text", { wide: true }) + field("Description", "desc", e.desc || "", "area") +
       (e.k && Object.keys(e.k).length ? `<label class="wide">Its numbers. <span style="color:var(--faint)">The keys are what its code reads, so only the values change here. Keep the description's numbers the same.</span>
        <div class="fxrows" id="krows">${Object.entries(e.k).map(([k, v]) => kRow(k, v)).join("")}</div></label>` : "");
@@ -481,6 +483,11 @@ function collect(e, type) {
     x.k = structuredClone(e.k);
     dlg.querySelectorAll("#krows .fxrow").forEach((r) => { const key = r.dataset.key, v = r.querySelectorAll("input")[1].value;
       if (v !== "") x.k[key] = typeof e.k[key] === "number" ? +v : v; });
+  }
+  if (type === "skill") {      // an area at the pointer, armed by its key and cast by the click (Aiming): {r, grow}
+    const r = (x.aoe_r || "").trim(), grow = (x.aoe_grow || "").trim();
+    delete x.aoe_r; delete x.aoe_grow;
+    if (r) x.aoe = grow ? { r, grow } : { r }; else delete x.aoe;
   }
   if (!x.needs) delete x.needs;
   return x;
