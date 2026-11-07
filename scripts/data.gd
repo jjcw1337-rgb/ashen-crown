@@ -182,7 +182,7 @@ const ENEMIES := {
 	"fallen": {"mesh": "fallen", "name": "Fallen", "rig": "humanoid", "life": 14, "dmg": [2, 5], "speed": 4.2, "range": 1.5, "xp": 9,
 		"ai": "melee", "atk": "over", "atk_time": 0.85, "armor": 2, "radius": 0.45, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.62, 0.12, 0.08), "cloth": Color(0.22, 0.16, 0.1), "height": 0.72, "bulk": 0.9, "head": "horned", "eyes": Color(1.0, 0.8, 0.1), "weapon": "club"}},
-	# the three Fallen (enemy.gd _skirm_combat / _reaver_combat / _stalk_combat; Anim's "gait"s and styles): one
+	# the three Fallen (FallenBrain; Anim's "gait"s and styles): one
 	# faction, three ways of fighting. Usable in any act: add the id to that act's "foes".
 	"fallen_skirmisher": {"mesh": "fallen_skirmisher", "name": "Fallen Skirmisher", "rig": "humanoid", "life": 18, "dmg": [4, 8], "speed": 4.6, "range": 1.5, "xp": 12,
 		"ai": "skirmisher", "atk": "skirm_lunge", "atk_time": 0.9, "armor": 2, "radius": 0.42, "blood": Color(0.5, 0.02, 0.02),

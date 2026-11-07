@@ -32,7 +32,7 @@ goes there.
 | What | Home | Not moved yet |
 |---|---|---|
 | Heroes | `game/heroes/<hero>/` (the Archer is the example) | most heroes: `scripts/<hero>*.gd` |
-| Monsters | `game/monsters/<monster>/` (Hrimgar is the example) | stats in `data.gd` `ENEMIES`; the Feral's, Fallen's and bear's brains in `scripts/enemy.gd` |
+| Monsters | `game/monsters/<monster>/` (Hrimgar is the example) | stats in `data.gd` `ENEMIES`; the shared monster code in `scripts/enemy.gd` |
 | Maps and camps | `game/maps/<map>/`: `arena/` (the example), `verdant_reach/`, `camp/` | the old story zones (being cut) in `scripts/world.gd` and their own scripts |
 | Items: rites, gems, consumables | `game/items/` | `scripts/run_talents.gd`, `run_build.gd` |
 | Screens | `game/ui/<screen>/` | `scripts/ui.gd`, `title_*.gd`, `class_stage.gd`, `mp_lobby_view.gd`, `run_ui.gd` |
