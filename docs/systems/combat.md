@@ -18,9 +18,9 @@ sequenceDiagram
 ```
 
 - The rules find what a skill hit on the game that decides the hero's hits (the match server in a match; the
-  player's own game in single player and co-op) and call `Hero._hit_enemy(e, mult, knock, src)` (`scripts/hero.gd`).
+  player's own game in single player and co-op) and call `Hero._hit_enemy(e, mult, knock, src)` (`game/heroes/hero.gd`).
   That rolls the weapon's damage, crit, rites and buffs, and the skill's own power.
-- `Enemy.take_damage` (`scripts/enemy.gd`) applies armour and marks. In co-op the monster on a player's game is a copy,
+- `Enemy.take_damage` (`game/monsters/enemy.gd`) applies armour and marks. In co-op the monster on a player's game is a copy,
   so the numbers go to the host (`Net.sv_enemy_hit`), which applies them.
 - **Monsters** run only on the host or match server. Their hits on a player are applied by that player's own game
   (`Hero.take_hit`).

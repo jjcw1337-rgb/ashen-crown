@@ -95,7 +95,7 @@ func _archer(h) -> void:
 	# Kindling: burns hotter and longer
 	await _fresh(h, "archer", {"a_kindling": 2})
 	var e = _foe(h, Vector3(3, 0, 0))
-	load("res://scripts/hero.gd").striker = h
+	load("res://game/heroes/hero.gd").striker = h
 	e.ignite(10.0, 3.0, "fire")
 	check(is_equal_approx(e.burn_dps, 13.0) and is_equal_approx(e.burn_t, 4.5), "Kindling x2: a 10/s 3 s burn becomes %.1f/s %.1f s" % [e.burn_dps, e.burn_t])
 	# Fire-Tipped: plain shots ignite

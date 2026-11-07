@@ -8,7 +8,7 @@ extends RefCounted
 ## player sees still comes from their own game at once (the cast, the arrow); what only the rules know (a sigil
 ## blowing, a mark landing) comes from the server to everyone. Single player and Enter World co-op are unchanged.
 
-## The classes whose skills run on the server (the rest still deal their own hits until they move over).
+## The classes whose skills run on the server: every hero (a new one joins once its skills work this way).
 const CLASSES := ["archer", "warlock", "plague", "doug", "wraith", "demon", "knight", "wyrm", "serpent", "wyvern"]
 
 ## Tests: what the server made from players' skills, and what it refused; what a player's game took from its skills'
@@ -16,6 +16,25 @@ const CLASSES := ["archer", "warlock", "plague", "doug", "wraith", "demon", "kni
 static var made_count := 0
 static var refused_count := 0
 static var given_count := 0
+
+## Damage a player's game reports itself (Net's sv_enemy_hit, sv_pvp_hit, sv_pvp_dot, sv_pvp_status, sv_pvp_effect,
+## sv_enemy_chill, sv_enemy_stun). Every hero's hits are decided here now, so what still comes is a test's shortcut, an
+## old game or a cheat: counted by class and kind (printed the first time), and refused once REFUSE_REPORTED is on
+## (it waits for the tests that kill through Net.send_pvp_hit to go the server's way).
+const REFUSE_REPORTED := false
+static var reported := {}
+
+## Server: a player's game reported damage of `kind`. True when it's to be refused.
+static func reported_damage(game, pid: int, kind: String) -> bool:
+	var p = game.net.players.get(pid)
+	var h = p["hero"] if p != null else null
+	if h == null or not is_instance_valid(h) or not on(h):
+		return false
+	var k := "%s %s" % [str(h.cls), kind]
+	reported[k] = int(reported.get(k, 0)) + 1
+	if int(reported[k]) == 1:
+		print("[RULES] %s's game reported damage itself (%s): its hits are this server's%s" % [pid, kind, " (refused)" if REFUSE_REPORTED else ""])
+	return REFUSE_REPORTED
 
 ## This hero's skills run on the server: the server's copy deals them; the player's own game only shows them.
 static func on(h) -> bool:

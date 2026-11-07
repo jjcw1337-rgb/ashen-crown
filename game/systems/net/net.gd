@@ -534,6 +534,8 @@ func send_enemy_hit(e: Enemy, phys: float, fire: float, from: Vector3, knock: fl
 func sv_enemy_hit(id: int, phys: float, fire: float, from: Vector3, knock: float, crit: bool) -> void:
 	if not is_host or not enemies.has(id):
 		return
+	if server and ServerRules.reported_damage(game, multiplayer.get_remote_sender_id(), "enemy_hit"):
+		return
 	var e = enemies[id]
 	if is_instance_valid(e) and not e.dead:
 		if knock < 0.0:
@@ -553,6 +555,8 @@ func send_enemy_chill(e: Enemy, k: float, t: float) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_enemy_chill(id: int, k: float, t: float) -> void:
+	if server and ServerRules.reported_damage(game, multiplayer.get_remote_sender_id(), "enemy_chill"):
+		return
 	if is_host and enemies.has(id) and is_instance_valid(enemies[id]):
 		(enemies[id] as Enemy).chill(clampf(k, 0.0, 0.8), clampf(t, 0.0, 6.0))
 
@@ -564,6 +568,8 @@ func send_enemy_stun(e: Enemy, t: float) -> void:
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_enemy_stun(id: int, t: float) -> void:
+	if server and ServerRules.reported_damage(game, multiplayer.get_remote_sender_id(), "enemy_stun"):
+		return
 	if is_host and enemies.has(id) and is_instance_valid(enemies[id]):
 		enemies[id].stun(t)
 
@@ -888,6 +894,8 @@ func cl_self(d: Dictionary) -> void:
 
 @rpc("any_peer", "call_remote", "unreliable_ordered")
 func sv_pvp_hit(target_pid: int, amount: float, from: Vector3) -> void:
+	if server and ServerRules.reported_damage(game, multiplayer.get_remote_sender_id(), "pvp_hit"):
+		return
 	if server and game.bg != null:
 		game.bg.pvp_hit(multiplayer.get_remote_sender_id(), target_pid, amount, from)
 
@@ -921,6 +929,8 @@ func send_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionar
 
 @rpc("any_peer", "call_remote", "reliable")
 func sv_pvp_status(target_pid: int, kind: String, secs: float, data: Dictionary) -> void:
+	if server and ServerRules.reported_damage(game, multiplayer.get_remote_sender_id(), "pvp_status " + kind):
+		return
 	if server and game.bg != null:
 		game.bg.pvp_status(multiplayer.get_remote_sender_id(), target_pid, kind, secs, data)
 
@@ -947,6 +957,8 @@ func sv_pvp_effect(target_pid: int, kind: String, from: Vector3) -> void:
 	var by := multiplayer.get_remote_sender_id()
 	if not server or game.bg == null or game.bg.state != "raid" or not PVP_EFFECTS.has(kind):
 		return
+	if ServerRules.reported_damage(game, by, "pvp_effect " + kind):
+		return
 	game.bg.pvp_effect(by, target_pid, kind, from)
 
 ## PvP burning (a Fire Arrow, magma, a unique's burn on another player's stand-in, Enemy.ignite): the attacker's own
@@ -963,6 +975,8 @@ func send_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
 func sv_pvp_dot(target_pid: int, dps: float, from: Vector3) -> void:
 	var by := multiplayer.get_remote_sender_id()
 	if not server or game.bg == null:
+		return
+	if ServerRules.reported_damage(game, by, "pvp_dot"):
 		return
 	game.bg.pvp_burn(by, target_pid, dps, from)
 

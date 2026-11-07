@@ -1,7 +1,7 @@
 class_name Monsters
 extends RefCounted
 ## The monster registry: what a monster kind (Data.ENEMIES) is made of, from its folder in game/monsters/. Enemy
-## (scripts/enemy.gd: life, statuses, movement, the shared melee and ranged fighting) asks here and names no
+## (game/monsters/enemy.gd: life, statuses, movement, the shared melee and ranged fighting) asks here and names no
 ## monster:
 ##   build_rig / pose_rig / model_paths   its body: the family's own (Feral, Bear, the lion's skeleton, the Hollow
 ##                                        Sloth), a Meshy model on MeshyRig, King Grubb's goblins, a skeleton, a prop

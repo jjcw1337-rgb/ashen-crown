@@ -11,7 +11,7 @@ One folder per monster, holding everything that is only that monster's. Its stat
 | `tests/` | its own tests, if it has any |
 
 **The registry** (`monsters.gd`, `Monsters`) is the one place that knows what each kind is made of. `Enemy`
-(`scripts/enemy.gd`: life, statuses, movement, the shared melee and ranged fighting) asks it and names no monster:
+(`game/monsters/enemy.gd`: life, statuses, movement, the shared melee and ranged fighting) asks it and names no monster:
 
 | `Monsters.` | What it answers |
 |---|---|

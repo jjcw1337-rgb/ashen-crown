@@ -137,10 +137,8 @@ Touch points to coordinate:
 
 ### In progress
 
-- Claude-2 (2026-11-07): every hero is on the template with its skills on the server (merged in
-  `claude-2/game-folder`, going to staging after the full test run), and the skill and rite text is short (Blaine).
-  Next: the net stack and the last shared scripts out of `scripts/`, one way for skills to send a target the player
-  picked, then the server refusing damage a player's game reports.
+- Claude-2 (2026-11-07): next, the server refusing damage a player's game reports (`ServerRules.REFUSE_REPORTED`:
+  counted now, refused once the arena and lobby tests stop killing through `Net.send_pvp_hit`).
 
 ## Cutting an old system
 
@@ -198,11 +196,11 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 ## Status
 
 - [x] 1. Folders (2026-11-07): every hero is in `game/heroes/<hero>/`, one folder per skill (rules, look, models,
-  sounds), the dragons' shared code in `game/systems/dragons/`, the shared body builder in
-  `game/systems/bodies/` (`mocap_rig.gd`; `knight_rig.gd` is left in `scripts/`). Shared systems out of `scripts/`:
-  `game/systems/fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/` and `game/items/`. Left in `scripts/`: the
-  big shared files (`game.gd`, `hero.gd`, `net.gd`, `enemy.gd`, `ui.gd`), the net stack, the screens and the camp's
-  (being archived). Some heroes' own sounds are still in `assets/audio/sfx/`.
+  sounds), every hero's shared code in `game/heroes/hero.gd`, the dragons' in `game/systems/dragons/`. `scripts/` is
+  gone: the systems are in `game/systems/` (`fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/`, `net/`,
+  `saves/`, `telemetry/`, Claude-1's `world/` and `loading/`), rites, gems and consumables in `game/items/`, the
+  screens in `game/ui/`, the game itself in `game/game.gd`, the shared monster code in `game/monsters/enemy.gd`. Some
+  heroes' own sounds are still in `assets/audio/sfx/`.
 - [x] 2. The Archer, end to end, and every other hero after him (2026-11-07). Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
   Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his

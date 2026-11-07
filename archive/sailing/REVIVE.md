@@ -39,7 +39,7 @@ commit for the exact lines):
   - the sea zones' ground: `height_fn` (read first in `ground_h`), `sea`, `WADE`, `steep` and `_too_steep` (water deeper
     than `WADE` and cliffs are walls in `_wall_at` and the grid's `blocked` cells unless a deck is over them), and
     `grass_ground`'s and `_scatter_ferns`' sand and sea (no grass below 1 m).
-- `scripts/game.gd` (all in `hooks/game.gd`):
+- `game/game.gd` (all in `hooks/game.gd`):
   - fields `boat`, `sail_blend`, `sail_cam_yaw`, `water_pt` (set in `_update_hover` from the mouse ray at y = 0);
   - `zone_music`: in a sea zone the `wild` song over the `surf` bed; `_sea_sounds` (called every frame after
     `_fit_shadows` while playing) fades the surf with the distance from the shore;
@@ -63,12 +63,12 @@ commit for the exact lines):
   - the boat section: `sailing`, `_add_boat`, `_party_rank`, `isle_mooring`, `_boat_clicked`, `_sail_input`, `try_land`,
     `_ashore_prompt`, `land_boat`, `_sail_camera`, `_shipwright_talk`, `buy_boat`; and `_sea_env`, `_isle_mood`,
     `_ocean_light`, `_add_ocean`, `_sea_chart`, `_sea_sounds`.
-- `scripts/hero.gd`: `boats`, `aboard`, `sailed`, `dwarves`, `owns_boat`, `best_boat`; the puppet's `net_boat_st`,
+- `game/heroes/hero.gd`: `boats`, `aboard`, `sailed`, `dwarves`, `owns_boat`, `best_boat`; the puppet's `net_boat_st`,
   `net_boat_id`, `net_boat` (read from state numbers 15-20 in `apply_net_state`, freed in `net_zone_reset`,
   `BoatRide.puppet_update` in `_puppet_process`); the pose at the tiller (`if aboard:` in `_process`); the save's
   `boats`, `sailed` and `dwarves` (a character saved since the cut has lost them).
 - `game/systems/net/net.gd`: `_boat_packet` appended to `_hero_packet` (aboard, x, z, yaw, speed, the boat's index in `Data.BOATS`).
-- `scripts/ui.gd`: `boat_shop` / `boat_panel` (`BoatShop.build`, `tick` in `_process`, in `_walked_off`, `close_all`,
+- `game/ui/ui.gd`: `boat_shop` / `boat_panel` (`BoatShop.build`, `tick` in `_process`, in `_walked_off`, `close_all`,
   `any_panel_open`), the sail prompt (`_build_sail_prompt`, `set_sail_prompt`, `accept_event_safe`), and the minimap's
   `chart` (a wider view, 240 m while sailing).
 - `game/systems/data/data.gd` (in `hooks/data.gd`): `BOATS`; `ACTS[0]`'s `coast` name; `VENDORS[0]`'s `shipwright`;

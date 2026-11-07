@@ -15,7 +15,7 @@ imports nor exports it.
 | `forest_camp.gd`, `vendor_court.gd`, `smith_forge.gd`, `camp_guard.gd`, `camp_social.gd`, `camp_ravens.gd`, `raven.gd`, `camp_island.gd`, `waypoint_grand.gd`, `README.md` | the camp as it was in `game/maps/camp/` (its README says what each is) |
 | `props/` | the camp's, the island's and the waypoint's models (`camp/`, `island/`, `waypoint/`) |
 | `tests/`, `tools/` | the camp's tests and shots, and every project tool that only tested what is here (`title_test`, `char_test`, `home_game_flow_test`, `bonfire_test`, `temper_test`, `coals_test`, `daynight_test`, `npc_reach_test`, `anvil_test`, the `*_shot(s)` and clips, `steam_host_probe`, `space_textures.py`, `blender/` (the waypoint's, the guards', the island's, the raven's and the keepers' Blender scripts, the stash chest's assembly)) |
-| `scripts/` | the screens and systems: `title_home.gd` (TitleHome), `class_stage.gd` and `class_cathedral.gd` (the New Character carousel, whole; the live `scripts/class_stage.gd` keeps only its constants), `vendor_ui.gd`, `auction_ui.gd`, `furnace.gd`, `furnace_ui.gd`, `harvest.gd`, `wood.gd`, `quests.gd`, `waypoint_panel.gd`, `day_night.gd`, `day_clock.gd`, `birds.gd`, `brazier_coals.gd`, `steam_link.gd`, `shared_stash.gd` (SharedStash), `inter_keepers.gd` (Inter as it was, with the keepers' animation, patrols and CampSocial's talk) |
+| `scripts/` | the screens and systems: `title_home.gd` (TitleHome), `class_stage.gd` and `class_cathedral.gd` (the New Character carousel, whole; the live `game/ui/class_stage.gd` keeps only its constants), `vendor_ui.gd`, `auction_ui.gd`, `furnace.gd`, `furnace_ui.gd`, `harvest.gd`, `wood.gd`, `quests.gd`, `waypoint_panel.gd`, `day_night.gd`, `day_clock.gd`, `birds.gd`, `brazier_coals.gd`, `steam_link.gd`, `shared_stash.gd` (SharedStash), `inter_keepers.gd` (Inter as it was, with the keepers' animation, patrols and CampSocial's talk) |
 | `assets/models/` | the keepers (`npc/`: grisold, hedda, maeve, roth, tarrow, the auctioneer) and the guards (`guards/`) |
 | `assets/textures/` | the island's space sky (`space/`), the waypoint's rune rings, the waypoint window's banners (`wp_act1`, `wp_town`, `wp_sigil`, `wp_bg_crypt`), the auction's elixirs |
 | `assets/audio/` | the bonfire (`bonfire_open`, `burn_item`), Halvar's `quench`, the ravens (`raven_caw`, `raven_wings`), the camp's night bed (`night_forest`) and its song (`music_town`), with their credits |
@@ -39,7 +39,7 @@ assets to their `assets/` paths) and put back the hooks. The commit that archive
 - `scripts/world.gd`: `build`'s `"town": ForestCamp.build(self)`; the island (`island_c`, `island_r`, `off_island`,
   `island_edge`, `island_clip`; `grass_ground` and the ferns keep off it); `grass_biome`'s trodden ground in the camp;
   `add_waypoint` (the stone or the grand waypoint, its colliders and arrival spots); `kind`'s default `"town"`.
-- `scripts/game.gd`:
+- `game/game.gd`:
   - fields: `day_night` (with `lamp_mul`, `fire_mul` on the flicker lights), `steam`, `space_sky`, `quests`, `stash`,
     `waypoints_known`, `played_s`, `harvest_saved`, `tp_link`, `shops`; `cur_zone`'s and `shot_zone`'s `"town"`;
   - `_ready`: `Data.check_waypoints()`, `Quests.new`, `SteamLink`, the `SharedStash` and its cloud push,
@@ -63,7 +63,7 @@ assets to their `assets/` paths) and put back the hooks. The commit that archive
     `open_town_portal_at`, `travel`'s `clear_tp`); `_pick_flower`; `on_enemy_killed`'s `quests.on_kill`;
   - `respawn` in the camp; `toggle_pause`'s Invite Friends; the hover's tree target; `close_sandbox` back to the camp;
     keys T (portal) and J (quests); the island's camera drift; `--enchtest`, `--guard-fight`.
-- `scripts/hero.gd`: `stash`; the woodsman's axe in `new_character` and `from_save`; woodcutting (`start_chop`,
+- `game/heroes/hero.gd`: `stash`; the woodsman's axe in `new_character` and `from_save`; woodcutting (`start_chop`,
   `_chop_swing`, `_chop_ok`, `_chop_impact`, `_chop_next`, `stop_chop`, `_show_chop_axe`, `chop_axe`, and their calls
   in `cmd_move`, `cmd_target`, the keys' walk, `_use_skill`, `take_hit`, the pose, the attack's end and `_impact_body`).
   `game/systems/skills/dodge.gd` called `stop_chop`.
@@ -72,7 +72,7 @@ assets to their `assets/` paths) and put back the hooks. The commit that archive
   link in `cl_welcome` and `cl_goto` (`tp`) and `sv_travel`'s `clear_tp`; the snapshot's flowers, portals and trees;
   `cl_enemy_die`'s quests; woodcutting (`request_chop`/`sv_chop`, `send_tree`/`cl_tree`, `cl_trees`); town portals
   (`request_portal`/`sv_portal`, `portal_created`/`cl_portal`).
-- `scripts/ui.gd`: the nameplates (`VendorUI.Plates`), the shop (`_build_shop`, `open_shop`, `_refresh_shop`, `_buy`,
+- `game/ui/ui.gd`: the nameplates (`VendorUI.Plates`), the shop (`_build_shop`, `open_shop`, `_refresh_shop`, `_buy`,
   selling in `_inv_click`), the auction (`AuctionUI.build`), the stash (`_build_stash` and its tabs), the bonfire
   (`_build_burn`, `open_burn`, `burn_request`, `reforge_request`, `_burn`, the fire shaders, dropping on the fire),
   the furnace (`FurnaceUI`), enchanting (`_build_enchant`, `open_enchant`, `_enchant`), the waypoint window
@@ -87,7 +87,7 @@ assets to their `assets/` paths) and put back the hooks. The commit that archive
 - `scripts/inter.gd`: the keepers (`archive/camp/scripts/inter_keepers.gd`: `model`, `anim`, `clips`, patrols,
   `walk_to`, `social`, the smith's strikes, the old procedural keepers' `rig`, the flowers' and waypoints' animation).
 - `game/ui/lobby/lobby_stage.gd` (TitleStage): `cards` and `_place_cards`, and `_frame`'s default `TitleHome.mid()`.
-- `scripts/class_stage.gd`: the carousel (whole in `scripts/class_stage.gd` here), `EMBLEMS`, `PICK_SOUND`.
+- `game/ui/class_stage.gd`: the carousel (whole in `game/ui/class_stage.gd` here), `EMBLEMS`, `PICK_SOUND`.
 - `game/ui/lobby/` (`mp_lobby_view.gd`, `lobby_client.gd`): the LAN row (`lan_row`), friends' worlds through Steam,
   the title's character back on the stage, the quest tracker's visibility.
 - `game/systems/saves/cloud_saves.gd`: the stash's sync (`STASH`, `_sync_stash`, `push_stash`); its collection is left in each

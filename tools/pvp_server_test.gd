@@ -19,7 +19,7 @@ func wait(n: int) -> void:
 	for i in n:
 		await process_frame
 func _hero(cls: String, at: Vector3):
-	var h = load("res://scripts/hero.gd").new()
+	var h = load("res://game/heroes/hero.gd").new()
 	g.add_child(h)
 	h.setup(g)
 	h.set_class(cls)
