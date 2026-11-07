@@ -35,6 +35,15 @@ static func received(game, pid: int, id: String, kind: String, data: Dictionary)
 	var h = p["hero"]
 	if not is_instance_valid(h) or h.dead or not on(h):
 		return
+	if id == "run":
+		# what the run gives every hero (a flask thrown, thorns on a blow taken): RunTalents checks and makes it
+		Hero.striker = h
+		if RunTalents.server_made(h, kind, data):
+			made_count += 1
+		else:
+			refused_count += 1
+			print("[RULES] refused %s's run %s" % [h.peer_id, kind])
+		return
 	if id != "attack" and str(Data.skill_def(id).get("cls", "")) != str(h.cls):
 		return
 	var m = ClassSkills.of(h.cls)
