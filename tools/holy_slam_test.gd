@@ -22,7 +22,7 @@ func _run() -> void:
 	while g._busy:
 		await wait(5)
 	g.ui.close_all()
-	await g.load_zone(0, "wild", "from_town")
+	await g.load_zone(0, "sandbox", "start")
 	await wait(10)
 	var h = g.hero
 	h.vit = 400

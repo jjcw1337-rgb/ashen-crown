@@ -27,7 +27,7 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "knight")
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "sandbox", "start")
 	var h = g.hero
 	# single player first: untouched
 	check(h.run == null and h.level >= 1, "single player: no run, level %d" % h.level)

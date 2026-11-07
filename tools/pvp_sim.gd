@@ -52,7 +52,7 @@ func _run() -> void:
 		await frames(5)
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await frames(5)
 	g.test_immortal = true

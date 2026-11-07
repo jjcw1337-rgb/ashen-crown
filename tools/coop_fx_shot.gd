@@ -89,7 +89,7 @@ func _run() -> void:
 			cls_now = cls
 			await g.start_game(false, cls)
 			g.ui.close_all()
-			await g.load_zone(0, "wild", "road")
+			await g.load_zone(0, "sandbox", "start")
 			g.ui.close_all()
 			g.hero.level = 20
 			g.hero.recalc()
@@ -142,7 +142,7 @@ func _run() -> void:
 			rec.append({"pos": h.global_position, "yaw": h.rig.rotation.y, "st": st, "ev": evs.duplicate()})
 			evs.clear()
 		g.net.fx_tap = Callable()
-		h.end_drain()
+		h.end_channel()
 		WraithSkills.clear(h)
 		DemonSkills.clear(h)
 		# the puppet plays it back far away, beside its own pack; the hero waits out of sight

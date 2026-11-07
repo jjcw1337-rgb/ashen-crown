@@ -1,7 +1,7 @@
 class_name AdminKey
 extends RefCounted
 ## The owner's admin key: the only way (besides running from the Godot editor) to get the developer tools
-## (the F8 testing panel, unlock-all-acts; Game.dev_tools) in any build, live or preview.
+## (the F8 testing panel; Game.dev_tools) in any build, live or preview.
 ## user://admin.key holds a name and an RSA signature of "ashen-crown-admin|v1|<name>" made with the
 ## owner's private key, which never goes in the repo. The game checks it against PUBLIC_KEY below, so a
 ## key can't be forged, copied text edited, or made up: only a key signed by the owner works.

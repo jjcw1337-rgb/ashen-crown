@@ -26,7 +26,7 @@ func _run() -> void:
 	for cls in classes:
 		await g.start_game(false, cls)
 		g.ui.close_all()
-		await g.travel(0, "wild", "start")
+		await g.travel(0, "sandbox", "start")
 		while g._busy:
 			await process_frame
 		var h = g.hero
@@ -55,14 +55,14 @@ func _run() -> void:
 				var t0 := Time.get_ticks_msec()
 				while Time.get_ticks_msec() - t0 < int((h.atk_dur + WINDOW) * 1000.0):
 					if id == "drain" or (sk.get("channel", false)):
-						h.drain_t = maxf(h.drain_t, 0.1)      # (a channel held for the whole window)
+						h.channel_t = maxf(h.channel_t, 0.1)      # (a channel held for the whole window)
 					await process_frame
 				if ok and is_instance_valid(e):
 					total += 1e7 - e.life
 					n += 1
 				if is_instance_valid(e):
 					e.queue_free()
-				h.end_drain()
+				h.end_channel()
 				await create_timer(0.3).timeout
 			var use_t := SkillSpec.use_time(h, id) if sk.has("use") else float(h.atk_dur)
 			var cycle := maxf(use_t, h.skill_cd(id))

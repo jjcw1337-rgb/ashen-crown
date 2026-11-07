@@ -29,9 +29,7 @@ const AHEAD := Vector3(0, 0, -6.0)
 ## gustiness (how much gust fronts add on top) and how much it drifts by itself.
 const WIND := {
 	"default": {"dir": 30.0, "strength": 0.45, "gust": 0.6, "drift": 0.35},
-	"moor": {"dir": 25.0, "strength": 0.55, "gust": 0.7, "drift": 0.4},
 	"camp": {"dir": 40.0, "strength": 0.28, "gust": 0.4, "drift": 0.25},
-	"fort": {"dir": 15.0, "strength": 0.45, "gust": 0.55, "drift": 0.3},
 	"calm": {"dir": 0.0, "strength": 0.12, "gust": 0.25, "drift": 0.1},
 	"storm": {"dir": 20.0, "strength": 0.95, "gust": 1.0, "drift": 0.2},
 }

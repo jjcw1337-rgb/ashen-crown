@@ -111,7 +111,7 @@ func _run() -> void:
 			"its skills %s; left mouse attacks" % [own.map(func(x): return x["id"])])
 		check(h.reach() > 1.9, "a long reach (%.1f m)" % h.reach())
 		if first == false and c == KINDS[0]:
-			await g.travel(0, "wild", "start")
+			await g.travel(0, "sandbox", "start")
 			while g._busy:
 				await process_frame
 		g.test_immortal = true

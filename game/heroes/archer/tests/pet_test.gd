@@ -41,7 +41,7 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "archer")
 	g.difficulty = 0
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "bg", "start")
 	await _clear()
 	g.hero.set_level(12)
 	g.test_immortal = true
@@ -52,7 +52,7 @@ func _run() -> void:
 		print("[P] done, %d failed" % fails)
 		quit()
 		return
-	var road: Vector3 = g.world.spawns["road"]
+	var road: Vector3 = g.world.spawns["start"]      # (the Verdant Reach's start glade; the moor and its road are cut)
 	_place(road)
 	b._reset_to_side()
 	# standing still: it settles near him and stays settled
@@ -70,7 +70,7 @@ func _run() -> void:
 	check(far < 4.0 and starts <= 2, "he stands still: it settles within %.1f m (set off %d times in 5 s)" % [far, starts])
 	check(b.global_position.distance_to(g.hero.global_position) > 0.9, "and not on top of him")
 	# he runs off along the road: it keeps up, at a faster pace
-	var dir: Vector3 = (g.world.spawns["road2"] - road)
+	var dir: Vector3 = (g.world.free_spot_near(road + Vector3(24, 0, 8), 3.0) - road)
 	dir.y = 0
 	dir = dir.normalized()
 	var top := 0.0
@@ -198,7 +198,7 @@ func _run() -> void:
 	await wait(1.0)
 	b = _beast()
 	check(b != null and b.global_position.distance_to(g.hero.global_position) < 5.0, "into the camp: it arrives beside him")
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "bg", "start")
 	await _clear()
 	await wait(0.6)
 	b = _beast()

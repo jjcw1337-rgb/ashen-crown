@@ -1,8 +1,8 @@
 extends SceneTree
 ## The rest of the game's first-time costs (Blaine, 2026-11-05: "is that a universal thing ... make sure the whole app
 ## is properly cached, preloaded"): after the skill-effect fixes, what still freezes a frame the first time it happens.
-## Camp -> each window opened twice -> loot of every rarity -> the moor -> every monster kind spawned cold in view ->
-## the fort. Prints the worst frame of each step (first time and second time). Needs a display.
+## Camp -> each window opened twice -> loot of every rarity -> the Verdant Reach -> monster kinds spawned cold in
+## view. Prints the worst frame of each step (first time and second time). Needs a display.
 ##   godot --path . -s tools/_late.gd -- res://tools/app_hitch_audit.gd [--monsters-only]
 ## Lines: [A] ...
 
@@ -48,7 +48,7 @@ var _parked := 0
 func _spawn_in_view(kind: String) -> void:
 	var c: Vector3 = g.hero.global_position
 	var e = null
-	await step("spawn %s in %s%d" % [kind, g.cur_zone, g.difficulty], func(): e = g.spawn_enemy(kind, c + Vector3(0, 0, -6), 1), 15)
+	await step("spawn %s in %s" % [kind, g.cur_zone], func(): e = g.spawn_enemy(kind, c + Vector3(0, 0, -6), 1), 15)
 	if e != null and is_instance_valid(e):
 		e.global_position = c + Vector3(0, 0, 900.0 + _parked * 6.0)
 		e.process_mode = Node.PROCESS_MODE_DISABLED
@@ -101,31 +101,19 @@ func _run() -> void:
 			for c in g.world.items_root.get_children():
 				c.queue_free()
 			await frames(5)
-		await step("travel camp -> moor (whole load)", func(): await _zone("wild"), 1)
-		await step("moor: 2 s after arriving", func(): await frames(1), 120)
+		await step("travel camp -> Verdant Reach (whole load)", func(): await _zone("bg"), 1)
+		await step("forest: 2 s after arriving", func(): await frames(1), 120)
 	else:
-		await _zone("wild")
+		await _zone("bg")
 		await frames(60)
-	# the monsters that turn up after the loading screen, where they really do (MonsterWarm warms these)
-	if not a.has("--monsters-only"):
-		await step("travel moor -> fort (whole load)", func(): await _zone("lair"), 1)
-		await step("fort: 2 s after arriving", func(): await frames(1), 120)
-	else:
-		await _zone("lair")
+	# the monsters that turn up after the loading screen (MonsterWarm warms these)
 	await _spawn_in_view("grabber")
-	g.difficulty = 1
-	await _zone("wild")
-	await _spawn_in_view("bandit")
-	await _spawn_in_view("bandit_archer")
-	await _zone("lair")
-	for k in ["lion", "gladiator", "champion"]:
+	for k in ["bandit", "bandit_archer", "lion", "gladiator", "champion"]:
 		await _spawn_in_view(k)
-	g.difficulty = 0
-	# every kind cold (the first of its kind this session), in the moor: what isn't warmed anywhere
+	# every kind cold (the first of its kind this session), in the forest: what isn't warmed anywhere
 	if a.has("--all-monsters"):
-		await _zone("wild")
 		for kind in Data.ENEMIES.keys():
-			if not ["goblin_king", "ashen_king", "champion"].has(kind):
+			if not ["goblin_king", "champion"].has(kind):
 				await _spawn_in_view(str(kind))
 	rows.sort_custom(func(x, y): return x[2] > y[2])
 	print("[A] ---- slowest steps (worst frame)")

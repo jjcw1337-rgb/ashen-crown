@@ -32,7 +32,7 @@ func _run() -> void:
 	g.apply_quality(0)
 	await g.start_game(false, "demon")
 	g.ui.close_all()
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "sandbox", "start")
 	g.ui.close_all()
 	var h = g.hero
 	h.level = 20

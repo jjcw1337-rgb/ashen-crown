@@ -153,7 +153,12 @@ static func hand(h: Hero, right: bool) -> Vector3:
 	return (J.get("at_" + k, J[k]) as Node3D).global_position
 
 static func chest_of(e: Node3D, k := 0.9) -> Vector3:
-	return e.global_position + Vector3(0, k * float(e.get("height")), 0)
+	return e.global_position + Vector3(0, k * height_of(e), 0)
+
+## A target's height (a monster's own; a player aimed at, on whose screen it's their hero: a hero's).
+static func height_of(e: Node3D) -> float:
+	var v = e.get("height")
+	return float(v) if v != null else 1.3
 
 static func free_later(n: Node, t: float) -> void:
 	if n == null or not is_instance_valid(n):

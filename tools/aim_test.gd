@@ -26,7 +26,7 @@ func _run() -> void:
 	while g.world == null or g._busy:
 		await process_frame
 	await g.start_game(false, "warlock")
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	var h = g.hero
@@ -68,7 +68,8 @@ func _run() -> void:
 	h.use_skill("blight", h.skill_aim("blight", h.global_position + shot_dir * 8.0))
 	await create_timer(0.6).timeout
 	var moved: Vector3 = flat(h.global_position - p0)
-	var bd: Vector3 = h.bolts[0]["dir"] if not h.bolts.is_empty() else Vector3.ZERO
+	var bb: Array = h.kit["blight"].bolts if h.kit.has("blight") else []      # (Blight Bolt's rules: its skulls in flight)
+	var bd: Vector3 = bb[0]["d"] if not bb.is_empty() else Vector3.ZERO
 	check(moved.dot(walk_dir) > 0.9, "kept walking the other way while casting (%.2f)" % moved.dot(walk_dir))
 	check(flat(bd).dot(shot_dir) > 0.99, "bolt flies toward the pointer, not the way he walks (%.3f)" % flat(bd).dot(shot_dir))
 	kw = kw.duplicate()

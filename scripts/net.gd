@@ -36,8 +36,6 @@ var next_id := 1
 var loading := false
 var pending_ready: Array = []
 var travel_cool := 0.0
-var next_goto_new_run := false
-var party_max_run := 0
 var _send_t := 0.0
 var _disco_t := 0.0
 var disco: PacketPeerUDP
@@ -425,7 +423,7 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", chara
 		at = game.match_instance.spawn(pid)
 	elif server:
 		at = game.bg.spawn_point(pid) if game.bg != null else at
-	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, at, game.tp_link, game.boss_killed, roster, game.difficulty)
+	rpc_id(pid, "cl_welcome", game.cur_act, game.cur_zone, at, game.tp_link, game.boss_killed, roster)
 	if server:
 		print("[BG] %s joined (%d playing)" % [nm, players.size()])
 	game.ui.message(nm + " joined the game", Color(0.5, 1.0, 0.5))
@@ -438,20 +436,12 @@ func cl_party_refused() -> void:
 	game.on_net_failed("The party is full or your reservation expired. Please queue again.")
 
 @rpc("authority", "call_remote", "reliable")
-func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, roster: Array, diff: int) -> void:
+func cl_welcome(act: int, zone: String, pos: Vector3, tp: Dictionary, bk: bool, roster: Array) -> void:
 	welcomed = true
 	if game.lobby_client != null and game.lobby_client.match_id != "":
 		game.lobby_client.admitted = true
 		if game.bg_mode: game.save_game()
 	game.party_join_pending = false
-	if diff != game.difficulty:
-		# the host's (or the raid's) act: keep our own act's waypoints and boss aside, as cl_goto does
-		if game.bg_mode and game.bg_home_run < 0:
-			game.bg_home_run = game.difficulty
-		game._store_progress()
-		game._restore_progress(diff)
-	game.difficulty = diff
-	game.max_run = maxi(game.max_run, diff)
 	game.net_joining = false
 	for r in roster:
 		_add_player(int(r[0]), str(r[1]), r[2])
@@ -477,38 +467,18 @@ func cl_player_join(pid: int, nm: String, gear: Dictionary) -> void:
 # ---------------------------------------------------------------- party travel
 ## Host: called at the start of every zone load so the whole party follows.
 func broadcast_goto(act: int, zone: String, spawn: String, at) -> void:
-	var nr := next_goto_new_run
-	next_goto_new_run = false
 	if not is_host or players.is_empty():
 		return
 	enemies.clear()
 	items.clear()
 	for h in puppets():
 		h.net_zone_reset()
-	rpc("cl_goto", act, zone, spawn, at if at != null else Vector3.INF, game.tp_link, game.boss_killed, game.difficulty, nr, game.max_run)
+	rpc("cl_goto", act, zone, spawn, at if at != null else Vector3.INF, game.tp_link, game.boss_killed)
 
 @rpc("authority", "call_remote", "reliable")
-func cl_goto(act: int, zone: String, spawn: String, at: Vector3, tp: Dictionary, bk: bool, diff: int, new_run: bool, host_max: int) -> void:
-	party_max_run = host_max
-	if diff != game.difficulty and not new_run:
-		# the host switched runs at the waypoint: swap our own waypoint progress to match
-		game._store_progress()
-		game._restore_progress(diff)
-		game.difficulty = diff
-		game.max_run = maxi(game.max_run, diff)
-		game.run_switched_banner()
+func cl_goto(act: int, zone: String, spawn: String, at: Vector3, tp: Dictionary, bk: bool) -> void:
 	game.tp_link = tp
 	game.boss_killed = bk
-	game.difficulty = diff
-	game.max_run = maxi(game.max_run, diff)
-	if new_run:
-		game.waypoints_known = ["town"]
-		game.ui.victory_panel.visible = false
-		game.ui.set_boss(null)
-		if game.hero.dead:
-			game.hero.respawn(game.hero.global_position)
-		game.hero.life = game.hero.max_life
-		game.run_banner()
 	_client_goto(act, zone, spawn, null if at == Vector3.INF else at)
 
 func _client_goto(act: int, zone: String, spawn: String, at) -> void:
@@ -535,22 +505,6 @@ func _client_goto(act: int, zone: String, spawn: String, at) -> void:
 func still_joined(link: MultiplayerPeer) -> bool:
 	return active and not is_host and link != null and peer == link \
 		and link.get_connection_status() == MultiplayerPeer.CONNECTION_CONNECTED
-
-func request_switch(d: int, zone := "town", spawn := "") -> void:
-	rpc_id(1, "sv_switch", d, zone, spawn)
-
-@rpc("any_peer", "call_remote", "reliable")
-func sv_switch(d: int, zone: String, spawn: String) -> void:
-	if is_host and not refuses_travel() and not game._busy:
-		game.switch_run(d, zone, spawn)
-
-func request_a2() -> void:
-	rpc_id(1, "sv_a2")
-
-@rpc("any_peer", "call_remote", "reliable")
-func sv_a2() -> void:
-	if is_host and not refuses_travel() and game.boss_killed and not game._busy:
-		game.start_a2()
 
 func request_travel(act: int, zone: String, spawn: String, at, clear_tp := false) -> void:
 	if travel_cool > 0.0:
@@ -768,36 +722,6 @@ func boss_aggro(e: Enemy) -> void:
 	if is_host and not players.is_empty():
 		rpc("cl_boss_aggro", e.net_id)
 
-## Aurelia's arena (games.gd): the host's events (gates, announcements, the crowd) to everyone.
-func games_event(ev: String) -> void:
-	if is_host and not players.is_empty():
-		rpc("cl_games", ev)
-
-@rpc("authority", "call_remote", "reliable")
-func cl_games(ev: String) -> void:
-	if not loading and game.world != null and game.world.has_meta("games"):
-		game.world.get_meta("games").fx(ev)
-
-## A partner struck Varro's deal: the host starts the games.
-func request_games() -> void:
-	rpc_id(1, "sv_games")
-
-@rpc("any_peer", "call_remote", "reliable")
-func sv_games() -> void:
-	if is_host and game.world != null and game.world.has_meta("games"):
-		game.world.get_meta("games").begin()
-
-## Host: put a partner's knight somewhere (onto the arena's sand when its gate drops).
-func place_player(pid: int, pos: Vector3) -> void:
-	rpc_id(pid, "cl_place", pos)
-
-@rpc("authority", "call_remote", "reliable")
-func cl_place(pos: Vector3) -> void:
-	if not loading and game.world != null:
-		game.hero.global_position = Vector3(pos.x, game.world.height_at(pos.x, pos.z), pos.z)
-		game.hero.path = PackedVector3Array()
-		game.hero.moving = false
-
 func share_xp(xp: int, lvl: int) -> void:
 	if is_host and not players.is_empty():
 		rpc("cl_xp", xp, lvl)
@@ -817,7 +741,25 @@ func cl_gold(amount: int) -> void:
 
 ## Host: a monster struck a partner's knight; that player's game works out blocking.
 func hit_player(pid: int, dmg: float, from: Vector3, kind: String, element: String) -> void:
+	if server:
+		var log: Array = _blows_sent.get(pid, [])
+		log.append([Time.get_ticks_msec(), dmg])
+		_blows_sent[pid] = log.slice(-8)
 	rpc_id(pid, "cl_take_hit", dmg, from, kind, element)
+
+## Server: the blows it sent each player lately ([msec, damage]), so a server-run hero's game can only claim a blow it
+## really took (RunTalents' thorns: ServerRules.received "run" "struck").
+var _blows_sent := {}
+
+## Server: was `pid` sent a blow of at least `dmg` in the last 1.5 s? (It's used up.)
+func took_blow(pid: int, dmg: float) -> bool:
+	var log: Array = _blows_sent.get(pid, [])
+	var now := Time.get_ticks_msec()
+	for i in log.size():
+		if now - int(log[i][0]) <= 1500 and float(log[i][1]) >= dmg - 0.5:
+			log.remove_at(i)
+			return true
+	return false
 
 @rpc("authority", "call_remote", "reliable")
 func cl_take_hit(dmg: float, from: Vector3, kind: String, element: String) -> void:
@@ -1040,8 +982,9 @@ func cl_dealt(at: Vector3, amount: float, crit: bool) -> void:
 	if not loading and game.world != null and amount > 0.0:
 		Fx.number(game.world.fx_root, at + Vector3(0, 2.2, 0), str(int(amount)) + ("!" if crit else ""), Color(1.0, 0.85, 0.4), crit)
 
-## Server: what a player's own blows did to them here (life leeched, a rite's buff, a cooldown back, Hunger), for
-## their game, which keeps their life, cooldowns and run (Hero.gain_life, RunTalents._tell_owner).
+## Server: what a player's own blows did to them here (life leeched, a rite's buff, a cooldown back, Hunger, what a
+## skill's rules gave them: "give", Skill.give), for their game, which keeps their life, cooldowns and run
+## (Hero.gain_life, RunTalents._tell_owner, ServerRules.got).
 func tell_self(h: Hero, d: Dictionary) -> void:
 	if server and active and int(h.peer_id) > 0 and multiplayer.get_peers().has(int(h.peer_id)):
 		rpc_id(int(h.peer_id), "cl_self", d)
@@ -1052,6 +995,8 @@ func cl_self(d: Dictionary) -> void:
 	if loading or h == null or h.dead:
 		return
 	h.gain_life(float(d.get("life", 0.0)))
+	if d.get("give") is Array and (d["give"] as Array).size() == 3 and d["give"][2] is Dictionary:
+		ServerRules.got(game, str(d["give"][0]), str(d["give"][1]), d["give"][2])
 	if d.has("cd"):
 		h.cds[str(d["cd"])] = 0.0
 	if h.run != null:
@@ -1542,7 +1487,7 @@ func cl_arena_reset(at: Vector3) -> void:
 	game.hero.shove = Vector3.ZERO
 	game.hero.atk_t = -1
 	game.hero.charge_t = -1
-	game.hero.drain_t = -1
+	game.hero.channel_t = -1
 	game.hero.direct_dir = Vector3.ZERO
 	game.hero.life=game.hero.max_life
 	game.hero.mana=game.hero.max_mana

@@ -13,6 +13,8 @@ extends RefCounted
 ## camps' encounters in CAMPS (swap the foes without touching the place).
 
 const TITLE := "The Verdant Reach"
+const PROPS := "res://game/maps/verdant_reach/props/"
+const LANTERN_AT := Vector3(-0.6, 1.5, 0.0)     # where the lantern hangs on lantern_post.glb (its own frame)
 const HALF := 105.0
 ## The four starting glades, the four extraction portals
 const SPAWNS := [Vector2(-88, 88), Vector2(88, 88), Vector2(88, -88), Vector2(-88, -88)]
@@ -469,14 +471,14 @@ static func _put(w: World, path: String, p: Vector2, yaw: float, s: float, foot 
 	return root
 
 static func _lantern_post(w: World, p: Vector2) -> void:
-	var n := ForestCamp.piece(w, "lantern_post", p, randf() * TAU)
+	var n := MapKit.piece(w, PROPS + "lantern_post.glb", Vector2(0.26, 0.18), p, randf() * TAU)
 	if n != null:
 		var l := OmniLight3D.new()
 		l.light_color = Color(1.0, 0.78, 0.45)
 		l.light_energy = 1.1
 		l.omni_range = 7.0
 		l.shadow_enabled = false
-		l.position = ForestCamp.LANTERN_AT
+		l.position = LANTERN_AT
 		n.add_child(l)
 
 static func _ring(c: Vector2, r: float, k: int, n: int, ofs := 0.0) -> Vector2:
@@ -491,13 +493,13 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 			# a dark elf encampment: tents round a fire, carved totems, a timber lookout over the way in
 			for k in 3:
 				var tp := _ring(at, r * 0.75, k, 3, rng.randf() * TAU)
-				_put(w, "res://game/maps/camp/props/camp/tent.glb", tp, ForestCamp.face(tp, at), 0.9, 1.6)
+				_put(w, PROPS + "tent.glb", tp, MapKit.face(tp, at), 0.9, 1.6)
 			for k in 4:
 				var q := _ring(at, r * 1.02, k, 4, 0.3)
 				_totem(w, q, rng)
-			_put(w, "res://assets/models/fort/tower.glb", at + (at - ELF_C).normalized().rotated(0.6) * (r + 3.0), rng.randf() * TAU, 0.55, 1.8)
-			ForestCamp.piece(w, "cookfire", at + Vector2(1.5, 1.5), 0.0)
-			ForestCamp.piece(w, "weapon_rack", at + Vector2(-3.5, -1.0), rng.randf() * TAU)
+			_put(w, "res://game/maps/verdant_reach/props/tower.glb", at + (at - ELF_C).normalized().rotated(0.6) * (r + 3.0), rng.randf() * TAU, 0.55, 1.8)
+			MapKit.piece(w, PROPS + "cookfire.glb", Vector2(0.9, 0.9), at + Vector2(1.5, 1.5), 0.0)
+			MapKit.piece(w, PROPS + "weapon_rack.glb", Vector2(1.15, 0.45), at + Vector2(-3.5, -1.0), rng.randf() * TAU)
 			_light(w, at, Color(0.7, 0.4, 1.0), 2.2, 13.0)
 		"mush":
 			for k in 7:
@@ -512,7 +514,7 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 		"frost":
 			for k in 6:
 				var q := _ring(at, r * rng.randf_range(0.85, 1.15), k, 6, rng.randf())
-				_put(w, "res://game/maps/verdant_reach/props/ice_crystals.glb" if k % 2 == 0 else "res://assets/models/lairs/ice_rock.glb", q, rng.randf() * TAU, rng.randf_range(1.2, 2.0), 1.0)
+				_put(w, "res://game/maps/verdant_reach/props/ice_crystals.glb" if k % 2 == 0 else "res://game/maps/verdant_reach/props/ice_rock.glb", q, rng.randf() * TAU, rng.randf_range(1.2, 2.0), 1.0)
 			if int(c["tier"]) >= 4:
 				for k in 4:
 					_put(w, "res://game/maps/verdant_reach/props/frozen_pillar.glb", _ring(at, r * 0.8, k, 4, 0.4), rng.randf() * TAU, 1.3, 0.8)
@@ -539,7 +541,7 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 
 ## A carved dark elf totem: a runestone with its runes lit violet.
 static func _totem(w: World, p: Vector2, rng: RandomNumberGenerator) -> void:
-	var n := _put(w, "res://game/maps/camp/props/camp/runestone.glb", p, rng.randf() * TAU, rng.randf_range(0.9, 1.3), 0.6)
+	var n := _put(w, PROPS + "runestone.glb", p, rng.randf() * TAU, rng.randf_range(0.9, 1.3), 0.6)
 	if n == null:
 		w._standing_stone(Vector3(p.x, 0, p.y), 2.6)
 
@@ -555,7 +557,7 @@ static func _light(w: World, at: Vector2, col: Color, energy: float, rng_m: floa
 static func _frost_ground(w: World, at: Vector2, size: float) -> void:
 	var d := Decal.new()
 	d.size = Vector3(size, 10.0, size)
-	var tex := SlothLair._ground_tex("cold")
+	var tex := _frost_tex()
 	d.texture_albedo = tex[0]
 	d.texture_emission = tex[1]
 	d.emission_energy = 0.3
@@ -563,6 +565,40 @@ static func _frost_ground(w: World, at: Vector2, size: float) -> void:
 	d.modulate = Color(0.6, 0.74, 0.9)       # (pale blue rime over the grass, not a sheet of white under the afternoon sun)
 	d.position = Vector3(at.x, w.height_at(at.x, at.y), at.y)
 	w.props_root.add_child(d)
+
+static var _frost_cache: Array = []
+
+## The rime on the hollow's ground (albedo with alpha, emission): frost-white over noise, faint blue light in a web of
+## cellular cracks, a soft round edge. Made once, procedurally (no texture file).
+static func _frost_tex() -> Array:
+	if not _frost_cache.is_empty():
+		return _frost_cache
+	var n := 256
+	var cells := FastNoiseLite.new()
+	cells.noise_type = FastNoiseLite.TYPE_CELLULAR
+	cells.cellular_return_type = FastNoiseLite.RETURN_DISTANCE2_SUB
+	cells.frequency = 0.022
+	cells.seed = 7
+	var grain := FastNoiseLite.new()
+	grain.frequency = 0.05
+	grain.seed = 11
+	var alb := Image.create(n, n, false, Image.FORMAT_RGBA8)
+	var emi := Image.create(n, n, false, Image.FORMAT_RGB8)
+	for y in n:
+		for x in n:
+			var u := (float(x) / n - 0.5) * 2.0
+			var v := (float(y) / n - 0.5) * 2.0
+			var rr := sqrt(u * u + v * v)
+			var g := grain.get_noise_2d(x, y) * 0.5 + 0.5
+			var edge := clampf((1.0 - rr) * 3.2 + (g - 0.5) * 1.4, 0.0, 1.0)
+			# DISTANCE2_SUB is -1 on the cells' edges, rising inside them: the cracks are where it's near -1
+			var crack := 1.0 - clampf((cells.get_noise_2d(x, y) + 1.0) * 7.0, 0.0, 1.0)
+			crack *= smoothstep(0.95, 0.35, rr)
+			var fr := 0.78 + 0.18 * g
+			alb.set_pixel(x, y, Color(fr * 0.9, fr * 0.95, fr, edge * 0.95))
+			emi.set_pixel(x, y, Color(0.35, 0.6, 1.0) * crack * 0.6)
+	_frost_cache = [ImageTexture.create_from_image(alb), ImageTexture.create_from_image(emi)]
+	return _frost_cache
 
 ## The regions between the camps: the mushroom woodland's giant fungi and glowing growths, brambles and fallen
 ## roots; the elves' palisade stakes and banners near their camps; frost on the hollow.

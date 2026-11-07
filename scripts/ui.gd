@@ -131,7 +131,7 @@ var join_character_id := ""
 var hud: Control                  # the screen's layers (setup): the in-game HUD
 var windows: Control              # inventory, character sheet, shops, the stash, the fire, waypoints
 var menus: Control                # the title and its screens (characters, class picker, co-op, Battlegrounds)
-var modals: Control               # dialogs, the party vote, the pause menu, the F8 panel, death and victory
+var modals: Control               # dialogs, the party vote, the pause menu, the F8 panel, death
 var top: Control                  # tooltips, drags, messages, sparkles: over everything
 var menu_shade: ColorRect         # under a menu screen opened over the title: dims it and keeps its clicks off it
 var home: TitleHome               # the title's controls (title_home.gd): the character sidebar, the modes and Play
@@ -141,7 +141,6 @@ var spectate_panel: Control      # Battlegrounds: the fallen hero watching the l
 var _spec_name: Label
 var _spec_hint: Label
 var _spec_btns: Array = []
-var victory_panel: Control
 var boss_bar_box: VBoxContainer
 var boss_bar: ProgressBar
 var boss_lbl: Label
@@ -208,7 +207,6 @@ func setup(g: Node) -> void:
 	_build_enchant()
 	_build_death()
 	_build_spectate()
-	_build_victory()
 	run_ui = RunUI.new()
 	modals.add_child(run_ui)      # (over the menus: the survivor roster opens from the multiplayer screen)
 	modals.move_child(run_ui, 0)
@@ -1528,7 +1526,7 @@ func _fill_quests() -> void:
 			card.add_child(box)
 			var tl := _label(("◆  " if q.get("main", false) else "") + str(q["name"]) + ("   (done)" if s == "done" else ""), 19, GOLD if s != "done" else DIM, true)
 			box.add_child(tl)
-			var who: String = Data.VENDORS[0].get(q["giver"], "")
+			var who: String = Data.VENDORS.get(q["giver"], "")
 			box.add_child(_label(("Main quest  ·  " if q.get("main", false) else "") + "From " + who, 12, DIM))
 			var story := _label(str(q["done"] if s != "active" else q["busy"]), 14)
 			story.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1579,7 +1577,7 @@ func _fill_tracker() -> void:
 		quest_tracker.add_child(t)
 		var lines: Array = []
 		if qs.status(id) == "ready":
-			lines.append(["✔ Return to " + str(Data.VENDORS[0].get(q["giver"], "")), Color(1.0, 0.82, 0.45)])
+			lines.append(["✔ Return to " + str(Data.VENDORS.get(q["giver"], "")), Color(1.0, 0.82, 0.45)])
 		else:
 			var c: Array = qs.counts(id)
 			var goals: Array = q["goals"]
@@ -4790,7 +4788,7 @@ func show_title() -> void:
 		kick.text = "CONTINUE YOUR LEGEND"
 		big.text = str(c["name"]) if str(c["name"]) != "" else "Unnamed"
 		big.add_theme_color_override("font_color", Color(0.97, 0.9, 0.78))
-		line.text = "Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], ["Act I", "Act II", "Act III"][clampi(int(c["difficulty"]), 0, 2)]]
+		line.text = "Level %d %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]]
 		var a := _ago(int(c["played"]))
 		ago.text = "Last played " + a if a != "" else ""
 		# the figure on the dais and the save Continue loads are the same one
@@ -4927,8 +4925,7 @@ func open_characters() -> void:
 		info.add_theme_constant_override("separation", 2)
 		hb.add_child(info)
 		info.add_child(_label(str(c["name"]) if str(c["name"]) != "" else "Unnamed", 24, acc, true))
-		var run: String = Data.RUNS[int(c["difficulty"])]["name"] if int(c["difficulty"]) < Data.RUNS.size() else ""
-		info.add_child(_label("Level %d %s  ·  %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"], run], 15, Color(0.82, 0.76, 0.66)))
+		info.add_child(_label("Level %d %s" % [int(c["level"]), Data.CLASSES.get(c["cls"], {"name": "Knight"})["name"]], 15, Color(0.82, 0.76, 0.66)))
 		var when := _ago(int(c["played"]))
 		info.add_child(_label(("Last played  ·  " if first else "Played ") + when if when != "" else "", 12, GOLD if first else Color(0.6, 0.57, 0.5)))
 		first = false
@@ -5082,48 +5079,6 @@ func update_spectate() -> void:
 	for b in _spec_btns:
 		(b as Button).disabled = n < 2
 	_spec_hint.visible = n >= 2
-
-func _build_victory() -> void:
-	victory_panel = _fullscreen_panel(Color(0.0, 0.0, 0.0, 0.6))
-	var vb := VBoxContainer.new()
-	vb.anchor_left = 0.5
-	vb.anchor_right = 0.5
-	vb.anchor_top = 0.3
-	vb.offset_left = -360
-	vb.offset_right = 360
-	vb.add_theme_constant_override("separation", 18)
-	victory_panel.add_child(vb)
-	var t := _label("Act I Complete", 58, GOLD, true)
-	t.name = "vtitle"
-	t.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(t)
-	var s := _label("King Grubb the Gilded is dead, and his hoard is yours.", 19, Color(0.85, 0.82, 0.75))
-	s.name = "vsub"
-	s.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vb.add_child(s)
-	var a2 := Button.new()
-	a2.name = "a2btn"
-	a2.text = "Begin A2: start over at the camp with your hero"
-	a2.custom_minimum_size = Vector2(0, 50)
-	a2.pressed.connect(func(): game.start_a2())
-	vb.add_child(a2)
-	var a2n := _label(game.run_note(1), 15, Color(1.0, 0.6, 0.4))
-	a2n.name = "a2note"
-	a2n.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	a2n.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	vb.add_child(a2n)
-	var b := Button.new()
-	b.text = "Stay and keep exploring"
-	b.custom_minimum_size = Vector2(0, 46)
-	b.pressed.connect(func(): victory_panel.visible = false)
-	vb.add_child(b)
-
-func show_victory(diff: int) -> void:
-	(victory_panel.find_child("vtitle", true, false) as Label).text = ["Act I", "A2", "A3"][clampi(diff, 0, 2)] + " Complete"
-	(victory_panel.find_child("vsub", true, false) as Label).text = "The Ashen King crumbles to cinders. His crown rolls across the throne room floor." if diff >= 2 else "King Grubb the Gilded is dead, and his hoard is yours."
-	(victory_panel.find_child("a2btn", true, false) as Button).text = ["Begin A2", "Begin A3", "Play A3 again"][clampi(diff, 0, 2)] + ": start over at the camp with your hero"
-	(victory_panel.find_child("a2note", true, false) as Label).text = ("In A3 the Ashen King takes Grubb's throne and always drops his sword. " + game.run_note(2)) if diff >= 1 else game.run_note(1)
-	victory_panel.visible = true
 
 func _unhandled_key_input(ev: InputEvent) -> void:
 	if game and game.playing and game.lobby_client != null and game.lobby_client.panel.visible and ev is InputEventKey and ev.pressed and ev.keycode == KEY_ESCAPE:

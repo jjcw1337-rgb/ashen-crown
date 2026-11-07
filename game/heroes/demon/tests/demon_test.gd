@@ -54,7 +54,7 @@ func _run() -> void:
 	print("[D] class ", h.cls, " demon rig ", h.rig.has_meta("demon"), " mocap ", str(h.rig.get_meta("meshy", "")), " skills ", h.skill_list().map(func(s): return s["id"]))
 	check(h.skill_list().map(func(s): return s["id"]) == ["fists", "icharge", "cslam", "hurl", "grip", "wrath"], "six skills in order")
 	print("[D] stats str %d dex %d vit %d ene %d life %d mana %d weapon %s" % [h.str_, h.dex, h.vit, h.ene, h.max_life, h.max_mana, h.equipment["weapon"]["name"]])
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	h.set_level(20)

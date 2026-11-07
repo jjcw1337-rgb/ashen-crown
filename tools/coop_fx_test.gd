@@ -86,7 +86,7 @@ func _run() -> void:
 	for cls in Data.CLASSES.keys():
 		await g.start_game(false, cls)
 		g.ui.close_all()
-		await g.travel(0, "wild", "start")
+		await g.travel(0, "sandbox", "start")
 		while g._busy:
 			await process_frame
 		var h = g.hero
@@ -126,7 +126,7 @@ func _run() -> void:
 				for k in puppet.fxs.keys():
 					fxs_seen[k] = true
 			if id == "drain":
-				h.end_drain()
+				h.end_channel()
 			await wait(0.2)
 			var mine: Array = events.filter(func(w): return str(w["s"]) == id)
 			var kinds: Array = mine.map(func(w): return str(w["e"]))
@@ -145,8 +145,12 @@ func _run() -> void:
 			h.global_position = far + Vector3(0, 0, 40.0)
 			puppet.net_pos = far + OFF
 			puppet.global_position = far + OFF
-			h._clear_warlock()
-			h.blights.clear()
+			h.end_channel()
+			for wsk in h.kit.values():
+				# the Warlock's plague pools, curses and totems would hurt the fresh pack (her classes aren't named
+				# here: this script compiles before the Sfx autoload they need)
+				if str(wsk.get_script().resource_path).begins_with("res://game/heroes/warlock/"):
+					wsk.clear()
 			DemonSkills.clear(h)        # his lava on the ground would burn the fresh pack
 			DragonSkills.clear(h)       # (the Storm Wyvern's Thunderhead goes on striking where he cast it)
 			if h.pd != null:
@@ -169,7 +173,7 @@ func _run() -> void:
 				await wait(1.2)
 			SkillFx.clear(puppet)
 			h.global_position = far
-			h.end_drain()
+			h.end_channel()
 			WraithSkills.clear(h)
 			DemonSkills.clear(h)
 		# the dodge roll (jj: "I never saw the roll in PvP"): his partner sees the puppet tumble
