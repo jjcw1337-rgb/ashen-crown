@@ -26,7 +26,8 @@ func begin_round() -> void:
   var at:Vector3=game.match_instance.spawn(pid)
   var h=game.net.players[pid].hero
   h.dead=false;h.life=h.max_life;h.global_position=at;h.net_pos=at
-  game.net.rpc_id(pid,"cl_arena_reset",at)
+  if game.net.is_bot(pid):MatchBots.reset(h,at)
+  else:game.net.rpc_id(pid,"cl_arena_reset",at)
  send_state()
 func send_state() -> void:
  var teams:={}

@@ -15,7 +15,7 @@ EnvironmentFile=/opt/ashen-crown/staging/lobbies.env
 # a free port among --ports from 24600: each must be open in the cloud firewall (UDP 24600-24615 is,
 # since 2026-11-05). The stripped server export
 # (CI artifact AshenCrown-server, deploy/lobbies/update.sh) runs matches; without it, the game release does.
-ExecStart=/usr/bin/python3 /opt/ashen-crown/staging/lobbies/service.py --state /var/lib/ashen-lobbies --game /opt/ashen-crown/staging/game --godot /opt/ashen-crown/staging/game/AshenCrown.x86_64 --server-binary /opt/ashen-crown/staging/server/current/AshenCrown.x86_64 --proxy-bind ${LOBBY_PROXY_BIND} --public-host 161.35.185.195 --first-port 24600 --ports 16 --min-free-mb 300
+ExecStart=/usr/bin/python3 /opt/ashen-crown/staging/lobbies/service.py --state /var/lib/ashen-lobbies --game /opt/ashen-crown/staging/game --godot /opt/ashen-crown/staging/game/AshenCrown.x86_64 --standing --server-binary /opt/ashen-crown/staging/server/current/AshenCrown.x86_64 --proxy-bind ${LOBBY_PROXY_BIND} --public-host 161.35.185.195 --first-port 24600 --ports 16 --min-free-mb 300
 StateDirectory=ashen-lobbies
 UMask=0077
 Restart=on-failure

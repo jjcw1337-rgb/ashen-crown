@@ -9,6 +9,7 @@ var ending := false
 var announced := false
 var empty_t := 0.0
 var report_t := 0.0
+var bots: MatchBots = null      # the manifest's bot seats, once the people have arrived (standing test lobbies)
 
 func start(g, path: String, port: int) -> void:
  game=g
@@ -97,6 +98,14 @@ func _process(delta: float) -> void:
    report_t=10
    print("[MATCH] Waiting for arrivals: ",game.net.players.size(),"/",config.members.size(),"; states=",game.net.players.values().map(func(row):return row.hero.net_has))
   var expected:int=config.members.size()
+  var people:int=humans()
+  # bots join once every person is in, at their level (a test raid's bots are as fresh as you are)
+  if bots==null and people<expected:
+   var here:Array=game.net.players.keys().filter(func(pid):return not game.net.is_bot(pid) and game.net.players[pid].hero.net_has)
+   if here.size()==people:
+    var lvl:=1
+    for pid in here:lvl=maxi(lvl,int(game.net.players[pid].hero.level))
+    bots=MatchBots.spawn_all(game,self,lvl)
   var ready:bool=game.net.players.size()==expected
   for row in game.net.players.values():
    ready=ready and row.hero.net_has
@@ -107,9 +116,14 @@ func _process(delta: float) -> void:
    else:game.bg.raid_t=0;game.bg.start_prep("")
   elif elapsed>120:finish("aborted","Players did not arrive in time.")
  else:
-  empty_t=empty_t+delta if game.net.players.is_empty() else 0.0
+  # (bots don't keep a match alive: it's over when the people have gone)
+  empty_t=empty_t+delta if game.net.players.keys().all(func(pid):return game.net.is_bot(pid)) else 0.0
   if empty_t>10:finish("finished","Everyone has left.")
   if str(config.mode)=="battlegrounds" and game.bg.state=="reset":finish("finished","The raid has ended.")
+
+## The manifest's members who are people (not the bot seats).
+func humans() -> int:
+ return (config.get("members",{}) as Dictionary).values().filter(func(m):return not bool(m.get("bot",false))).size()
 
 func finish(state: String, reason: String, winner := -1) -> void:
  if ending:return

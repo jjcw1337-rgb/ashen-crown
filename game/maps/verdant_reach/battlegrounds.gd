@@ -179,6 +179,8 @@ func broadcast(pid := 0) -> void:
 		st = "prep:%.1f" % prep_left
 	var args := [st, raid_t, open, secs(RAID_SECS), secs(PORTALS_AT)]
 	if pid > 0:
+		if game.net.is_bot(pid):
+			return
 		game.net.rpc_id(pid, "cl_bg_raid", args[0], args[1], args[2], args[3], args[4])
 		game.net.rpc_id(pid, "cl_bg_teams", teams())
 	elif not game.net.players.is_empty():
@@ -453,6 +455,9 @@ func pvp_status(attacker: int, target: int, kind: String, secs: float, data: Dic
 	if s <= 0.0:
 		return
 	last_hit[target] = [attacker, raid_t]
+	if game.net.is_bot(target):
+		PvpStatus.apply(game.net.players[target]["hero"], kind, s, data)      # (a bot: its hero is here, MatchBots)
+		return
 	game.net.rpc_id(target, "cl_pvp_status", kind, s, data)
 
 ## A player fell: everything they had lies where they fell.
