@@ -1,6 +1,7 @@
 extends SceneTree
 ## Warlock class: Drain Life (latch, forks, healing, retarget, channel end), Blight Bolt and its
-## pool, Soul Shackles, Fel Covenant, save/load and class swap.
+## pool, Soul Shackles, Fel Covenant, save/load and class swap. Prints [W] lines; it names her skill objects, so:
+##   godot --headless --path . -s tools/_late.gd -- res://game/heroes/warlock/tests/warlock_test.gd
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

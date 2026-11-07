@@ -1,7 +1,8 @@
 extends SceneTree
 ## The Warlock's three directions (WarlockHex and her skill objects, WarlockHarrowFx): every new skill on monsters
 ## spawned for it, the curses' ticks and their rules, fear, the wisps, the drain and the shield, and every rite key.
-##   godot --headless --path . -s game/heroes/warlock/tests/warlock_hex_test.gd   (run with --fixed-fps 60 for steady timings)
+##   godot --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://game/heroes/warlock/tests/warlock_hex_test.gd
+## (through tools/_late.gd: it names her skill objects, which need the Sfx autoload)
 var g
 var fails := 0
 

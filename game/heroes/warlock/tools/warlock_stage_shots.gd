@@ -26,6 +26,8 @@ func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing or not g.ui.title_panel.visible:
 		g._intro_skip = true
 		await process_frame
+	if g.lobby_client != null:
+		g.lobby_client.panel.hide()      # (the game opens on the multiplayer page: the picker is under it)
 	g.ui.open_class_picker()
 	var st = g.ui.class_stage
 	st.snap_to(c)
