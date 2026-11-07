@@ -4,7 +4,8 @@ extends SceneTree
 ## first cast (jj, 2026-11-04: "intense lag and freezing" on a first Fire Arrow and other skills: 0.1-0.5 s).
 ## Each class plays its weapon attack and every skill beside a pack of zombies; the events are stored with their
 ## places relative to the caster (facing -z) and without the monsters they touched.
-##   godot --headless --path . -s tools/_late.gd -- res://tools/skill_warm_capture.gd
+##   godot --headless --path . -s tools/_late.gd -- res://tools/skill_warm_capture.gd [class,class...]
+## (with classes: only theirs are recorded again; the others' are kept as they are)
 ## Writes res://scripts/skill_warm_data.gd (SkillWarmData.EVENTS: a script, so the exported game carries it).
 
 var g
@@ -70,7 +71,15 @@ func _run() -> void:
 	g.test_immortal = true
 	g.test_allskills = true
 	var out := {}
+	var only: Array = []
+	for a in OS.get_cmdline_user_args():
+		if not str(a).begins_with("res://"):
+			only.append_array(str(a).split(","))
+	if not only.is_empty():
+		out = SkillWarmData.EVENTS.duplicate(true)
 	for cls in Data.CLASSES.keys():
+		if not only.is_empty() and not only.has(cls):
+			continue
 		await g.start_game(false, cls)
 		g.ui.close_all()
 		await g.travel(0, "wild", "start")
