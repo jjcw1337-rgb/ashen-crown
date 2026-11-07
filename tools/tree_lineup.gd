@@ -38,7 +38,7 @@ func _run() -> void:
 		mi.mesh = meshes[i]
 		mi.position = Vector3(-10.5 + i * 7.0, 0, 0)
 		root3.add_child(mi)
-	var k: Node3D = Knight.build_meshy() if Knight.meshy_ok() else Knight.build(Knight.default_gear())
+	var k: Node3D = KnightBody.build_meshy() if KnightBody.meshy_ok() else Knight.build(Knight.default_gear())
 	root3.add_child(k)
 	k.position = Vector3(-7.0, 0, 2.5)
 	Anim.pose(k, {"time": 0.0})

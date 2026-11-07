@@ -63,7 +63,7 @@ func _run() -> void:
 	if warlock:
 		wraith = true      # (floats and carries nothing, like the Wraith)
 	var relaxed := args.has("relaxed")    # weapon away (no battle stance)
-	var r: Node3D = AR.call("build_body") if archer else (Warlock.build(Warlock.default_gear()) if warlock else WraithBody.build(WraithBody.default_gear()) if wraith else (DemonBody.build(DemonBody.default_gear()) if demon else Knight.build_mocap()))
+	var r: Node3D = AR.call("build_body") if archer else (Warlock.build(Warlock.default_gear()) if warlock else WraithBody.build(WraithBody.default_gear()) if wraith else (DemonBody.build(DemonBody.default_gear()) if demon else KnightBody.build_mocap()))
 	r.set_meta("pers", "hero")
 	r.set_meta("gait", "knight")
 	r.set("fixed_dt", 1.0 / 30.0)

@@ -1,4 +1,4 @@
-extends "res://scripts/knight_mocap_rig.gd"
+extends "res://game/systems/bodies/mocap_rig.gd"
 ## The Demon on his motion-captured body (body/demon_mocap.glb, build/prep_demon_mocap.py;
 ## built by DemonBody.build_mocap): the shared mocap system with his own moving parts laid over the clips every frame:
 ##  - the wings (bones wL1..4 / wR1..4 from Spine01: root, arm, leading finger, lower finger) are posed in code,

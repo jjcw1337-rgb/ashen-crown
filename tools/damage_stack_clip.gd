@@ -20,7 +20,7 @@ func _run() -> void:
 	root3.add_child(sun)
 	var holder := Node3D.new()
 	root3.add_child(holder)
-	var r: Node3D = Knight.build_meshy(true)
+	var r: Node3D = KnightBody.build_meshy(true)
 	holder.add_child(r)
 	var ds := DamageStack.new()
 	holder.add_child(ds)

@@ -31,6 +31,10 @@ extends SceneTree
 ## his Brand lives there; a checks its own game holds none of their objects (a fault, a boulder, a charge's run, a
 ## Brand, a held foe, a meteor); b checks it was hurt, staggered, thrown up, dragged and frightened through the server
 ## (b keeps its life up until his kit is done, so the blows that follow can still fell it).
+## With "knight" (the attacker is the Knight without a mode too), a slams Holy Slam (his first skill) onto b from beside
+## them, then Holy Nova, Battle Cry and a Charge through them. His skills run on the server: the server checks it made
+## all four; a checks its own game ran no dash of its own and doesn't decide his hits; b checks it was hurt before any
+## blow and stunned through the server (PvpStatus "stagger").
 
 var g
 var role := "a"
@@ -133,6 +137,10 @@ func _server() -> void:
 			await process_frame
 		check(branded, "his Brand lives here, on the other player's stand-in")
 		check(await until(func(): return ServerRules.made_count >= 6, 40.0), "the Demon's skills ran here: the server made his blow, his charge, his fault, his hook and smash, his boulder and his eruption (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
+	if OS.get_cmdline_user_args().has("knight"):
+		var kn = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "knight")
+		check(not kn.is_empty() and kn[0].decides(), "the Knight's copy here decides his hits (Hero.decides)")
+		check(await until(func(): return ServerRules.made_count >= 4, 30.0), "the Knight's skills ran here: the server made his slam, nova, cry and dash (%d made, %d refused)" % [ServerRules.made_count, ServerRules.refused_count])
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
 	await until(func(): return g.net.players.is_empty(), 90.0)
 
@@ -147,6 +155,7 @@ func _player() -> void:
 	var doug := OS.get_cmdline_user_args().has("doug")
 	var archer := OS.get_cmdline_user_args().has("archer")
 	var warlock := OS.get_cmdline_user_args().has("warlock")
+	var knight := OS.get_cmdline_user_args().has("knight")
 	var demon := OS.get_cmdline_user_args().has("demon")
 	var wraith := OS.get_cmdline_user_args().has("wraith")
 	var plague := OS.get_cmdline_user_args().has("plague")
@@ -203,6 +212,10 @@ func _player() -> void:
 		if demon:
 			# (Molten Fists, his first skill, is a wedge right in front of him)
 			await _beside(foe, 1.8)
+		if knight:
+			# (Holy Slam, his first skill, leaps onto them from beside them: the server checks where it has me)
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(3.0, 0, 0), 0.5)
+			await secs(0.6)
 		var sk: String = str(g.hero.skill_list()[0]["id"])
 		check(g.hero.use_skill(sk, foe.global_position), "cast %s at them" % sk)
 		if archer:
@@ -292,6 +305,20 @@ func _player() -> void:
 			check(not g.hero.decides(), "and decides none of my blows")
 		if demon:
 			await _demon_kit(foe)
+		if knight:
+			await secs(1.4)
+			g.test_allskills = true
+			for id in ["nova", "cry", "charge"]:
+				g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(3.0, 0, 0), 0.5)
+				await secs(0.6)      # (the server hears where I am: it checks every skill against it)
+				g.hero.mana = g.hero.max_mana
+				g.hero.cds.erase(id)
+				check(g.hero.use_skill(id, foe.global_position), "%s on them" % id)
+				await secs(1.2)
+			# (his classes aren't named here: this script compiles before the Sfx autoload they need)
+			var ch = g.hero.kit.get("charge")
+			check(ch != null and ch.run.is_empty() and g.hero.charge_t < 0.0, "my game carried me through the dash but ran no dash of its own: the server's copy of me deals it")
+			check(not g.hero.decides(), "and my game doesn't decide my hits (Hero.decides)")
 		var life_seen: Array = [life_before] if wraith else []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
@@ -303,7 +330,8 @@ func _player() -> void:
 			if is_instance_valid(foe):
 				life_seen.append(foe.life)
 			await secs(0.25)
-		check(life_seen.size() > 1 and float(life_seen.back()) < float(life_seen.front()), "their life fell as I hit them (%d -> %d)" % [int(life_seen.front()), int(life_seen.back())])
+		var felled_first: bool = not is_instance_valid(foe) or foe.dead      # (a strong kit can fell them before the blows)
+		check(felled_first or (life_seen.size() > 1 and float(life_seen.back()) < float(life_seen.front())), "their life fell as I hit them (%d -> %d%s)" % [int(life_seen.front()) if not life_seen.is_empty() else 0, int(life_seen.back()) if not life_seen.is_empty() else 0, ", felled by my skills first" if felled_first else ""])
 		check(await until(func(): return not is_instance_valid(foe) or foe.dead, 15.0), "they fell")
 		var at: Vector3 = foe.global_position if is_instance_valid(foe) else g.hero.global_position     # (their puppet goes when they leave)
 		await secs(4.0)
@@ -347,6 +375,9 @@ func _player() -> void:
 			# (what landed, whenever it did: I may see the other player after his first holds have worn off)
 			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "stagger" and float(x[1]) > 2.0), 60.0), "Haunting Grasp held me through the server (%s)" % str(PvpStatus.landed))
 			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "slow"), 20.0), "and Soul Siphon's tether slowed me")
+		if knight:
+			check(await until(func(): return PvpStatus.landed.any(func(x): return str(x[0]) == "stagger"), 60.0), "the Knight's Holy Slam stunned me through the server (%s)" % str(PvpStatus.landed))
+			check(await until(func(): return g.hero.life < l0, 2.0), "his skills hurt me through the server before any blow (%d of %d)" % [int(g.hero.life), int(l0)])
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		# fallen, I watch the one still alive (Game.spectate_*), until they leave too
