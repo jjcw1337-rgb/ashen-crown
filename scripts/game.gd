@@ -208,7 +208,7 @@ func _ready() -> void:
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
 	if not args.has("--server"):
-		lobby_client = load("res://scripts/lobby_client.gd").new()
+		lobby_client = load("res://game/ui/lobby/lobby_client.gd").new()
 		add_child(lobby_client)
 		lobby_client.setup(self)
 	if not args.has("--server"):
@@ -1934,7 +1934,7 @@ func save_game() -> void:
 	var raid_admitted: bool = bg_mode and (lobby_client == null or lobby_client.match_id == "" or lobby_client.admitted)
 	var d := {"hero": hero.to_save(), "in_raid": raid_admitted, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed,
 		"difficulty": 0, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
-	var old_lobby_save: Dictionary = load("res://scripts/lobby_stakes.gd").read(save_path())
+	var old_lobby_save: Dictionary = load("res://game/ui/lobby/lobby_stakes.gd").read(save_path())
 	d["lobby_receipts"] = old_lobby_save.get("lobby_receipts", [])
 	d["lobby_locked"] = old_lobby_save.get("lobby_locked", [])
 	DirAccess.make_dir_recursive_absolute(char_dir)

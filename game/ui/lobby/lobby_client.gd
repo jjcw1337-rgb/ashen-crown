@@ -12,7 +12,7 @@ var create_button
 var rules: Label
 var wager_pick
 var item_pick
-var stake_store = load("res://scripts/lobby_stakes.gd")
+var stake_store = load("res://game/ui/lobby/lobby_stakes.gd")
 var selected_mode := "arena"
 var team_size := 1
 var room := {}
