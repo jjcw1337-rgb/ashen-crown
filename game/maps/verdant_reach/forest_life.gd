@@ -287,7 +287,7 @@ static func _lilies(w: World, rng: RandomNumberGenerator) -> void:
 
 ## The dark elves' banners: the waypoint's Meshy banner on its stone foot, its red cloth dyed violet and its sigil lit
 ## (BANNER_SHADER), beside the totems round their three camps (on the totems' ring, never in the fight).
-const BANNER_GLB := "res://assets/models/waypoint/banner.glb"
+const BANNER_GLB := "res://game/maps/camp/props/waypoint/banner.glb"
 static func _banners(w: World, rng: RandomNumberGenerator) -> void:
 	for c in BgForest.CAMPS:
 		if c["region"] != "elf":
@@ -359,7 +359,7 @@ static func _glb(w: World, path: String, p: Vector2, yaw: float, s: float, dy: f
 ## just off a trail (on its grass, clear of the dirt), out from under the oaks' crowns, away from the camps and the
 ## stream, spread out across the map. `shrines` keeps them (the screenshots go there).
 const SHRINE_LIGHT := Color(0.45, 0.8, 1.0)
-const CRYSTAL_GLB := "res://assets/models/waypoint/crystal_rune.glb"
+const CRYSTAL_GLB := "res://game/maps/camp/props/waypoint/crystal_rune.glb"
 static var shrines: Array = []
 
 static func shrine_spots(w: World) -> Array:

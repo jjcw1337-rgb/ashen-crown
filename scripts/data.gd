@@ -111,7 +111,7 @@ static func waypoint_point(run: int, id: String) -> Dictionary:
 const WAYPOINT_ZONES := ["town", "wild", "lair"]
 
 ## Problems in WAYPOINT_ACTS, one line each (empty = all good). Checked at start in dev builds
-## (Game) and by tools/waypoint_test.gd, so a mistake shows the moment it is made.
+## (Game) and by game/maps/camp/tests/waypoint_test.gd, so a mistake shows the moment it is made.
 static func check_waypoints() -> Array:
 	var errs := []
 	var runs := {}

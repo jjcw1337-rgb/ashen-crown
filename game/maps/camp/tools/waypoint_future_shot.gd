@@ -1,6 +1,6 @@
 extends SceneTree
 ## Mock-up of the waypoint window with room to grow: sample Acts IV-V and an Ancient Levels group
-## (screenshot only; nothing is added to the game). godot -s tools/waypoint_future_shot.gd -- out.png [ancient]
+## (screenshot only; nothing is added to the game). godot -s game/maps/camp/tools/waypoint_future_shot.gd -- out.png [ancient]
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

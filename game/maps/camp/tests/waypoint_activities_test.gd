@@ -1,5 +1,5 @@
 extends SceneTree
-## Run with the real renderer: --path . -s tools/waypoint_activities_test.gd -- /tmp/waypoint-menu
+## Run with the real renderer: --path . -s game/maps/camp/tests/waypoint_activities_test.gd -- /tmp/waypoint-menu
 ## Runtime loads avoid compiling autoload users before the autoloads exist.
 var g
 var data
@@ -88,7 +88,7 @@ func _run():
  g.run_progress = {"1": {"waypoints": ["town", "wild"]}, "2": {"waypoints": ["town", "wild"]}}
  panel.close()
  # Exercise real button signals and online handoff against a transport spy.
- var spy = load("res://tools/waypoint_route_spy.gd").new()
+ var spy = load("res://game/maps/camp/tools/waypoint_route_spy.gd").new()
  spy.ui = g.ui
  spy.hero = g.hero
  spy.net = g.net

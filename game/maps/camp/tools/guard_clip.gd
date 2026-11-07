@@ -1,7 +1,7 @@
 extends SceneTree
 ## Frames following one camp guard (CampGuard) on his round from a near three-quarter camera: is his walk, his turn
 ## and his stance right? Needs a display; run with --fixed-fps 30.
-##   godot --path . --fixed-fps 30 -s tools/_late.gd -- res://tools/guard_clip.gd <outdir> [warden|sentry|ironfist] [frames 240] [every 8] [dist 5]
+##   godot --path . --fixed-fps 30 -s tools/_late.gd -- res://game/maps/camp/tools/guard_clip.gd <outdir> [warden|sentry|ironfist] [frames 240] [every 8] [dist 5]
 
 var g
 

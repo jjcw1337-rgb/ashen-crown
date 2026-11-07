@@ -1,7 +1,7 @@
 extends SceneTree
 ## The Act I camp's guards (CampGuard): all three on their rounds with every clip and three attack slots, they move,
 ## one stops and turns to watch a hero walking up, and they fight a zombie loose in the camp (host: their blows
-## land). Prints [G] lines. Run: godot --headless --path . -s tools/_late.gd -- res://tools/guard_test.gd
+## land). Prints [G] lines. Run: godot --headless --path . -s tools/_late.gd -- res://game/maps/camp/tests/guard_test.gd
 var g
 var fails := 0
 

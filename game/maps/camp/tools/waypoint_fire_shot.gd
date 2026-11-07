@@ -1,7 +1,7 @@
 extends SceneTree
 ## Close-up frames of the camp waypoint's blue spirit-fire braziers (FireFx "spirit"), to judge the fire's look and
 ## movement. Needs a display:
-##   xvfb-run -a godot --rendering-driver opengl3 --path . -s tools/waypoint_fire_shot.gd -- outdir [frames] [step] [view]
+##   xvfb-run -a godot --rendering-driver opengl3 --path . -s game/maps/camp/tools/waypoint_fire_shot.gd -- outdir [frames] [step] [view]
 ## view: close (one brazier, ~2.5 m off) | pair (two braziers and the crystal behind) | game (the game's own camera,
 ## the hero on the waypoint's arrival spot: a clip of the waypoint as players see it). Saves outdir/fire_NN.png.
 var g

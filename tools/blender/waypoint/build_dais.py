@@ -10,7 +10,7 @@
 #   steps (the tiers), floor (the flagstones), groove (the channel floor), socket.
 # The radii must match WaypointGrand (RINGS, SPOKE_R, TIERS).
 #
-#   blender -b --python tools/blender/waypoint/build_dais.py -- assets/models/waypoint/dais.glb [--seed 7741]
+#   blender -b --python tools/blender/waypoint/build_dais.py -- game/maps/camp/props/waypoint/dais.glb [--seed 7741]
 import bpy, bmesh, sys, math, random
 from mathutils import Vector, noise
 

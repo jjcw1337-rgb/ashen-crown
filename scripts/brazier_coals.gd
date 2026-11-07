@@ -2,7 +2,7 @@ class_name BrazierCoals
 extends Node3D
 ## What burns inside a waypoint brazier's bowl: fractured dark basalt stones and sapphire crystals, an ember bed
 ## under them, energy running through the cracks, sparks between the fragments and heat shimmer above. Built from
-## `assets/models/waypoint/coals.glb` (tools/blender/waypoint/rock_library.py): a library of unique pieces
+## `game/maps/camp/props/waypoint/coals.glb` (tools/blender/waypoint/rock_library.py): a library of unique pieces
 ## (`lib/rock_NN_l0|l1`, `frag_NN_*`, `cry_NN_*`, two LODs each, one baked atlas for the stones and one for the
 ## crystals: albedo, normal, AO + roughness, and a crack / vein mask in the emissive map) and four piles settled in
 ## the real bowl with rigid-body physics (`arr_K`: one Empty per stone, named `iNN_<piece>`, its transform the
@@ -15,7 +15,7 @@ extends Node3D
 ## Per vertex, COLOR carries per-stone data written at merge time: r = this stone's glow weight (most stones 0:
 ## the contrast of dark stone and lit crystal is the point), g = its phase.
 
-const GLB := "res://assets/models/waypoint/coals.glb"
+const GLB := "res://game/maps/camp/props/waypoint/coals.glb"
 const LOD_DIST := 13.0           # LOD0 nearer than this (close-ups, zoomed in), LOD1 beyond (the gameplay camera)
 const FLOOR_Y := 1.2134          # the cleaned brazier's dish floor in the brazier node's frame (clean_bowl.py x 1.15)
 const BED_R := 0.345             # the ember bed's radius (the dish out to the wall's foot)

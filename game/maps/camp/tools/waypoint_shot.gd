@@ -1,6 +1,6 @@
 extends SceneTree
 ## Screenshot of the waypoint window: Act I with its wilderness waypoint bound, A2 open, A3 sealed.
-## Needs a display. Usage: godot -s tools/waypoint_shot.gd -- out.png [run to show | bg] (bg: the Battlegrounds tab)
+## Needs a display. Usage: godot -s game/maps/camp/tools/waypoint_shot.gd -- out.png [run to show | bg] (bg: the Battlegrounds tab)
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

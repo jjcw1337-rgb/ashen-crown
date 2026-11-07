@@ -5,7 +5,7 @@ extends RefCounted
 ## hammer down 0.8 m below the anvil's face, beside it. While he forges, his body plays a calm idle and his arms are
 ## placed by two-bone IK every frame after the animation: the right raises the war hammer over his shoulder and drives
 ## its head down onto the anvil's face (a ring, sparks, a jolt of light, the hand rebounding), the left holds the
-## Meshy tongs (assets/models/camp/props/tongs.glb) with the glowing bar (emissive only: no light of its own, the camp's
+## Meshy tongs (game/maps/camp/props/camp/props/tongs.glb) with the glowing bar (emissive only: no light of its own, the camp's
 ## frame time is a benchmark) on the anvil, turning it now and then; every
 ## few strikes he plunges it into the quench bucket in a hiss of steam, then back into the heat.
 ## Driven from Inter._process (the keeper's AnimationPlayer is advanced by hand first, so the IK goes on top).
@@ -17,7 +17,7 @@ const QUENCH_T := 2.2
 ## the forge model's own points (forge.glb, metres, Godot axes; the stall is scaled ForestCamp.STALL_SCALE)
 const ANVIL := Vector3(-0.16, 0.84, 1.07)
 const BUCKET := Vector3(-1.09, 0.42, 0.99)
-const TONGS := "res://assets/models/camp/props/tongs.glb"
+const TONGS := "res://game/maps/camp/props/camp/props/tongs.glb"
 
 static func setup(it: Inter, stall_at: Vector2, yaw: float, scale: float, w: World) -> void:
 	var b := Basis(Vector3.UP, yaw)

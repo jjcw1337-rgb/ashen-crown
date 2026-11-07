@@ -3,7 +3,7 @@ extends Node3D
 ## The World-Tree Island (jj, 2026-11-04: "blocked it so the town is everything and what you see outside is just
 ## space", concept 2 of three, "lets use number 2"): Act I's camp adrift in real space. ForestCamp cuts the ground at
 ## the island's ragged edge (World.island_r, island_edge) and bars the west and north gates; this builds what's round
-## it: the island's underside (a Meshy inverted mountain of earth and rock, assets/models/island/underside.glb) under the
+## it: the island's underside (a Meshy inverted mountain of earth and rock, game/maps/camp/props/island/underside.glb) under the
 ## edge, clusters of the World-Tree's roots hanging off it (roots.glb), springs pouring out of the cliff in waterfalls
 ## that fall away into the void, rocks drifting by the edge, the two places the gates used to lead to hanging far off
 ## as small islands of their own (the coast with its beach and pier, the moor with its oaks and ruined tower: isle_*.glb,
@@ -13,7 +13,7 @@ extends Node3D
 ## Zoomed out (the scroll wheel goes further in the camp, Game.zoom_max) you see the island whole.
 ## Cosmetic and local; no collisions (nothing past the wall can be reached).
 
-const DIR := "res://assets/models/island/"
+const DIR := "res://game/maps/camp/props/island/"
 const TEX := "res://assets/textures/space/"
 const UNDER_DEPTH := 0.92      # the underside's height as a fraction of its width
 const UNDER_TOP := -0.6        # its grassy top, just under the ground's edge (its middle is cut out: level_top.py)

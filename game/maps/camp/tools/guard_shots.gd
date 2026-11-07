@@ -2,7 +2,7 @@ extends SceneTree
 ## Screenshots of the Act I camp's guards (CampGuard), saved as contact sheets: each guard close up, each on his
 ## round from the game's height (frames a few seconds apart), one watching a hero walk up, and the three fighting
 ## zombies loose in the camp. Needs a display.
-## Usage: godot --path . -s tools/_late.gd -- res://tools/guard_shots.gd outdir
+## Usage: godot --path . -s tools/_late.gd -- res://game/maps/camp/tools/guard_shots.gd outdir
 var g
 var out := ""
 

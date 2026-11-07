@@ -1,4 +1,4 @@
-# The World-Tree Island's sky (CampIsland, scripts/camp_island.gd)
+# The World-Tree Island's sky (CampIsland, game/maps/camp/camp_island.gd)
 
 | File | Source | Author / credit | Licence |
 |---|---|---|---|
@@ -7,7 +7,7 @@
 | `saturn_rings.png` | https://www.solarsystemscope.com/textures/ (8k_saturn_ring_alpha.png, resized to 2048 x 8) | Solar System Scope | CC BY 4.0 |
 | `comet.png` | Painted with Meshy text-to-image for the game (black lifted to alpha by tools/space_textures.py) | Game Factory | ours |
 
-`assets/models/island/bennu.glb`: NASA's model of asteroid 101955 Bennu (1999 RQ36, OSIRIS-REx),
+`game/maps/camp/props/island/bennu.glb`: NASA's model of asteroid 101955 Bennu (1999 RQ36, OSIRIS-REx),
 https://github.com/nasa/NASA-3D-Resources/tree/master/3D%20Models/1999%20RQ36%20asteroid (NASA; NASA media are not
 copyrighted, see https://www.nasa.gov/nasa-brand-center/images-and-media/). Credit: NASA/Goddard/University of Arizona.
 The island, its roots, the other asteroids and the far islands are Meshy models made for the game (image-to-3D).

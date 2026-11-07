@@ -1,7 +1,7 @@
 extends SceneTree
 ## Screenshots of Act I's forest camp (ForestCamp): the hero at each shop (game camera), a high
 ## overview of the whole camp and a low view through the gate. Needs a display.
-## Usage: godot -s tools/camp_shots.gd -- outdir
+## Usage: godot -s game/maps/camp/tools/camp_shots.gd -- outdir
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

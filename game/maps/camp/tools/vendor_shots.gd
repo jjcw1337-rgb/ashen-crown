@@ -1,7 +1,7 @@
 extends SceneTree
 ## Screenshots of a camp trader from the game camera (with their nameplate), their trade window, and
 ## the window's portrait on its own. Needs a display.
-## Usage: godot -s tools/vendor_shots.gd -- outdir [smith|armor|alch|gamble]
+## Usage: godot -s game/maps/camp/tools/vendor_shots.gd -- outdir [smith|armor|alch|gamble]
 var g
 func _initialize():
 	g = (load("res://main.tscn") as PackedScene).instantiate()

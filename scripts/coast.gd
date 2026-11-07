@@ -410,7 +410,7 @@ static func _boatyard(w: World) -> void:
 	if ResourceLoader.exists(OSRIC):
 		var hp: Vector2 = SHED + HULL_AT
 		var op2 := hp + Vector2(2.05, 0.4)
-		var fc: GDScript = load("res://scripts/forest_camp.gd")    # at run time: a static reference compiles it before Sfx exists
+		var fc: GDScript = load("res://game/maps/camp/forest_camp.gd")    # at run time: a static reference compiles it before Sfx exists
 		# jj: the new Meshy Osric with full movement: hammering at the hull, then now and then down to the pier's root
 		# at a walk to pick his gear up off the boards and wave at the water, and back (Inter "patrol"; a hero coming
 		# near stops him where he is, and he turns to talk)

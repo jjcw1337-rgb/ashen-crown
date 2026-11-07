@@ -1,7 +1,7 @@
 extends SceneTree
 ## Waypoint network rules: sealed acts and untouched waypoints can't be taken; taken ones travel
 ## (same act and across acts); the window closes when you walk away from the stone.
-## godot --headless --path . -s tools/waypoint_test.gd
+## godot --headless --path . -s game/maps/camp/tests/waypoint_test.gd
 var g
 var fails := 0
 func ok(cond: bool, what: String) -> void:

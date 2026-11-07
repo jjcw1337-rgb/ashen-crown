@@ -53,13 +53,13 @@ game/heroes/**/*_Material_*
 
 # map folders (game/maps/<name>/): Godot's import files for their models and the textures it extracts (props/), like heroes/
 game/maps/**/*.glb.import
-game/maps/**/props/*_Image_*
-game/maps/**/props/*_albedo.jpg*
-game/maps/**/props/*_metal_rough.jpg*
-game/maps/**/props/*_normal.png*
-game/maps/**/props/*_normal.jpg*
-game/maps/**/props/*_emission.jpg*
-game/maps/**/props/*_Material_*
+game/maps/**/*_Image_*
+game/maps/**/props/**/*_albedo.jpg*
+game/maps/**/props/**/*_metal_rough.jpg*
+game/maps/**/props/**/*_normal.png*
+game/maps/**/props/**/*_normal.jpg*
+game/maps/**/props/**/*_emission.jpg*
+game/maps/**/*_Material_*
 
 # monster folders (game/monsters/<name>/): Godot's import files for their models and the textures it extracts
 game/monsters/**/*.glb.import
@@ -69,3 +69,29 @@ game/monsters/**/*_albedo.jpg*
 game/monsters/**/*_metal_rough.jpg*
 game/monsters/**/*_emission.jpg*
 game/monsters/**/*_Material_*
+
+# game/maps and game/monsters: the same generated files as assets/models/ (Godot's extracted textures, Blender bakes)
+game/maps/**/*.import
+game/monsters/**/*.import
+game/maps/**/*_normal.jpg
+game/monsters/**/*_normal.jpg
+game/maps/**/*_normal_*.jpg
+game/monsters/**/*_normal_*.jpg
+game/maps/**/*_albedo.jpg
+game/monsters/**/*_albedo.jpg
+game/maps/**/*_metal_rough.jpg
+game/monsters/**/*_metal_rough.jpg
+game/maps/**/*_normal.png
+game/monsters/**/*_normal.png
+game/maps/**/*_emission.jpg
+game/monsters/**/*_emission.jpg
+game/maps/**/*_metal_rough.png
+game/monsters/**/*_metal_rough.png
+game/maps/**/*_glow.png
+game/monsters/**/*_glow.png
+game/maps/**/*_Material_*_baseColor.jpg
+game/monsters/**/*_Material_*_baseColor.jpg
+game/maps/**/*_Material_*_metallic-*.jpg
+game/monsters/**/*_Material_*_metallic-*.jpg
+game/maps/**/*_Material_*_normal.jpg
+game/monsters/**/*_Material_*_normal.jpg

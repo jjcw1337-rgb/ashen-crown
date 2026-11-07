@@ -1,7 +1,7 @@
 extends SceneTree
 ## Frames of Halvar at his anvil from close beside the forge (is the hammer coming down on the anvil? what's in his
 ## other hand?), by day. Needs a display; run with --fixed-fps 30.
-##   godot --path . --fixed-fps 30 -s tools/_late.gd -- res://tools/forge_clip.gd <outdir> [frames 90] [side|front]
+##   godot --path . --fixed-fps 30 -s tools/_late.gd -- res://game/maps/camp/tools/forge_clip.gd <outdir> [frames 90] [side|front]
 
 var g
 

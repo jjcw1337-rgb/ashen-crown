@@ -11,7 +11,7 @@ The radii match tools/blender/waypoint/build_dais.py: the bands lie on the flags
 channels (1.01-1.09, 1.92-2.02, 2.70-2.82), whose own glow is the game's torus meshes, and the eight spokes.
 The lettering is an Elder-Futhark-like alphabet drawn as strokes (no font), seeded, so a rebuild is identical.
 
-  python3 tools/waypoint_runes.py [out.png] [--seed 7741] [--size 2048]
+  python3 game/maps/camp/tools/waypoint_runes.py [out.png] [--seed 7741] [--size 2048]
 """
 import math, random, sys
 import numpy as np

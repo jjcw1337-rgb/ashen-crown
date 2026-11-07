@@ -1,5 +1,5 @@
 # The camp's ravens (jj, 2026-11-04: "birds land on it with real movement"): the Meshy raven (concept: wings spread,
-# standing on a perch stick; image-to-3D) cleaned and rigged for scripts/raven.gd, which poses it in code (no baked
+# standing on a perch stick; image-to-3D) cleaned and rigged for game/maps/camp/raven.gd, which poses it in code (no baked
 # animations). The perch stick is cut away, the mesh welded, decimated and scaled to a raven's size (wingspan WINGSPAN
 # m), stood with its feet on the origin, facing Godot's +z. Bones (all from the feet): root at the feet; body (belly to
 # breast) with neck -> head, tail, and each wing in three (wL1 shoulder to elbow, wL2 elbow to wrist, wL3 wrist to the

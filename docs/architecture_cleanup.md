@@ -120,7 +120,7 @@ Touch points to coordinate:
 - **Claude-1: the world side.**
   - Tasks: the cuts (the old crypt, Act II, Act I's story, the co-op server; archiving sailing and the Last Flame;
     see "Cutting an old system") and the loading overhaul.
-  - Owns: `world.gd`, `forest_camp.gd`, `game/maps/**`, `res_cache.gd`, the
+  - Owns: `world.gd`, `game/maps/**`, `game/monsters/**`, `res_cache.gd`, the
     preload and warm-up lists, every zone builder, and the files of everything being cut.
 - **Claude-2: the hero side.**
   - Tasks: every hero into its folder, the per-skill split (the Archer first, as the template), the shared effects
@@ -227,6 +227,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   slow); its models in `archive/hollow_crypt/`. The old raid page, server screen, raids on the clock and the
   waypoint's walk down go too: the lobby browser is the only way in (2026-11-06).
 - [ ] Monsters into `game/monsters/<monster>/`: done: Hrimgar and Old Mossbeard (on a shared `BossBrain`).
+- [x] Maps: the starting camp is `game/maps/camp/` (its builder, people, island, waypoint, models, tests; 2026-11-06).
 - [x] Maps: the Verdant Reach is `game/maps/verdant_reach/` (its builder, camps, life, the Battlegrounds' rules,
   the bosses' brains, props, tests; 2026-11-06).
 - [x] Maps: the Arena is `game/maps/arena/` (the template for every map: its map, props, modes, tests, README;

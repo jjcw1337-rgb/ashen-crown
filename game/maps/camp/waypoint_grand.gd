@@ -10,10 +10,10 @@ extends Node3D
 ## crystal, brazier, guardian, banner, torch, pillar. Each one missing falls back to its code-built blockout.
 ## `SOLIDS` lists the colliders (local x, z, radius) that World.add_waypoint turns into circles.
 
-const DIR := "res://assets/models/waypoint/"
+const DIR := "res://game/maps/camp/props/waypoint/"
 const RUNE := Color(0.04, 0.3, 1.0)     # deep cyan: the fx shader multiplies it by energy, so pale tints clip to white
 const RUNE_CORE := Color(0.36, 0.74, 1.0)  # the heart of a glowing stroke
-const RUNES_TEX := "res://assets/textures/waypoint/rune_rings.png"   # tools/waypoint_runes.py
+const RUNES_TEX := "res://assets/textures/waypoint/rune_rings.png"   # game/maps/camp/tools/waypoint_runes.py
 const RUNES_SPAN := 7.0                   # metres the rune texture covers (+-3.5 m round the centre)
 const DAIS_R := 4.85          # outer step radius
 const TOP_Y := 0.36           # walking height of the inner dais
@@ -226,7 +226,7 @@ func _build() -> void:
 		var edge := Models.P(self, Geo.torus(er[0] - 0.03, er[0], 96, 4), em, Vector3(0, er[1], 0))
 		edge.scale = Vector3(1, 0.2, 1)
 		edge.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	# the rune lettering: rings of glowing glyphs and ornament on the flagstones (tools/waypoint_runes.py draws
+	# the rune lettering: rings of glowing glyphs and ornament on the flagstones (game/maps/camp/tools/waypoint_runes.py draws
 	# them, one band per channel), lit from inside their carved strokes by RUNE_FLOOR_SHADER
 	if ResourceLoader.exists(RUNES_TEX):
 		rune_floor = ShaderMaterial.new()
@@ -742,7 +742,7 @@ func _process(delta: float) -> void:
 		var fl := 0.8 + 0.12 * sin(_t * 7.3 + i * 1.9) + 0.08 * sin(_t * 13.1 + i * 4.3)
 		hearts[i].set_shader_parameter("energy", 0.45 * fl + _flash * 0.3)
 
-## The rune floor: a plane over the dais's top sampling tools/waypoint_runes.py's masks (R the outer rim ring and
+## The rune floor: a plane over the dais's top sampling game/maps/camp/tools/waypoint_runes.py's masks (R the outer rim ring and
 ## the inner ring, G the great ring, B the ornate band), each band with its own energy and turn. A stroke is lit
 ## from its heart (`core`, the sharp mask) out through a halo (`glow`, the mask's blurred mips), and the stone
 ## round it is darkened a little, so the lettering reads as carved grooves with light down in them. A pulse ring

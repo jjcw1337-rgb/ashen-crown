@@ -1,14 +1,14 @@
 class_name Raven
 extends Node3D
 ## One of the camp's ravens (jj, 2026-11-04: "birds land on it with real movement"): the Meshy raven
-## (assets/models/camp/birds/raven.glb, rigged by tools/blender/npc/rig_raven.py: root, legs, body, neck, head, tail
+## (game/maps/camp/props/camp/birds/raven.glb, rigged by tools/blender/npc/rig_raven.py: root, legs, body, neck, head, tail
 ## and each wing in three, wL1..3 / wR1..3), posed in code every frame. CampRavens moves it between its roosts
 ## (rooftops, the palisade, the ground by the fire); this is the bird itself: how it sits, looks about in quick snaps,
 ## pecks, preens, hops, stretches a wing, caws, shakes its feathers out; how it springs off and climbs with hard beats,
 ## flies on flapping and gliding, banking into its turns, and comes in to land: body up, wings forward in a flare with
 ## quick back-beats, tail fanned, feet out, then wings folded and a settle. Only for the look; local to each game.
 
-const GLB := "res://assets/models/camp/birds/raven.glb"
+const GLB := "res://game/maps/camp/props/camp/birds/raven.glb"
 const SIZE := 1.0
 const FLY_SPEED := 6.2
 const LAND_T := 1.05          # seconds of the approach spent slowing into the flare

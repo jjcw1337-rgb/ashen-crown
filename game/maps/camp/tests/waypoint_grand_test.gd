@@ -4,7 +4,7 @@ extends SceneTree
 ## arrival spot or the walk onto the dais, a hero can path there from the camp's start, it wakes as a
 ## hero comes near, the travel window still opens and travels, and the Battlegrounds card opens the
 ## lobby browser's Battlegrounds.
-## godot --headless --path . -s tools/waypoint_grand_test.gd
+## godot --headless --path . -s game/maps/camp/tests/waypoint_grand_test.gd
 ## (WaypointGrand is loaded at run time, like aurelia.gd in its tools: a static reference compiles the game's
 ## scripts, and their Sfx, before the autoload exists.)
 var g
@@ -38,7 +38,7 @@ func _stone():
 func _run() -> void:
 	while g.world == null or g._busy or g._intro_playing:
 		await process_frame
-	WG = load("res://scripts/waypoint_grand.gd")
+	WG = load("res://game/maps/camp/waypoint_grand.gd")
 	await g.start_game(false, "knight")
 	await _settle()
 	ok(g.cur_zone == "town", "started in the camp")

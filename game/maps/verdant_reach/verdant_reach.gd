@@ -491,7 +491,7 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 			# a dark elf encampment: tents round a fire, carved totems, a timber lookout over the way in
 			for k in 3:
 				var tp := _ring(at, r * 0.75, k, 3, rng.randf() * TAU)
-				_put(w, "res://assets/models/camp/tent.glb", tp, ForestCamp.face(tp, at), 0.9, 1.6)
+				_put(w, "res://game/maps/camp/props/camp/tent.glb", tp, ForestCamp.face(tp, at), 0.9, 1.6)
 			for k in 4:
 				var q := _ring(at, r * 1.02, k, 4, 0.3)
 				_totem(w, q, rng)
@@ -539,7 +539,7 @@ static func _dress_camp(w: World, c: Dictionary, rng: RandomNumberGenerator) -> 
 
 ## A carved dark elf totem: a runestone with its runes lit violet.
 static func _totem(w: World, p: Vector2, rng: RandomNumberGenerator) -> void:
-	var n := _put(w, "res://assets/models/camp/runestone.glb", p, rng.randf() * TAU, rng.randf_range(0.9, 1.3), 0.6)
+	var n := _put(w, "res://game/maps/camp/props/camp/runestone.glb", p, rng.randf() * TAU, rng.randf_range(0.9, 1.3), 0.6)
 	if n == null:
 		w._standing_stone(Vector3(p.x, 0, p.y), 2.6)
 

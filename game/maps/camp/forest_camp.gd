@@ -5,10 +5,10 @@ extends RefCounted
 ## logs with a gatehouse to the north, glowing rune stones in the trees outside it, the grand waypoint at the
 ## heart, tents and huge oaks hung with lanterns inside, and the shops round the ring, each with its
 ## shopkeeper at work: Meshy-made and Meshy-rigged, animated with Meshy's clip library (Inter._animate).
-## Models: assets/models/camp/*.glb, assets/models/npc/*.glb, prepared in Blender (tools/blender/
+## Models: game/maps/camp/props/camp/*.glb, assets/models/npc/*.glb, prepared in Blender (tools/blender/
 ## prep_prop.py, prep_npc.py, prep_tree.py). Without the files it falls back to the old camp.
 
-const VendorCourt := preload("res://scripts/vendor_court.gd")
+const VendorCourt := preload("res://game/maps/camp/vendor_court.gd")
 const CENTER := Vector2(0, -2)
 ## The waypoint stone. grand_waypoint(): the large dais (WaypointGrand), blockout of the waypoint overhaul.
 const WP_AT := Vector3(3.5, 0, -5) # replaces the central bonfire (jj, 2026-11-03)
@@ -32,7 +32,7 @@ const AUCTION_HALF := Vector2(4.4, 4.45)
 const GATE_HALF := 0.23         # half the gap in the ring for the gatehouse (radians)
 const VIGIL_GATE := Vector2(9.5, 13.5)     # the Vigil Gate (vigil.gd), inside the ring by the south-east palisade
 const WEST := PI * 1.5          # the west gate (ring angle): the path to the coast (coast.gd)
-const DIR := "res://assets/models/camp/"
+const DIR := "res://game/maps/camp/props/camp/"
 const STALL_SCALE := 1.45     # the stalls, tents and gatehouse read small from the game's camera at true size
 const NPC_DIR := "res://assets/models/npc/"
 # shopkeepers: model, role, the stall they keep, its spot, and their clips (idle, work, talk)
@@ -507,7 +507,7 @@ const FOREST_FLOOR := {
 }
 const FOREST_GRASS := {"base_col": Color(0.08, 0.12, 0.05), "tip_col": Color(0.2, 0.26, 0.1), "dry_col": Color(0.3, 0.28, 0.15), "wind": 0.7}
 
-## The Gilded Hall (assets/models/camp/auction_hall.glb, Meshy, prep_prop.py) and Auctioneer Corvin at its door
+## The Gilded Hall (game/maps/camp/props/camp/auction_hall.glb, Meshy, prep_prop.py) and Auctioneer Corvin at its door
 ## (assets/models/npc/auctioneer.glb when it exists; else the hall's door itself is what you click).
 static func _auction_hall(w: World) -> void:
 	if not ResourceLoader.exists(DIR + "auction_hall.glb"):

@@ -37,7 +37,7 @@ for f in game/heroes/archer/tests/archer_test.gd game/heroes/plague/tests/plague
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?
 done
 # the camp's people and the island (they reach the Sfx autoload: run late)
-for f in tools/camp_life_test.gd tools/vendor_test.gd tools/guard_test.gd tools/codex_test.gd tools/codex_book_test.gd game/maps/verdant_reach/tests/camp_reach_test.gd; do
+for f in game/maps/camp/tests/camp_life_test.gd game/maps/camp/tests/vendor_test.gd game/maps/camp/tests/guard_test.gd tools/codex_test.gd tools/codex_book_test.gd game/maps/verdant_reach/tests/camp_reach_test.gd; do
   t=$(basename "$f" .gd)
   "$G" --headless --path . --fixed-fps 60 -s tools/_late.gd -- res://$f > "$OUT/gate_$t.log" 2>&1 & p=$!
   waitfor $p 400; check $t "$OUT/gate_$t.log" $?

@@ -1,7 +1,7 @@
 extends SceneTree
 ## A high three-quarter view over the whole Act I camp (the palisade ring, the waypoint, the shops), by day, for concept
 ## paintovers. Needs a display.
-##   godot --path . --resolution 1920x1080 -s tools/_late.gd -- res://tools/camp_aerial.gd out.png [height 38] [hour 11]
+##   godot --path . --resolution 1920x1080 -s tools/_late.gd -- res://game/maps/camp/tools/camp_aerial.gd out.png [height 38] [hour 11]
 
 var g
 

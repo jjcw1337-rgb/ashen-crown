@@ -1,7 +1,7 @@
 extends SceneTree
 ## The camp's grand waypoint alone, on a flagstone floor under the forest camp's dusk light, from the game's camera
 ## (or closer), for fast iteration on its look without building the whole camp. Needs a display:
-##   xvfb-run -a godot --rendering-driver opengl3 --fixed-fps 30 --path . -s tools/waypoint_lab.gd -- outdir [frames] [step] [view] [quality]
+##   xvfb-run -a godot --rendering-driver opengl3 --fixed-fps 30 --path . -s game/maps/camp/tools/waypoint_lab.gd -- outdir [frames] [step] [view] [quality]
 ## view: game (the game camera over a hero at the arrival spot) | ref (lower and closer, like the concept picture) |
 ## close (the crystal and the floor) | high (from above). Saves outdir/lab_NN.png (one frame by default, after it
 ## has woken and settled).
@@ -15,7 +15,7 @@ func _initialize():
 func _run() -> void:
 	# the autoloads (Sfx) exist only after the first frame; the game's scripts are loaded then, by hand
 	await process_frame
-	var WG = load("res://scripts/waypoint_grand.gd")
+	var WG = load("res://game/maps/camp/waypoint_grand.gd")
 	var MatsS = load("res://scripts/mats.gd")
 	var PropsS = load("res://scripts/props.gd")
 	var GradeS = load("res://scripts/grade.gd")

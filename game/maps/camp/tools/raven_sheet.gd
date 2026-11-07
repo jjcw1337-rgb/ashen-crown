@@ -1,7 +1,7 @@
 extends SceneTree
 ## Frames of a raven (Raven) in a little studio: sitting and doing each of its acts, taking off, flying, landing.
 ## Needs a display; run with --fixed-fps 30.
-##   godot --path . --fixed-fps 30 -s tools/raven_sheet.gd -- <outdir> [side|front|34]
+##   godot --path . --fixed-fps 30 -s game/maps/camp/tools/raven_sheet.gd -- <outdir> [side|front|34]
 
 func _initialize():
 	_run()

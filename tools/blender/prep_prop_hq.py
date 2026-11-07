@@ -3,7 +3,7 @@
 #
 #   blender -b --python prep_prop_hq.py -- in.glb out.glb [size m] [--axis height|width|depth] [--turn deg]
 #       [--sink m] [--tris N] [--tex 4096] [--bake] [--lod] [--web-tris N] [--web-tex 4096] [--jpeg] ...
-#   blender -b --python prep_prop_hq.py -- props_in/ assets/models/camp/ 2.5 --bake     (every model in a folder)
+#   blender -b --python prep_prop_hq.py -- props_in/ game/maps/camp/props/camp/ 2.5 --bake     (every model in a folder)
 #   blender -b --python prep_prop_hq.py -- --help                                       (every option)
 #
 # What it does to each model (.glb / .gltf / .fbx / .obj from Meshy):
