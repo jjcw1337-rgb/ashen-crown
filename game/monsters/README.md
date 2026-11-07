@@ -22,6 +22,7 @@ pose), pick one, start it (cooldown and warning) and land it; the loop, targetin
 |---|---|---|
 | `hrimgar/` | `ice_troll` | Hrimgar the Frostbound (boss): Glacial Slam, Frost Lances, Rime Roar, Avalanche |
 | `mossbeard/` | `hermit`, `spore_shroom` | Old Mossbeard (boss) and his Poison Mushrooms: Spore Bolt, Sprouting, Thorn Snare, Spore Step, Bramble Burst |
+| `king_grubb/` | `goblin_king`, `grabber` | King Grubb the Gilded (boss) and his Gold Grabbers: his fight (`hoard.gd`: his gold is his life), the goblins' bodies (`goblin.gd`), his model, tests. His fight needs no vault: without tunnels his grabbers come from round him, so any camp can have him (`hoard_test -- camp`) |
 | `bear/` | `bear` | The bear: its body (`bear.gd`, the Meshy bear on its own skeleton), model, tests |
 | `feral/` | `feral` | The Feral: its body (`feral.gd`, five models), tests |
 | `hollow_sloth/` | `sloth_fire`, `sloth_ice`, `sloth_storm` | The Hollow Sloths: body and brain (`hollow_sloth.gd`), three models, tests |
@@ -32,6 +33,6 @@ pose), pick one, start it (cooldown and warning) and land it; the loop, targetin
 Still to move:
 - the brains still in `scripts/enemy.gd`: the Feral's, the Fallen's and the bear's (`_feral_*`, `_skirm_*`,
   `_reaver_*`, `_stalk_*`, `_bear_*`), each into its folder;
-- King Grubb and his Gold Grabbers (`hoard.gd`, his part of `goblin.gd`), as a boss on `BossBrain`;
+- `goblin.gd`'s `imported_rig`, which every Meshy monster's body stands on: it goes to `game/systems/bodies/`;
 - the lion (`lion.gd`, which the Archer's wolf also stands on: it goes to `game/systems/bodies/`);
 - the Act II and III monsters still in `assets/models/monsters/` (ashen_king, dwarf) go with their cuts.

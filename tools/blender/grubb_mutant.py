@@ -1,5 +1,5 @@
 # King Grubb, the mutant: rigs the Meshy model (generated from a Meshy concept image) to the game's
-# goblin joints and exports assets/models/grubb_mutant.glb.
+# goblin joints and exports game/monsters/king_grubb/grubb_mutant.glb.
 #
 # Run inside Blender with the decimated model in the scene as "Mutant_Body" (facing +Y, feet on
 # z = 0, 2.2 m tall; it lives in ~/Documents/Blender/Game Factory/sources/grubb.blend). Weights come
@@ -13,7 +13,7 @@ from mathutils import Vector
 ROOT = os.environ.get("ASHEN_ROOT", "/Users/blaine/dev/ashen-crown")
 WORKSPACE = os.environ.get("GAME_FACTORY", os.path.expanduser("~/Documents/Blender/Game Factory"))
 OUT = WORKSPACE + "/exports/grubb_mutant.glb"
-GAME = ROOT + "/assets/models/grubb_mutant.glb"
+GAME = ROOT + "/game/monsters/king_grubb/grubb_mutant.glb"
 
 # joint heads in Blender space (front is +Y), parent, tail
 BONES = [
