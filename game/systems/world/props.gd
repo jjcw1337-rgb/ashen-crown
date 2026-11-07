@@ -2,7 +2,6 @@ class_name Props
 extends RefCounted
 ## Environment props and buildings (Act I: moorland camp style).
 
-
 # Palette for the moor camp.
 const WOOD := Color(0.30, 0.22, 0.15)
 const WOOD_D := Color(0.18, 0.13, 0.09)
@@ -506,7 +505,6 @@ void fragment(){
 
 static func wood() -> Material: return Mats.world(WOOD, WOOD_D, 0.9, 1.0, 0.0, MOSS, true, 0.0, Color.BLACK, 0.0, 1.0)
 static func wood_dark() -> Material: return Mats.world(WOOD_D, WOOD_D.darkened(0.3), 0.9, 1.0, 0.0, MOSS, true, 0.0, Color.BLACK, 0.0, 1.0)
-static func hide_m() -> Material: return Mats.world(HIDE, HIDE_D, 0.95, 0.8)
 static func stone() -> Material: return Mats.world(STONE, STONE_D, 0.92, 1.3, 0.55, MOSS)
 static func stone_clean() -> Material: return Mats.world(STONE.lightened(0.08), STONE_D, 0.9, 1.6, 0.15, MOSS)
 static func clay() -> Material: return Mats.world(CLAY, CLAY_D, 0.85, 2.0)
@@ -850,19 +848,6 @@ static func footprint(root: Node3D, shape: Variant, at := Vector3.ZERO) -> Node3
 	return root
 
 # ---------------------------------------------------------------- small props
-static func tripod_torch(parent: Node3D, pos: Vector3, shadow := false) -> Node3D:
-	var root := Models.N(parent, "torch", pos, Vector3(0, randf() * 360.0, 0))
-	var wm := wood_dark()
-	for i in 3:
-		var a := TAU * i / 3.0
-		Models.seg(root, Vector3(cos(a) * 0.38, 0, sin(a) * 0.38), Vector3(cos(a) * 0.04, 1.75, sin(a) * 0.04), 0.035, 0.028, wm, 6)
-	Models.seg(root, Vector3(0, 1.0, 0), Vector3(0, 1.9, 0), 0.03, 0.03, wm, 6)
-	Models.P(root, Geo.lathe([Vector2(0.03, 0), Vector2(0.11, 0.06), Vector2(0.14, 0.14), Vector2(0.12, 0.15), Vector2(0.0, 0.1)], 12, "tbowl"), iron(), Vector3(0, 1.88, 0))
-	for i in 3:
-		var a := TAU * i / 3.0 + 0.5
-		Models.seg(root, Vector3(cos(a) * 0.3, 1.2, sin(a) * 0.3), Vector3(cos(a + 2.1) * 0.3, 1.2, sin(a + 2.1) * 0.3), 0.012, 0.012, wm, 4)
-	fire(root, Vector3(0, 2.05, 0), 0.75, Color(1.0, 0.55, 0.22), true, shadow)
-	return footprint(root, 0.36)
 
 static func pot(parent: Node3D, pos: Vector3, kind: int, s: float = 1.0) -> Node3D:
 	var profiles := [
@@ -983,52 +968,6 @@ static func banner(parent: Node3D, pos: Vector3, col: Color, trim: Color) -> Nod
 	return footprint(root, 0.12)
 
 # ---------------------------------------------------------------- structures
-## Hide tent on crooked poles; door faces +Z.
-static func hide_tent(parent: Node3D, pos: Vector3, rot_y: float, w: float = 3.2, d: float = 3.6, h: float = 2.4) -> Node3D:
-	var root := Models.N(parent, "tent", pos, Vector3(0, rot_y, 0))
-	footprint(root, Vector2(w * 0.5, d * 0.5 + 0.1))
-	var wm := wood_dark()
-	var hm := Mats.world(HIDE, HIDE_D, 0.95, 0.7)
-	hm = hm.duplicate()
-	hm.set_shader_parameter("occlude", 1.0)
-	# two sloped sheets with ragged lower edges
-	for side in [1, -1]:
-		var pts := PackedVector2Array()
-		var slope := sqrt(pow(w * 0.5, 2) + h * h)
-		pts.append(Vector2(-d * 0.5 - 0.15, slope + 0.05))
-		pts.append(Vector2(d * 0.5 + 0.15, slope + 0.05))
-		var n := 9
-		for i in n + 1:
-			var t := 1.0 - float(i) / n
-			var x := lerpf(-d * 0.5 - 0.2, d * 0.5 + 0.2, t)
-			pts.append(Vector2(x, randf_range(-0.05, 0.25)))
-		var sheet := Geo.extrude(pts, 0.04)
-		var sh := Models.P(root, sheet, hm)
-		var ang := atan2(h, w * 0.5)
-		sh.basis = Basis(Vector3(0, 1, 0), PI * 0.5) * Basis(Vector3(0, 0, 1), 0)
-		sh.rotation = Vector3(0, PI * 0.5, 0)
-		sh.rotate_object_local(Vector3(1, 0, 0), 0.0)
-		# position sheet: lower edge at x = side * w/2, rising to ridge at centre
-		var t3 := Transform3D()
-		t3 = t3.rotated(Vector3(0, 0, 1), side * -(PI * 0.5 - ang))
-		t3 = Transform3D(Basis(Vector3(0, 1, 0), PI * 0.5), Vector3.ZERO) * t3
-		sh.transform = Transform3D(Basis(Vector3(0, 0, 1), side * (PI * 0.5 - ang)) * Basis(Vector3(0, 1, 0), PI * 0.5), Vector3(side * w * 0.5, 0.0, 0))
-	# back wall triangle
-	var back := PackedVector2Array([Vector2(-w * 0.5, 0), Vector2(w * 0.5, 0), Vector2(0, h)])
-	Models.P(root, Geo.extrude(back, 0.04, "tentback%.2f%.2f" % [w, h]), hm, Vector3(0, 0, -d * 0.5))
-	# dark interior
-	Models.P(root, Geo.box(w * 0.7, 0.02, d * 0.9), Mats.world(Color(0.06, 0.05, 0.04), Color(0.04, 0.03, 0.02), 1.0, 1.0, 0.0, MOSS, false), Vector3(0, 0.01, 0))
-	# crooked poles poking through ridge
-	for z in [-d * 0.5 - 0.1, d * 0.5 + 0.1]:
-		Models.seg(root, Vector3(-0.15, 0, z), Vector3(0.12, h + 0.55, z + randf_range(-0.1, 0.1)), 0.05, 0.035, wm, 6)
-		Models.seg(root, Vector3(0.18, 0, z), Vector3(-0.1, h + 0.45, z + randf_range(-0.1, 0.1)), 0.05, 0.035, wm, 6)
-	Models.seg(root, Vector3(0, h + 0.02, -d * 0.5 - 0.3), Vector3(0, h + 0.02, d * 0.5 + 0.3), 0.04, 0.04, wm, 6)
-	# guy ropes stakes
-	for side in [1, -1]:
-		for z in [-d * 0.4, d * 0.4]:
-			Models.seg(root, Vector3(side * (w * 0.5 + 0.5), 0, z), Vector3(side * (w * 0.5 + 0.55), 0.3, z), 0.03, 0.02, wm, 5)
-			Models.seg(root, Vector3(side * (w * 0.5 + 0.53), 0.25, z), Vector3(side * w * 0.3, h * 0.45, z), 0.006, 0.006, Mats.world(Color(0.5, 0.45, 0.35), Color(0.4, 0.35, 0.3), 0.9, 1.0, 0.0, MOSS, false), 4)
-	return root
 
 ## Open-sided forge shed with anvil, hearth and weapon rack.
 static func forge(parent: Node3D, pos: Vector3, rot_y: float) -> Node3D:
@@ -1145,50 +1084,6 @@ static func armory(parent: Node3D, pos: Vector3, rot_y: float) -> Node3D:
 	stand.add_child(hl)
 	hl.position = Vector3(0, 1.85, 0)
 	hl.rotation_degrees = Vector3(0, 180, 0)
-	return root
-
-## Striped gambling tent with a dice table.
-static func gamble_tent(parent: Node3D, pos: Vector3) -> Node3D:
-	var root := Models.N(parent, "gamble", pos)
-	var cm := ShaderMaterial.new()
-	cm.shader = Mats.shader("cloth")
-	cm.set_shader_parameter("albedo", Color(0.38, 0.1, 0.12))
-	cm.set_shader_parameter("trim", Color(0.55, 0.48, 0.3))
-	cm.set_shader_parameter("wave", 0.0)
-	cm.set_shader_parameter("stripes", 12.0)
-	var tent := Models.P(root, Geo.cyl(0.08, 2.4, 2.4, 16), cm, Vector3(0, 2.6, -0.6))
-	tent.name = "canopy"
-	Models.P(root, Geo.cyl(2.4, 2.4, 0.4, 16), cm, Vector3(0, 1.3, -0.6))
-	Models.seg(root, Vector3(0, 0, -0.6), Vector3(0, 4.2, -0.6), 0.06, 0.05, wood_dark(), 6)
-	for i in 8:
-		var a := TAU * i / 8.0
-		Models.seg(root, Vector3(cos(a) * 2.3, 0, -0.6 + sin(a) * 2.3), Vector3(cos(a) * 2.35, 1.5, -0.6 + sin(a) * 2.35), 0.05, 0.04, wood_dark(), 6)
-	var flag := banner(root, Vector3(0, 3.2, -0.6), Color(0.6, 0.45, 0.1), Color(0.3, 0.05, 0.05))
-	flag.scale = Vector3(0.6, 0.6, 0.6)
-	# table
-	var tbl := Models.N(root, "table", Vector3(0.0, 0, 1.2))
-	Models.P(tbl, Geo.cyl(0.7, 0.7, 0.07, 16), wood(), Vector3(0, 0.8, 0))
-	Models.P(tbl, Geo.cyl(0.08, 0.2, 0.8, 8), wood_dark(), Vector3(0, 0.4, 0))
-	var felt := Mats.world(Color(0.1, 0.25, 0.12), Color(0.06, 0.18, 0.08), 1.0, 3.0, 0.0, MOSS, false)
-	Models.P(tbl, Geo.cyl(0.6, 0.6, 0.01, 16), felt, Vector3(0, 0.84, 0))
-	var dm := Mats.mat(Color(0.9, 0.88, 0.8), 0.4)
-	for i in 3:
-		Models.P(tbl, Geo.box(0.07, 0.07, 0.07), dm, Vector3(-0.2 + i * 0.12, 0.88, 0.1 + (i % 2) * 0.1), Vector3(0, i * 25, 0))
-	for i in 3:
-		var gp := Models.gold_pile(60 + i * 40)
-		tbl.add_child(gp)
-		gp.position = Vector3(0.25, 0.85, -0.15 + i * 0.13)
-	var lantern := Models.N(tbl, "lantern", Vector3(-0.35, 0.85, -0.25))
-	Models.P(lantern, Geo.cyl(0.08, 0.1, 0.22, 6), iron(), Vector3(0, 0.11, 0))
-	var lg := OmniLight3D.new()
-	lg.light_color = Color(1.0, 0.7, 0.35)
-	lg.light_energy = 1.0
-	lg.omni_range = 4.0
-	lg.position = Vector3(0, 0.25, 0)
-	lg.add_to_group("flicker")
-	lg.set_meta("base", 1.0)
-	lantern.add_child(lg)
-	Models.P(lantern, Geo.sph(0.06, 8), Mats.glow(Color(1.0, 0.7, 0.3), 3.0), Vector3(0, 0.12, 0))
 	return root
 
 static func stash_chest(parent: Node3D, pos: Vector3, rot_y: float) -> Node3D:

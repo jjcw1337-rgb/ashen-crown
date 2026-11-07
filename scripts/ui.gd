@@ -1493,7 +1493,6 @@ const INV_EQUIP := {
 	"ring1": [Rect2(132, 192, 38, 38), "Ring"], "belt": [Rect2(185, 192, 84, 38), "Belt"], "ring2": [Rect2(284, 192, 38, 38), "Ring"]}
 static var _inv_frame_tex: Texture2D
 static var _ornate_cache := {}
-static var _frame_cache := {}
 
 ## Any panel in the game's own frame (Blaine: "no plain boxes"): the inventory's iron inside, its iron-and-gold frame
 ## round it (the corners at their own size, the edges tiled), at scale k of the painted art; `pad` past the trim.

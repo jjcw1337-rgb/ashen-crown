@@ -25,7 +25,6 @@ const JOIN_CLOSE := 900.0       # nobody new joins in the last 5 minutes
 const RESET_SECS := 20.0        # after the collapse, before the next round
 const LOBBY_MAX := 75.0         # the lobby: at most this long before the raid starts by itself
 const ADMIN_RESTART := 3.0      # an admin's "restart": seconds until the new round
-const PREP_SECS := 20.0         # (a "prep" countdown with the matchup shown: start_prep goes straight to the raid today)
 const EXTRACT_R := 4.0          # how close to an open portal the server accepts an extraction
 const OPEN_PORTALS := 2         # of the four candidate portals
 const PVP_MULT := 0.6           # a player's damage to another player
