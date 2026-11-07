@@ -5,7 +5,8 @@ extends SceneTree
 ## different skills make a foe Feverish; Fog of the Forgotten hops him back and speeds him in it; Transfusion soaks
 ## damage, cleanses and heals at most its cap; The Last Experiment runs both stages, bursts into a quarantine with its
 ## creature and ends, and bursts small when interrupted; old binds migrate; everything is cleared on a class change.
-## Prints [P] lines. Run with --fixed-fps 60.
+## Prints [P] lines. Its waits are game time (frame deltas summed), so it holds at any frame rate, with or without
+## --fixed-fps 60 and on a loaded machine.
 var g
 var fails := 0
 
@@ -19,9 +20,18 @@ func check(ok: bool, what: String) -> void:
 		fails += 1
 	print("[P] %s %s" % ["ok  " if ok else "FAIL", what])
 
+## Waits `n` frames and at least n/60 s of game time (the frames a 60 fps run would take).
 func frames(n: int) -> void:
-	for i in n:
+	var t := 0.0
+	var k := 0
+	while k < n or t < n / 60.0:
 		await process_frame
+		t += _dt()
+		k += 1
+
+## This frame's game time.
+func _dt() -> float:
+	return get_root().get_process_delta_time()
 
 func _foe(at: Vector3, still := true) -> Enemy:
 	var e: Enemy = g.spawn_enemy("zombie", at, 3)
@@ -64,10 +74,12 @@ func _show(h, s: String, e: String, d := {}) -> void:
 ## counted on his game (the server lets each player's through once per GAP), and on another player's screen each is
 ## a stand-in to strike that follows the count and goes when it breaks.
 func _pvp_objects(h: Hero, op: Vector3) -> void:
-	for i in 120:
+	var tw := 0.0
+	while tw < 3.0:
 		if h.daze_t <= 0.0 and h.atk_t < 0.0:
 			break
 		await process_frame        # (the stun that interrupted the last crank)
+		tw += _dt()
 	await _cast(h, "bloom", op)
 	var bloom: CorpseBloom = _sk(h, "bloom")
 	var bo: Dictionary = bloom.blooms[0] if not bloom.blooms.is_empty() else {}
@@ -91,8 +103,10 @@ func _pvp_objects(h: Hero, op: Vector3) -> void:
 	h.cds["experiment"] = 0.0
 	h.mana = h.max_mana
 	h.use_skill("experiment", op)
-	for i in 120:
+	var tc := 0.0
+	while tc < 3.0:
 		await process_frame
+		tc += _dt()
 		if h.atk_skill == "crank" and h.atk_t >= 0.0:
 			break
 	await frames(10)
@@ -185,12 +199,16 @@ func _cast(h, id: String, at: Vector3) -> Array:
 	h.mana = h.max_mana
 	var ok: bool = h.use_skill(id, at)
 	var seen := []
-	for i in 200:
+	var t := 0.0
+	var i := 0
+	while t < 8.0:      # (game seconds: the longest move, the vat slammed then cranked, takes about 3.4)
 		await process_frame
+		t += _dt()
+		i += 1
 		var a := _act(h)
 		if a != "" and not seen.has(a):
 			seen.append(a)
-		if h.atk_t < 0.0 and i > 5:
+		if h.atk_t < 0.0 and i > 6:
 			break
 	if not ok:
 		seen.append("<refused>")
@@ -231,12 +249,16 @@ func _run() -> void:
 	var cane_clips := []
 	for k in 3:
 		h.swipe_attack(e0.global_position)
-		for i in 90:
+		var ts := 0.0
+		var i := 0
+		while ts < 3.0:
 			await process_frame
+			ts += _dt()
+			i += 1
 			var a := _act(h)
 			if a != "" and not cane_clips.has(a):
 				cane_clips.append(a)
-			if h.atk_t < 0.0 and i > 3:
+			if h.atk_t < 0.0 and i > 4:
 				break
 	check(e0.life < l0, "his cane strikes (%.0f -> %.0f)" % [l0, e0.life])
 	check(cane_clips.size() == 3, "each blow of the combo has its own clip %s" % [cane_clips])
@@ -428,8 +450,10 @@ func _run() -> void:
 	h.cds["experiment"] = 0.0
 	h.mana = h.max_mana
 	h.use_skill("experiment", espot)
-	for i in 120:
+	var te := 0.0
+	while te < 3.0:
 		await process_frame
+		te += _dt()
 		if h.atk_skill == "crank":
 			break
 	await frames(20)
