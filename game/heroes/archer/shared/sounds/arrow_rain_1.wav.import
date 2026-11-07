@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://cg28v2my7ttdo"
-path="res://.godot/imported/arrow_rain_1.wav-1942416cfcd818dadd6bf1b6eb13e324.sample"
+path="res://.godot/imported/arrow_rain_1.wav-b26afd8faa8accc04d700c6101b29cb1.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/arrow_rain_1.wav"
-dest_files=["res://.godot/imported/arrow_rain_1.wav-1942416cfcd818dadd6bf1b6eb13e324.sample"]
+source_file="res://game/heroes/archer/shared/sounds/arrow_rain_1.wav"
+dest_files=["res://.godot/imported/arrow_rain_1.wav-b26afd8faa8accc04d700c6101b29cb1.sample"]
 
 [params]
 

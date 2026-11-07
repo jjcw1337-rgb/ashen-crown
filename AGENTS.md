@@ -38,7 +38,7 @@ goes there.
 | Screens | `game/ui/<screen>/` | `scripts/ui.gd`, `title_*.gd`, `class_stage.gd`, `mp_lobby_view.gd`, `run_ui.gd` |
 | Shared systems | `game/systems/<system>/` | most of `scripts/` |
 | Numbers and text | `data/codex/` (the Hero Codex editor writes it) | |
-| Sounds, icons | `assets/audio/sfx/`, `assets/textures/` | |
+| Sounds, icons | a skill's own sounds in its `sounds/` folder; shared ones in `assets/audio/sfx/`; icons in `assets/textures/` | every hero's but the Archer's sounds: `assets/audio/sfx/` |
 | Servers | `deploy/` | |
 | Pipeline, project-wide tests, CI | `tools/`, `.github/workflows/` | |
 

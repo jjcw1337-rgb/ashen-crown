@@ -1,6 +1,7 @@
 extends Node
 ## Sound effects and ambient music. Most effects are rendered offline (tools/audio/make_sfx.py) into
-## assets/audio/sfx/<name>_<take>.wav, listed in sfx_bank.gd: each play picks one of a sound's takes
+## assets/audio/sfx/<name>_<take>.wav, or a skill's own sounds/ folder when only that skill uses it (the folder is in
+## the bank), listed in sfx_bank.gd: each play picks one of a sound's takes
 ## (never the same twice in a row) and nudges its pitch. Anything not in the bank falls back to the
 ## old sounds synthesised here at start-up. play() is heard flat (the hero's own skills, UI);
 ## play_at() comes from a place in the world (hits, monsters), louder near the camera and panned.
@@ -76,8 +77,9 @@ func _ready() -> void:
 		return # A dedicated match has no listener; do not load its sound bank.
 	for nm in BANK.keys():
 		var takes := []
+		var dir: String = str(BANK[nm][3]) if BANK[nm].size() > 3 else BANK_DIR      # (a skill's own sounds/)
 		for k in int(BANK[nm][0]):
-			var path := "%s%s_%d.wav" % [BANK_DIR, nm, k]
+			var path := "%s%s_%d.wav" % [dir, nm, k]
 			if ResourceLoader.exists(path):
 				takes.append(load(path))
 		if not takes.is_empty():
