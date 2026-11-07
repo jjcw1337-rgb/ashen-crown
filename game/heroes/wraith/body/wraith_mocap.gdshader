@@ -1,8 +1,8 @@
-// The Wraith's body (Wraith._spectral): Meshy's own textures, lit like everything else, plus
+// The Wraith's body (WraithBody._spectral): Meshy's own textures, lit like everything else, plus
 //  - the cold cyan light in the robe's tears and its eyes (the bluest, brightest texels glow, breathing slowly)
 //  - a faint rim of spirit-light so it reads against dark ground
 //  - the robe fraying into mist toward the hem (he has no legs: the robe is a dark hollow inside): vertex colour R (0 at the hips, 1 at the hem,
-//    tools/blender/wraith/prep_wraith_mocap.py) against drifting 3D noise; what's eaten is cut away (no sorting
+//    game/heroes/wraith/build/prep_wraith_mocap.py) against drifting 3D noise; what's eaten is cut away (no sorting
 //    trouble on a skinned mesh) with a glowing edge, and the hem's mist particles fill in the softness
 shader_type spatial;
 render_mode cull_disabled;

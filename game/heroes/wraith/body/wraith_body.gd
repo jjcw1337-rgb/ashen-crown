@@ -1,8 +1,9 @@
-class_name Wraith
+class_name WraithBody
 extends RefCounted
-## The Wraith class: a hovering, hooded spirit in a tattered robe. It reuses the knight's
+## The Wraith's body: a hovering, hooded spirit in a tattered robe. It reuses the knight's
 ## skeleton and animation joints (so Anim.pose, weapon grips, co-op puppets and the cape
 ## physics all work unchanged) and swaps the body for its own mesh and spectral shader.
+## (The Warlock's body borrows its float, its spectral shader and its mist: Wraith's forwarders.)
 
 const ROBE := 0
 const HOOD := 1
@@ -15,15 +16,15 @@ static var _shader: Shader
 static func default_gear() -> Dictionary:
 	return {"robe": Color(0.045, 0.05, 0.07), "trim": Color(0.3, 0.8, 1.0), "spirit": Color(0.35, 0.85, 1.0)}
 
-## The Wraith's real body: the Meshy horned, chained wraith on the shared mocap system (tools/blender/wraith/
-## prep_wraith_mocap.py: Meshy library clips, root motion taken out, the robe on six cloth panels hA..hF).
-const MOCAP_GLB := "res://assets/models/wraith_mocap.glb"
+## The Wraith's real body: the Meshy horned, chained wraith on the shared mocap system (build/prep_wraith_mocap.py:
+## Meshy library clips, root motion taken out, the robe on six cloth panels hA..hF).
+const MOCAP_GLB := "res://game/heroes/wraith/body/wraith_mocap.glb"
 ## He floats: idle (or the claws-ready stance) blends into the "float" clips (the arms eased back, trailing) by
 ## this ground speed; the lean, bank, bob and the robe in the wind are KnightMocapRig's float mode.
 const FLOAT_SPEED := 1.4
 const HOVER := 0.16            # it floats this far off the ground
 
-## His skills' clips per attack style (WraithSkills; KnightMocapRig "shots"): [[attack progress, clip second], ...]
+## His skills' clips per attack style (his skills, skills/; KnightMocapRig "shots"): [[attack progress, clip second], ...]
 ## (KnightMocapRig.shot_time), so each blow lands on Anim.impact_at's frame at any attack speed.
 const SHOTS := {
 	"rend": {"style": "rend", "clip": "claw2", "keys": [[0.0, 0.45], [0.2, 0.7], [0.42, 0.83], [0.55, 1.02], [0.72, 1.33], [1.0, 1.7]]},
@@ -68,7 +69,7 @@ static func build_mocap(gear: Dictionary) -> Node3D:
 ## The Meshy textures under the spectral shader (MOCAP_SHADER): its own shading, the cyan light in the robe's tears
 ## and its eyes, a cold rim, and the robe, shins and feet fraying into mist toward the hem (vertex colour R).
 static func _spectral(r: Node3D, gear: Dictionary) -> void:
-	var sh: Shader = load("res://scripts/wraith_mocap.gdshader")
+	var sh: Shader = load("res://game/heroes/wraith/body/wraith_mocap.gdshader")
 	for mi in r.find_children("*", "MeshInstance3D", true, false):
 		var m := mi as MeshInstance3D
 		if m.mesh == null or m.get_parent() is BoneAttachment3D or m.has_meta("fx"):
