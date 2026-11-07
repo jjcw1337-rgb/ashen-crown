@@ -109,33 +109,12 @@ func _run() -> void:
 	boss.hoard.fx("intro")
 	await wait(0.1)
 	print("[S] grubb: start %.0f m from Grubb, mutters %d, volume at 60 m %.1f dB / 18 m %.1f dB, stops when the fight starts %s" % [start_d, heard, vols[0], vols[1], boss.hoard.voice == null or not boss.hoard.voice.playing])
-	# Act I: the camp's song in the camp; soft trees in the breeze in the Verdant Reach, not the wind
-	var beds := {}
-	for zn in ["town", "bg"]:
-		await g.load_zone(0, zn, "start")
-		beds[zn] = [sfx.music.stream == sfx.bank["music_town"][0], sfx.ambience.stream == sfx.bank["forest"][0], sfx.ambience.stream == sfx.bank["wind"][0] \
-				or (sfx.bank.has("night_forest") and sfx.ambience.stream == sfx.bank["night_forest"][0])]
-	print("[S] Act I beds: camp plays its song %s (wind, or the night bed after dark, %s); the Verdant Reach rustling trees %s" % [beds["town"][0], beds["town"][2], beds["bg"][1]])
-	# the New Character screen: its own theme while open, each hero's own sound when chosen, the camp's song after
-	await g.load_zone(0, "town", "start")
-	g.ui.open_class_picker()
+	# the Verdant Reach: soft trees in the breeze, not the wind (the camp's song and the New Character screen's pick
+	# sounds are archived with Enter World)
+	await g.load_zone(0, "bg", "start")
+	print("[S] the Verdant Reach rustling trees %s" % (sfx.ambience.stream == sfx.bank["forest"][0]))
+	# the multiplayer page plays the hero select's theme
+	await g.exit_to_title()
 	await process_frame
-	var theme: bool = sfx.music.stream == sfx.bank["music_select"][0]
-	var picks := {}
-	for c in ClassStage.CLASSES:
-		sfx.counts.clear()
-		g.ui.class_stage.pick_sound(c)
-		await create_timer(1.0).timeout
-		var got: Array = sfx.counts.keys()
-		got.sort()
-		picks[c] = got
-	var unique := true
-	for a in picks:
-		for b in picks:
-			if a != b and picks[a] == picks[b]:
-				unique = false
-	g.ui.show_title()
-	await process_frame
-	var back: bool = sfx.music.stream == sfx.bank["music_town"][0]
-	print("[S] hero select: theme %s, each hero its own sound %s %s, camp song again after %s" % [theme, unique and picks.values().all(func(v): return v.size() >= 2), picks, back])
+	print("[S] home: the hero select's theme %s" % (sfx.music.stream == sfx.bank["music_select"][0]))
 	quit()

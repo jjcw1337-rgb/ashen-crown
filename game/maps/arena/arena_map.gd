@@ -7,6 +7,11 @@ extends RefCounted
 ## placeholders there, the footprints the same).
 
 const ZONES := ["arena", "sandbox"]
+# (the map registry's declarations: game/maps/maps.gd)
+const INDOOR := true
+## The Battlegrounds' fight music, low and with no bed under it (the hall had the old synthesized drone)
+const MUSIC := {"song": "bg", "amb": "none", "db": -13.0}
+const LOADING_ART := ""
 const HALL := Rect2(-20.0, -20.0, 40.0, 40.0)
 const PILLAR_RING := 11.0            # the eight pillars' circle
 const TEAM_X := 12.0                 # where each Arena team starts (-x Ember, +x Frost), lined up along z
@@ -17,6 +22,9 @@ const STONE := {
 	"col_a": Color(0.08, 0.075, 0.07), "col_b": Color(0.1, 0.09, 0.08), "col_accent": Color(0.12, 0.13, 0.08),
 	"col_path": Color(0.42, 0.4, 0.37), "col_cliff": Color(0.12, 0.11, 0.1), "tiles": 1.0, "wet": 0.5,
 }
+
+static func title(zone: String) -> String:
+	return Sandbox.TITLE if zone == Sandbox.ZONE else "The Proving Arena"
 
 static func build(w: World) -> void:
 	w.flat_floor = true

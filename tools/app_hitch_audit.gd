@@ -67,22 +67,14 @@ func _run() -> void:
 	await frames(30)
 	var ui = g.ui
 	if not a.has("--monsters-only"):
-		await step("camp: 2 s after arriving", func(): await frames(1), 120)
+		await step("the hall: 2 s after arriving", func(): await frames(1), 120)
 		for pass_i in 2:
 			var tag := " (first)" if pass_i == 0 else " (again)"
 			for p in [["inventory", ui.inv_panel], ["character sheet", ui.char_panel], ["skills", ui.skills_panel],
-					["talents", ui.talent_panel], ["quests", ui.quest_panel]]:
+					["talents", ui.talent_panel]]:
 				await step("window " + str(p[0]) + tag, func(): ui.toggle(p[1]))
 				ui.close_all()
 				await frames(5)
-			await step("window waypoints" + tag, func(): ui.open_waypoints())
-			ui.close_all()
-			await frames(5)
-			await step("window stash" + tag, func(): ui.open_stash())
-			ui.close_all()
-			await frames(5)
-			await step("window bonfire" + tag, func(): ui.open_burn())
-			ui.close_all()
 			await frames(5)
 			await step("pause menu" + tag, func(): g.toggle_pause())
 			g.toggle_pause()
@@ -101,7 +93,7 @@ func _run() -> void:
 			for c in g.world.items_root.get_children():
 				c.queue_free()
 			await frames(5)
-		await step("travel camp -> Verdant Reach (whole load)", func(): await _zone("bg"), 1)
+		await step("travel the hall -> Verdant Reach (whole load)", func(): await _zone("bg"), 1)
 		await step("forest: 2 s after arriving", func(): await frames(1), 120)
 	else:
 		await _zone("bg")

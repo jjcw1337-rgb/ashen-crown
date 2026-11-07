@@ -91,7 +91,6 @@ func _run() -> void:
 		check(g.net.active and g.bg_refusal == "", "and still there after the server's gear check")
 		g.net.send_bg_admin("gates")
 		check(await until(func(): return str(g.bg_raid.get("state", "")) == "raid", 20.0), "Start the raid: the raid is on")
-		check(not g.stash_allowed(), "no stash in the raid")
 		g.net.send_bg_admin("portals")
 		check(await until(func(): return not (g.bg_raid.get("open", []) as Array).is_empty(), 20.0), "Open portals: they're open")
 		g.net.send_bg_admin("restart")

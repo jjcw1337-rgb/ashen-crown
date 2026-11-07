@@ -71,7 +71,7 @@ static func combat(en: Enemy, delta: float, hero: Node3D, to: Vector3, dist: flo
 					en.f_n += 1
 					en._face(to)
 					en.atk_dur = en.def["atk_time"]
-					en._begin_attack("")
+					en.begin_attack("")
 				return Vector3.ZERO
 			return en.go_to(delta, hero.global_position, en.speed)
 	# circling: anyone who ends up right on top of you claws anyway
@@ -95,3 +95,29 @@ static func pack_lunging(en: Enemy) -> bool:
 		if e != en and e.pack_id == en.pack_id and e.special == "feral_lunge" and e.atk_t >= 0.0:
 			return true
 	return false
+
+# ---------------------------------------------------------------- its move (Monsters.begin_move ... finish_move)
+## The lunge: a leap at the hero (Enemy.lunge_from -> lunge_to), roaring if its kind has a "lunge_sound".
+static func begin(en: Enemy, sp: String) -> void:
+	en.atk_style = sp
+	en.atk_dur = 0.9
+	en.begin_attack(sp)
+	if en.def.has("lunge_sound"):
+		Sfx.play_at(str(en.def["lunge_sound"]), en.global_position, -3.0, randf_range(0.92, 1.08))
+
+## Airborne from the launch to the landing: over whatever is in the way (other monsters too).
+static func during(en: Enemy, a: float, _hero: Node3D) -> void:
+	var want := en.lunge_from.lerp(en.lunge_to, smoothstep(0.18, 0.62, a)) - en.global_position
+	want.y = 0
+	en.global_position = en.game.world.move(en.global_position, want, en.body_r())
+
+## The claws come down where he lands.
+static func impact(en: Enemy, hero: Node3D, _dist: float) -> void:
+	if hero.global_position.distance_to(en.global_position) < en.radius + hero.radius + 1.1:
+		hero.take_hit(en.roll() * 1.5, en.global_position, "melee")
+
+## After the leap he backs off a few steps, watching, before coming in for the claws.
+static func finish(en: Enemy) -> void:
+	en.f_state = "back"
+	en.f_t = randf_range(0.7, 1.1)
+	en.atk_dur = en.def["atk_time"]

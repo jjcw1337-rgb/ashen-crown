@@ -70,7 +70,7 @@ func _run() -> void:
 	for c in KINDS:
 		check(ring.has(c), "%s is in the class picker" % c)
 		check(Data.CLASSES.has(c), "%s is a class (%s)" % [c, str(Data.CLASSES.get(c, {}).get("name", "?"))])
-		check(ClassStage.ACCENTS.has(c) and ClassStage.EMBLEMS.has(c) and ClassStage.SIGNATURE.has(c) and ClassStage.PICK_SOUND.has(c), "%s has its stand, signature and pick sound" % c)
+		check(ClassStage.ACCENTS.has(c) and ClassStage.SIGNATURE.has(c), "%s has its colour and signature" % c)
 	var n := ring.size()
 	var apart := true
 	for i in n:

@@ -350,7 +350,7 @@ func _run() -> void:
 	check(h.skill_cd("icharge") < 9.0 and h.skill_cost("icharge") < 12.0, "Stampede and Cheap Fury apply (cd %.1f, cost %.1f)" % [h.skill_cd("icharge"), h.skill_cost("icharge")])
 	# save/load and the class swap
 	g.save_game()
-	await g.travel(0, "town", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	h.set_class("knight")

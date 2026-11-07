@@ -13,6 +13,12 @@ extends RefCounted
 ## camps' encounters in CAMPS (swap the foes without touching the place).
 
 const TITLE := "The Verdant Reach"
+# (the map registry's declarations: game/maps/maps.gd)
+const ZONES := ["bg"]
+const INDOOR := false
+## Its fight music (take 18 of music_bg, Blaine's pick 2026-11-07), low, with no wind under it ("not the vibe anymore").
+const MUSIC := {"song": "bg", "amb": "none", "db": -13.0}
+const LOADING_ART := "res://assets/textures/ui/wp_bg_crypt_wide.jpg"
 const PROPS := "res://game/maps/verdant_reach/props/"
 const LANTERN_AT := Vector3(-0.6, 1.5, 0.0)     # where the lantern hangs on lantern_post.glb (its own frame)
 const HALF := 105.0
@@ -176,6 +182,36 @@ static func relief(x: float, z: float) -> float:
 		h = lerpf(h * 0.25, h, k)
 	h -= 1.5 * (1.0 - smoothstep(2.2, 5.5, stream_d(p)))
 	return h
+
+static func title(_zone: String) -> String:
+	return TITLE
+
+## A bright, lush, golden afternoon (Blaine, 2026-11-06: "brighter, more lively"), over Game._zone_env's outdoor base.
+static func light(g: Node, _zone: String) -> void:
+		# the Verdant Reach (BgForest): a bright, lush, golden afternoon (Blaine, 2026-11-06: "brighter, more lively").
+		# A warm low-ish sun, a deep blue sky, a fill strong enough that the shade under the oaks stays green,
+		# saturated colour, a golden haze between the trees, and glow enough for the fireflies, the mushrooms'
+		# light and the shrines (ForestLife) to bloom; the camps' coloured lights still read in the shade
+		g.sky_mat.sky_top_color = Color(0.26, 0.5, 0.86)
+		g.sky_mat.sky_horizon_color = Color(0.86, 0.86, 0.72)
+		g.sky_mat.ground_horizon_color = Color(0.5, 0.56, 0.38)
+		g.env.ambient_light_energy = 0.98
+		g.env.tonemap_exposure = 1.14
+		g.env.fog_light_color = Color(0.8, 0.78, 0.58)
+		g.env.fog_density = 0.0032
+		g.env.fog_sky_affect = 0.4
+		g.env.fog_height_density = 0.02
+		g.env.adjustment_saturation = 1.16
+		g.env.adjustment_contrast = 1.06
+		g.env.volumetric_fog_density = 0.009
+		g.env.volumetric_fog_albedo = Color(0.98, 0.9, 0.7)
+		g.env.volumetric_fog_emission = Color(0.02, 0.018, 0.01)
+		g.env.glow_intensity = 0.85
+		g.env.glow_bloom = 0.08
+		g.sun.light_color = Color(1.0, 0.92, 0.77)
+		g.sun.light_energy = 1.32
+		g.sun.shadow_blur = 2.0
+		g.hero.light.light_energy = 0.7
 
 static func build(w: World) -> void:
 	w.theme = {"name": "bg_forest"}

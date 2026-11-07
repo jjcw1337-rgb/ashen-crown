@@ -64,31 +64,12 @@ A = {
 	"monsters/hollow_sloth_fire.glb": ((4, 5, 3, 2, 3, 2, 4, 3), "P3", "T", "In-game testing", "Cinderhide: great elemental variant; flat normals (1.5 deg) -> generated."),
 	"monsters/hollow_sloth_ice.glb": ((4, 5, 3, 3, 3, 2, 4, 3), "P3", "T", "In-game testing", "Rimeclaw: weak normals (2.7 deg) -> generated."),
 	"monsters/hollow_sloth_storm.glb": ((4, 5, 3, 2, 3, 2, 4, 3), "P3", "T", "In-game testing", "Thundermaw: flat normals (1.3 deg) -> generated."),
-	# --- NPCs
-	"npc/grisold.glb": ((4, 4, 3, 3, 4, 2, 4, 3), "P4", "", "Inspected", "Blacksmith: good; baked idle/talk clips."),
-	"npc/hedda.glb": ((4, 4, 3, 3, 4, 2, 4, 3), "P4", "", "Inspected", "Armourer: good."),
-	"npc/maeve.glb": ((4, 4, 3, 3, 4, 2, 4, 3), "P4", "", "Inspected", "Hooded alchemist: good, very dark."),
-	"npc/roth.glb": ((4, 4, 3, 3, 4, 2, 4, 3), "P4", "", "Inspected", "Cloaked veteran: good."),
-	"npc/tarrow.glb": ((4, 4, 3, 3, 4, 2, 4, 3), "P4", "", "Inspected", "Gambler in red: good, the most colourful NPC."),
-	# --- camp
-	"camp/alchemy.glb": ((4, 4, 3, 3, 0, 2, 4, 3), "P4", "", "Inspected", "Alchemist's stall (herbs, potion shelves, cauldron): good."),
-	"camp/armory.glb": ((4, 4, 3, 3, 0, 2, 4, 3), "P4", "", "Inspected", "Armory stall: good."),
-	"camp/forge.glb": ((4, 4, 3, 3, 0, 2, 4, 3), "P4", "", "Inspected", "Forge: good."),
-	"camp/gate.glb": ((4, 4, 3, 3, 0, 2, 4, 3), "P4", "", "Inspected", "Twin-tower gate: good."),
-	"camp/bonfire.glb": ((4, 4, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Stone ring with spit and pot: good."),
+	# --- the Verdant Reach's camp props (they were the starting camp's)
 	"camp/cookfire.glb": ((4, 4, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Re-baked set piece: good."),
-	"camp/hide_rack.glb": ((4, 4, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Re-baked set piece: good."),
-	"camp/lantern.glb": ((4, 4, 4, 4, 0, 4, 4, 4), "P4", "", "In-game testing", "Hanging lantern (used all over the camp), re-made (stage 3): a Meshy concept (chain edited out so it hangs from its ring), image-to-3D, re-baked onto clean UVs by camp/rebake_prop.py (191 islands, was 507; 512 px, was 256; 2k tris). Was shattered glass shards and spikes."),
 	"camp/lantern_post.glb": ((4, 4, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Re-baked set piece: good."),
-	"camp/log_bench.glb": ((4, 3, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Re-baked set piece: fine."),
-	"camp/palisade.glb": ((4, 4, 4, 3, 0, 4, 4, 4), "P4", "", "In-game testing", "Camp palisade section (34 round the ring), re-made (stage 3): ten tight, mossy, unevenly sharpened logs in two rope bands (Meshy), re-baked onto clean UVs (415 islands, was 1,323; 1K, was 512; 5k tris) so the importer can make LODs. 4.2 m tall (was 3.6). Chunked for culling (stage 1)."),
 	"camp/runestone.glb": ((3, 3, 2, 3, 0, 2, 4, 4), "P3", "B", "In-game testing", "Rune stone: faceted shards, 512 px; reads fine with its glow. Chunked (stage 1)."),
-	"camp/stash_chest.glb": ((4, 4, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Re-baked set piece."),
-	"camp/supply_pile.glb": ((4, 4, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Re-baked set piece."),
 	"camp/tent.glb": ((4, 3, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Tent: fine."),
-	"camp/wagon.glb": ((4, 4, 3, 3, 0, 2, 4, 3), "P4", "", "Inspected", "Wagon: good."),
 	"camp/weapon_rack.glb": ((4, 4, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Re-baked set piece."),
-	"camp/woodpile.glb": ((4, 4, 3, 3, 0, 2, 4, 4), "P4", "", "Inspected", "Re-baked set piece."),
 	# --- fort
 	"fort/tower.glb": ((4, 4, 3, 2, 0, 2, 4, 3), "P3", "T", "In-game testing", "Watchtower: flat normals -> generated."),
 	# --- sloth lairs

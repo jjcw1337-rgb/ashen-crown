@@ -30,7 +30,6 @@ static func start(h: Hero, dir: Vector3) -> bool:
 	h.atk_t = -1.0            # a swing not yet landed is dropped
 	h.atk_skill = ""
 	h.end_channel()
-	h.stop_chop()
 	h.target = null
 	h.moving = false
 	h.path = PackedVector3Array()

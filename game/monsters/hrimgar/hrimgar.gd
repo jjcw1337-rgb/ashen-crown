@@ -69,7 +69,7 @@ func land(tgt: Hero) -> void:
 		"bb_slam":
 			e._fx("bb_slam")
 			for h in heroes_in(at, 6.0):
-				h.take_hit(e._roll() * 1.4, at, "freeze", "cold")
+				h.take_hit(e.roll() * 1.4, at, "freeze", "cold")
 		"bb_lances":
 			e._fx("bb_lances:%.2f,%.2f" % [aim_dir.x, aim_dir.z])
 			for h in e.game.all_heroes():
@@ -79,19 +79,19 @@ func land(tgt: Hero) -> void:
 				rel.y = 0
 				var along := rel.dot(aim_dir)
 				if along > 0.5 and along < 12.5 and (rel - aim_dir * along).length() < 1.4:
-					h.take_hit(e._roll() * 1.2, at, "chill", "cold")
+					h.take_hit(e.roll() * 1.2, at, "chill", "cold")
 		"bb_roar":
 			e._fx("bb_roar:%.2f,%.2f" % [aim_dir.x, aim_dir.z])
 			for h in heroes_in(at, 9.0):
 				var rel: Vector3 = h.global_position - at
 				rel.y = 0
 				if rel.length() < 0.1 or rel.normalized().dot(aim_dir) > cos(deg_to_rad(35.0)):
-					h.take_hit(e._roll() * 0.7, at, "chill", "cold")
+					h.take_hit(e.roll() * 0.7, at, "chill", "cold")
 		"bb_avalanche":
 			e._fx("bb_aval")
 			for p in marks:
 				for h in heroes_in(p, 2.2):
-					h.take_hit(e._roll() * 1.5, p, "quake", "cold")
+					h.take_hit(e.roll() * 1.5, p, "quake", "cold")
 		"bb_swing":
 			if tgt.global_position.distance_to(at) < 3.6:
-				tgt.take_hit(e._roll(), at, "sweep", "phys")
+				tgt.take_hit(e.roll(), at, "sweep", "phys")

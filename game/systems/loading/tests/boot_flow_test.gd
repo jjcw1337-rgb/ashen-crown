@@ -60,11 +60,12 @@ func _run() -> void:
 	check(g.world != null and g.cur_zone == Sandbox.ZONE, "Sandbox solo loads its own zone from the title")
 	await g.close_sandbox()
 	check(await _wait(_title_up, 30.0) and g.world == null, "leaving Sandbox returns to the title with no world")
-	# a character's world, and back
+	# a hero in a world the way the tools get one (Enter World and the camp are archived), and back
 	await g.start_game(false, "knight", "", "Bootflow")
-	check(g.world != null and g.cur_zone == "town" and g.playing, "Enter World builds the camp")
+	check(g.world != null and g.cur_zone == Sandbox.ZONE and g.sandbox == null and g.playing, "start_game stands the hero in the Arena's hall")
 	await g.exit_to_title()
 	check(await _wait(_title_up, 30.0) and g.world == null, "back to the title: the world is gone")
+	check(g.lobby_client != null and g.lobby_client.panel.visible, "and it's the multiplayer page")
 	g.delete_character(g.list_characters()[0]["id"]) if not g.list_characters().is_empty() else null
 	print("[BOOT] done, %d failed" % fails)
 	g.queue_free()

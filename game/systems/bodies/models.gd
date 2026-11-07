@@ -427,7 +427,6 @@ static func item_model(item: Dictionary) -> Node3D:
 		"potion": return potion(base["color"], item["base"])
 		"gold": return gold_pile(item.get("count", 50))
 		"material": return material(item["base"])
-		"resource": return Wood.item_model(item["base"])
 		"tool": return weapon(kind, sh, p)
 	return Node3D.new()
 

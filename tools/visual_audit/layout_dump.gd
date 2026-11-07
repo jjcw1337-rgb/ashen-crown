@@ -13,7 +13,7 @@ func _initialize():
 	w.oak_forest = true
 	w.living_grass = true
 	get_root().add_child(w)
-	w.build(0, zone, 4200 + (0 if zone == "town" else -7))      # (Game.load_zone's seeds)
+	w.build(0, zone, 4193)      # (Game.load_zone's seed)
 	var f := FileAccess.open(args[0], FileAccess.WRITE)
 	for it in w.interactables:
 		f.store_line("I %s %.2f %.2f" % [it.kind, it.global_position.x, it.global_position.z])

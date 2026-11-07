@@ -138,12 +138,9 @@ Touch points to coordinate:
 ### In progress
 
 - Claude-2 (2026-11-07): every hero is on the template with its skills on the server (merged in
-  `claude-2/game-folder`, going to staging after the full test run). Next: the net stack and the last shared scripts
-  out of `scripts/`, a shared `make_at` for skills that send a target, the skill and rite text pass (Blaine), then the
-  server refusing damage a player's game reports.
-- Claude-1 (2026-11-07): archiving Enter World and the starting camp (`game/maps/camp/`, the shops, quests, the waypoint,
-  the title's character screens, world co-op); then the world system out of `scripts/` into `game/systems/world/`
-  (`world.gd`, `props.gd`, `flora.gd`, `grass*.gd`, `birds.gd`, `weather.gd`, `grade.gd`, `geo.gd`, `inter.gd`).
+  `claude-2/game-folder`, going to staging after the full test run), and the skill and rite text is short (Blaine).
+  Next: the net stack and the last shared scripts out of `scripts/`, one way for skills to send a target the player
+  picked, then the server refusing damage a player's game reports.
 
 ## Cutting an old system
 
@@ -170,13 +167,14 @@ of three buckets:
   (`boat.gd`, `boat_ride.gd`, `boat_shop.gd`, `Data.BOATS`), the coast and the five islands (`coast.gd`, `isles.gd`,
   `isle_*.gd`, `height_grid.gd`, the Verdant Isle's `dwarf_game.gd`), Osric the shipwright, and their models and
   sounds, in `archive/sailing/`. The islands' monsters (the dinosaurs, trolls and dwarves) stay live as monsters.
+- **The starting camp and Enter World** ("we are dropping the enter world... archive all the world stuff"): the
+  title's cards, character list and class picker, the camp, the World-Tree Island and its people, the shops, auction,
+  bonfire, furnace, woodcutting, quests, the waypoint window, town portals, day and night, the shared stash, LAN and
+  Steam world co-op, in `archive/camp/`. The game opens on the multiplayer page. The character saves stay: the
+  Arena's survivors are characters.
 
 Each archived feature gets a short `REVIVE.md` listing the hooks it had in `game.gd`, `hero.gd`, `net.gd` and
 `ui.gd`, so it can be wired back in. Other features to keep this way need an admin's say-so: add them here.
-
-**The starting camp and Enter World go** (Blaine, 2026-11-06: "we are dropping the enter world... archive all the
-world stuff"). The game opens on the multiplayer page; the camp, the World-Tree Island, its people, the waypoint,
-quests and the character saves are archived.
 
 Order for each old system:
 1. Move what the live game borrows (below).
@@ -190,8 +188,6 @@ Do one old system per push.
 ### What the live game still borrows
 
 Known borrowings (2026-11-06; check again with `git grep` before each cut):
-- **The Verdant Reach** (`game/maps/verdant_reach/`) uses the camp's models: `game/maps/camp/props/camp/` tent and
-  runestone, `props/waypoint/` banner and crystal_rune.
 - **Monsters:** the forest camps use Act I monsters (zombies, the three Fallen, the Feral, the bear, the goblin
   guard).
   - All of them are built on `Goblin.imported_rig` (`goblin.gd`, King Grubb's file). It goes to `game/systems/bodies/`.
@@ -237,7 +233,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [x] Sailing archived whole: the ocean, boats, coast, five islands, Osric and their models and sounds in
   `archive/sailing/` with its REVIVE.md; the waypoint's coast and islands and the camp's way to the coast go
   (2026-11-06).
-- [x] Maps: the starting camp is `game/maps/camp/` (its builder, people, island, waypoint, models, tests; 2026-11-06).
+- [x] The starting camp and Enter World archived whole: `archive/camp/` with its REVIVE.md; `Game.start_game` stands
+  the tools' hero in the Arena's hall (2026-11-06).
 - [x] Maps: the Verdant Reach is `game/maps/verdant_reach/` (its builder, camps, life, the Battlegrounds' rules,
   the bosses' brains, props, tests; 2026-11-06).
 - [x] Maps: the Arena is `game/maps/arena/` (the template for every map: its map, props, modes, tests, README;

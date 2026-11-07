@@ -1,7 +1,7 @@
 class_name PoisonMushroom
 extends BossBrain
 ## A Poison Mushroom (kind spore_shroom): stands where it sprang up, breathing its cloud (POISON_R) every 1.5 s. Its
-## body is the Verdant Reach's fungus prop (Enemy.build_rig, the def's "prop"). Mossbeard's (his pack) wither
+## body is the Verdant Reach's fungus prop (Monsters.build_rig, the def's "prop"). Mossbeard's (his pack) wither
 ## when he dies; another camp's are just monsters.
 
 const POISON_R := 3.0
@@ -24,5 +24,5 @@ func update(delta: float, _hero: Node3D, _to: Vector3, _dist: float, _gone: bool
 			return Vector3.ZERO
 		e._fx("bb_cloud")
 		for h in heroes_in(e.global_position, POISON_R):
-			h.take_hit(e._roll(), e.global_position, "burn", "poison")
+			h.take_hit(e.roll(), e.global_position, "burn", "poison")
 	return Vector3.ZERO

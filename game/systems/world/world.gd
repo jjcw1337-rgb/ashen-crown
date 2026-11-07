@@ -6,9 +6,9 @@ const CELL := 1.0
 const MARGIN := 30.0
 
 var act := 0
-var oak_forest := false     # Act I's old forest (the camp, the Verdant Reach): its grass, leaf litter and birds
+var oak_forest := false     # the old forest (the Verdant Reach): its grass and leaf litter
 var living_grass := false   # the living 3D grass (Grass) in the zone's own colours where oak_forest is off
-var kind := "town"
+var kind := ""
 var level := 1
 var rng := RandomNumberGenerator.new()
 ## Graphics setting (0 Low .. 3 Ultra), set by the game before each area is built.
@@ -25,30 +25,6 @@ var hill_noise := FastNoiseLite.new()
 var flat_floor := false
 ## Extra ground shaping for a zone (the Verdant Reach's ridges and stream): f(x, z) -> metres added to the height.
 var ground_fn := Callable()
-## The camp as an island adrift in space (ForestCamp.ISLAND, camp_island.gd): nothing grows or stands past its edge,
-## a jagged circle round island_c of radius island_r (0 = no island).
-var island_c := Vector2.ZERO
-var island_r := 0.0
-
-## Past the island's ragged edge (with a margin, m)?
-func off_island(x: float, z: float, margin := 0.0) -> bool:
-	if island_r <= 0.0:
-		return false
-	return Vector2(x, z).distance_to(island_c) > island_edge(x, z) - margin
-
-## How far the island's edge is from its centre in the direction of (x, z): a circle broken by bays and spurs.
-func island_edge(x: float, z: float) -> float:
-	var a := atan2(z - island_c.y, x - island_c.x)
-	return island_r + sin(a * 3.0 + 0.7) * 0.6 + sin(a * 7.0 + 2.1) * 0.35 + sin(a * 13.0) * 0.2
-
-## A ground vertex at (x, z) height y, drawn in onto the island's edge if it lies past it (terrain_patch's clip).
-func island_clip(x: float, z: float, y: float) -> Vector3:
-	var d := Vector2(x, z) - island_c
-	var e := island_edge(x, z)
-	if d.length() <= e:
-		return Vector3(x, y, z)
-	var q := island_c + d.normalized() * e
-	return Vector3(q.x, y - 0.25, q.y)
 var dirt_blobs: Array = []     # [Vector2 pos, radius, strength]
 var cobble_blobs: Array = []
 var dirt_lines: Array = []     # [Vector2 a, Vector2 b, width]
@@ -305,7 +281,7 @@ func add_box(p: Vector3, half: Vector2, yaw: float) -> void:
 	obstacles.append([Vector2(p.x, p.z), -1.0, half, yaw])
 	_bucket(obstacles.size() - 1, Vector2(p.x, p.z), half.length())
 
-## The index of the circle footprint centred at `c` (within 5 cm), or -1. Harvest finds its trees' this way.
+## The index of the circle footprint centred at `c` (within 5 cm), or -1.
 func obstacle_at(c: Vector2) -> int:
 	for i in _near(c):
 		var o: Array = obstacles[i]
@@ -686,8 +662,6 @@ func _scatter_grass(count: int, colors: Dictionary, height: float, outside := tr
 ## Grass (grass.gd) asks the zone three things about a spot. How much grass can grow (0 bare .. 1 full):
 ## none on the road or under solid things, thinning toward the edges of paths.
 func grass_ground(x: float, z: float) -> float:
-	if island_r > 0.0 and off_island(x, z, 0.6):
-		return 0.0
 	var dm := dirt_at(x, z) + cobble_at(x, z)
 	if dm > 0.55:
 		return 0.0
@@ -714,8 +688,7 @@ func grass_biome(x: float, z: float) -> Dictionary:
 			trees += int(_tree_grid.get(Vector2i(cx + i, cz + j), 0))
 	var wood := clampf((trees - 0.5) / 3.0, 0.0, 1.0)
 	var dry := smoothstep(0.2, 0.55, _grass_dry.get_noise_2d(x, z)) * 0.7
-	var trod := 0.6 if kind == "town" else 0.0
-	return {"meadow": maxf(0.1, 1.0 - verge * 0.8 - wood * 0.75 - dry * 0.7 - trod * 0.6), "verge": verge, "woodland": wood, "dry": dry, "trampled": trod}
+	return {"meadow": maxf(0.1, 1.0 - verge * 0.8 - wood * 0.75 - dry * 0.7), "verge": verge, "woodland": wood, "dry": dry, "trampled": 0.0}
 
 ## Ferns gather in the shade along the forest edges and between trees.
 func _scatter_ferns(count: int) -> void:
@@ -733,8 +706,6 @@ func _scatter_ferns(count: int) -> void:
 			continue
 		var inside := bounds.grow(-1.5).has_point(Vector2(x, z))
 		if inside and (is_blocked(x, z) or rng.randf() < 0.6):
-			continue
-		if off_island(x, z, 1.0):
 			continue
 		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * rng.randf_range(0.7, 1.35)), Vector3(x, height_at(x, z) - 0.03, z)))
 	var parts := [[], []]
@@ -786,28 +757,6 @@ func _place(node: Node3D, p: Vector3) -> Node3D:
 	node.position = Vector3(p.x, height_at(p.x, p.z), p.z)
 	return node
 
-## A waypoint stone (Data.WAYPOINT_ACTS point `id`) at `p`: the stone, its four pillar colliders, and
-## where travellers arrive by it ("waypoint_<id>", 3 m in front; the zone's first stone is also
-## "waypoint"). Any zone builder can place several. `cobble` paves the ground round it.
-func add_waypoint(id: String, p: Vector3, cobble := false, grand := false) -> Inter:
-	# `grand`: the camp's large waypoint (WaypointGrand, blockout on test-waypoint) with its own colliders
-	var model: Node3D = WaypointGrand.build() if grand else Props.waypoint(null, Vector3.ZERO)
-	var it := _inter("waypoint", "Waypoint", Vector3(p.x, 0, p.z), 3.4 if grand else 2.4, model, {"wp": id})
-	if grand:
-		for s in WaypointGrand.SOLIDS:
-			add_circle(Vector3(p.x + s[0], 0, p.z + s[1]), s[2])
-	else:
-		for i in 4:
-			var a := TAU * i / 4.0 + PI * 0.25
-			add_circle(Vector3(p.x + cos(a) * 1.85, 0, p.z + sin(a) * 1.85), 0.3)
-	var arrive := Vector3(p.x, 0, p.z + (3.2 if grand else 3.0))
-	spawns["waypoint_" + id] = arrive
-	if not spawns.has("waypoint"):
-		spawns["waypoint"] = arrive
-	if cobble:
-		cobble_blobs.append([Vector2(p.x, p.z), 3.0, 0.8])
-	return it
-
 func _inter(kind_s: String, label_s: String, p: Vector3, radius: float, model: Node3D = null, data := {}) -> Inter:
 	var it := Inter.new()
 	it.kind = kind_s
@@ -839,10 +788,7 @@ func build(act_i: int, kind_s: String, seed_v: int) -> void:
 	if custom_zones.has(kind):
 		(custom_zones[kind] as Callable).call(self)
 		return
-	match kind:
-		Battlegrounds.ZONE: Battlegrounds.build(self)
-		Sandbox.ZONE, "arena": ArenaMap.build(self)
-		"town": ForestCamp.build(self)
+	Maps.build(self)      # (the map that builds this zone: game/maps/maps.gd)
 	# the Meshy pieces that keep their glb's own material dither away round the hero too, like every code-built prop
 	Props.see_through(self)
 	Props.shadow_twins(self)

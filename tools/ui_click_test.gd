@@ -35,8 +35,6 @@ func _click(p: Vector2, btn := MOUSE_BUTTON_LEFT) -> void:
 func _drawn_at(c: Node, pt: Vector2) -> String:
 	if c is CanvasItem and not (c as CanvasItem).visible:
 		return ""
-	if c == g.ui.plates:
-		return ""                 # the nameplates over the town's people are click-through
 	var kids := c.get_children()
 	kids.reverse()
 	for k in kids:
@@ -65,7 +63,7 @@ func _run() -> void:
 	await wait(20)
 	var h = g.hero
 	var panels := {"inventory": g.ui.inv_panel, "character": g.ui.char_panel, "skills": g.ui.skills_panel,
-		"talents": g.ui.talent_panel, "stash": g.ui.stash_panel, "waypoints": g.ui.wp_panel, "merchant": g.ui.shop_panel}
+		"talents": g.ui.talent_panel}
 	var bad := 0
 	for nm: String in panels:
 		var p: Control = panels[nm]
@@ -89,16 +87,11 @@ func _run() -> void:
 				g.lmb_held = false
 		bad += leaks.size()
 		print("[U] ", nm, " rect=", Vector2i(r.size), " leaks=", leaks.size(), " ", leaks.slice(0, 6))
-	# a dialog (an NPC's) and the enchanting window (the pause menu stops all play input itself)
-	for nm: String in ["dialog", "enchant"]:
+	# a dialog (the pause menu stops all play input itself)
+	for nm: String in ["dialog"]:
 		g.ui.close_all()
-		var p: Control
-		if nm == "dialog":
-			g.ui.open_dialog("Varro", "Fight for me.", [["Later", func(): pass]])
-			p = g.ui.dialog_panel
-		elif nm == "enchant":
-			p = g.ui.ench_panel
-			p.visible = true
+		g.ui.open_dialog("Varro", "Fight for me.", [["Later", func(): pass]])
+		var p: Control = g.ui.dialog_panel
 		await wait(4)
 		var r: Rect2 = p.get_global_rect()
 		var n := 0
@@ -107,10 +100,7 @@ func _run() -> void:
 				var pt := r.position + r.size * Vector2(ix / 8.0, iy / 8.0)
 				if not p.visible:
 					# (a click on its button or its close shut it, as it should: open it again for the next point)
-					if nm == "dialog":
-						g.ui.open_dialog("Varro", "Fight for me.", [["Later", func(): pass]])
-					else:
-						p.visible = true
+					g.ui.open_dialog("Varro", "Fight for me.", [["Later", func(): pass]])
 					await wait(2)
 				await _click(pt)
 				n += int(reached)

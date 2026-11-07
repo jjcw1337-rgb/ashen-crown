@@ -129,7 +129,7 @@ static func upgrade(it):
 		return it
 	if it.has("unique") and Data.UNIQUES.has(it["unique"]):
 		var u := make_unique(it["unique"])
-		for k in ["ench", "temper", "count", "boost", "uid"]:     # ("boost": the raid server's admin-gear mark; "uid": SharedStash)
+		for k in ["ench", "temper", "count", "boost", "uid"]:     # ("boost": the raid server's admin-gear mark; "uid": the Arena's item stakes, lobby_stakes.gd)
 			if it.has(k):
 				u[k] = it[k]
 		if float(it.get("power", 1.0)) > 1.0:

@@ -1,10 +1,10 @@
 extends SceneTree
 ## Screen isolation (UI's layers: hud < windows < menus < modals < top): each screen shows only what belongs to it.
 ##   godot --headless --path . -s tools/screen_test.gd
-## On the title nothing of the game shows (no HUD, quest tracker, boss bar, nameplates) and no key reaches the game;
-## the co-op and Battlegrounds screens open over the title (dimmed behind them, its cards unclickable), and the
-## Battlegrounds' "Enter" asks in a dialog that is on top and takes the click; a message shows over every screen; in
-## play the HUD is back and the title gone. Runs on its own character folder, never the player's.
+## On the title (the multiplayer page over the 3D stage) nothing of the game shows (no HUD, boss bar, corner map) and
+## no key reaches the game; nothing of Enter World is left on it (its cards, character list, class picker, LAN); a
+## message shows over every screen; in play the HUD is back and the title gone. Runs on its own character folder,
+## never the player's.
 var g
 var fails := 0
 const DIR := "user://test_screen_characters/"
@@ -61,8 +61,7 @@ func _run() -> void:
 	g.char_id = ""
 	ui.show_title()
 	await frames(3)
-	var hud_bits := {"the HUD": ui.hud, "the quest tracker": ui.quest_tracker, "the boss bar": ui.boss_bar_box,
-		"the nameplates": ui.plates, "the corner map": ui.minimap, "the action bar": ui.action_bar}
+	var hud_bits := {"the HUD": ui.hud, "the boss bar": ui.boss_bar_box, "the corner map": ui.minimap, "the action bar": ui.action_bar}
 	for nm in hud_bits:
 		check(not (hud_bits[nm] as CanvasItem).is_visible_in_tree(), "title: %s doesn't show" % nm)
 	check(ui.title_panel.is_visible_in_tree(), "title: the title shows")
@@ -77,13 +76,14 @@ func _run() -> void:
 	# a message shows over the title
 	ui.message("hello")
 	check(ui.msg_lbl.is_visible_in_tree() and ui.top.get_index() > ui.menus.get_index(), "title: a message is drawn over it")
-	# the home screen is the multiplayer page (Blaine, 2026-11-06): no title, Enter World or characters
-	var home = ui.home
+	# the home screen is the multiplayer page (Blaine, 2026-11-06): Enter World and the camp are archived
 	check(g.lobby_client.panel.visible and g.lobby_client.selected_mode == "battlegrounds", "home: the lobby browser, on Battlegrounds")
-	check(not home.is_visible_in_tree() and not ui.title_panel.find_child("title_head", true, false).is_visible_in_tree(), "home: no title, Enter World or character list")
+	var cut_bits := ["title_head", "title_row", "continue", "newchar", "characters", "host", "join"]
+	check(cut_bits.all(func(n): return ui.title_panel.find_child(n, true, false) == null), "home: no title, Enter World, character list or co-op buttons")
+	check(ui.title_panel.get_children().all(func(c): return c == ui.title_stage or str(c.name) in ["build_rev", "env_badge"]), "home: the title is only the 3D stage and the build's labels")
 	var quit_b: Button = g.lobby_client.panel.find_child("back", true, false)
 	check(quit_b != null and quit_b.text == "Quit" and _in_front(quit_b), "home: its top-right button is Quit")
-	check(not g.lobby_client.lan_row.visible, "home: no LAN (it hosted a character's world)")
+	check(g.lobby_client.panel.find_child("lan_row", true, false) == null, "home: no LAN (it hosted a character's world)")
 	ui.open_battlegrounds()
 	await frames(2)
 	check(g.lobby_client.panel.visible and g.lobby_client.selected_mode == "battlegrounds", "Battlegrounds: opens the lobby browser on Battlegrounds")
@@ -93,11 +93,8 @@ func _run() -> void:
 	await g.start_game(false)
 	await frames(10)
 	check(ui.hud.is_visible_in_tree() and not ui.title_panel.visible, "play: the HUD is back, the title gone")
+	check(g.cur_zone == Sandbox.ZONE and g.sandbox == null and g.world != null, "play: start_game stands the hero in the Arena's hall (no camp)")
 	check(ui.dialog_panel.get_parent() == ui.modals and ui.pause_panel.get_parent() == ui.modals and ui.modals.get_index() > ui.windows.get_index(), "play: dialogs and the pause menu are over the windows")
-	# a new character starts with an empty stash (not the last one's)
-	g.hero.stash[0] = Items.make("short_sword")
-	g.hero.new_character()
-	check(g.hero.stash.filter(func(x): return x != null).is_empty(), "a new character's stash is empty")
 	# a save in a raid is marked in_raid (Act I is the only act)
 	g.char_id = g.new_char_id()
 	g.char_name = "Raider"

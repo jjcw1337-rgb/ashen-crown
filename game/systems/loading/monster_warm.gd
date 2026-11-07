@@ -51,7 +51,7 @@ static func run(g) -> void:
 	var bodies: Array = []
 	for i in todo.size():
 		_done[todo[i]] = true
-		var r := Enemy.build_rig(str(todo[i]))
+		var r := Monsters.build_rig(str(todo[i]))
 		if r == null:
 			continue
 		g.world.fx_root.add_child(r)

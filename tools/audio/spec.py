@@ -231,32 +231,30 @@ SPEC = [
          prompt="a jungle troll shaman's guttural hissing chant ending in a wet spit of poison" + DRY),
     dict(name="lion_roar", src="eleven", n=4, dur=2.5, hit=0, label="a lion roaring",
          prompt="a big male lion roaring loudly and angrily, close" + DRY),
-    # the camp's song: first an eerie piano (Blaine; takes 0-2), then soft and uplifting (takes 3-11), then for
-    # Act I's dark forest (takes 12-14); jj picked take 13, the forest sanctuary
-    dict(name="music_town", src="eleven", n=15, dur=30.0, hit=0, loop=True, label="dark forest sanctuary music",
-         prompt="dark forest sanctuary music for a dark fantasy game: mysterious but warm, soft harp arpeggios over a low "
-                "droning string pad with a lonely wooden flute, ancient woods at dusk, a hopeful refuge, background music loop, no drums"),
-    # the New Character screen's theme: music_town's take 14 (the haunting viola over a hummed choir), not generated
-    # again (n=0); build_sfx.py with {"music_select": [".../candidates/music_town/14.mp3"]}
+    # the home screen's theme: take 14 of the camp's song (music_town, archived with the camp: archive/camp/; the
+    # haunting viola over a hummed choir), not generated again (n=0); build_sfx.py with
+    # {"music_select": [".../candidates/music_town/14.mp3"]}
     dict(name="music_select", src="eleven", n=0, dur=30.0, hit=0, loop=True, label="haunting hero-select music",
          prompt="the haunting but gentle song of a camp in a forsaken dark forest, dark fantasy: a slow solo viola and soft "
                 "lute over a low hummed choir, sombre and tender, background music loop, no drums"),
     # the Battlegrounds' fighting music (jj, 2026-11-07: "throw me some uplifting music while i fight"): three takes
     # for jj to pick from; the forest bed plays under it
-    dict(name="music_bg", src="eleven", n=18, dur=30.0, hit=0, loop=True, label="uplifting battle music",
+    dict(name="music_bg", src="eleven", n=21, dur=30.0, hit=0, loop=True, label="uplifting battle music",
          # (takes 0-2 the first prompt, 3-5 brighter folk, 6-8 a heroic anthem with choir, 9-11 too light; Blaine: "somewhere
          # in between church choir and baby music", takes 12-14 from this)
-         # (12-14 energetic combat; Blaine: "as good as a human home base or a dwarf base", takes 15-17 from this one)
-         prompt="warm proud feel-good medieval fantasy town music: a sturdy marching snare and frame drum, warm french horns "
-                "and low brass, a confident singable fiddle and lute melody, hearty and heroic but relaxed, like a mountain "
-                "kingdom's great hall, mid tempo, no choir, seamless background music loop"),
+         # (15-17 a warm great hall; Blaine: "redo based on 12 again", takes 18-20 from 12's prompt, with a lift)
+         prompt="energetic uplifting action adventure combat music for a fantasy game: punchy drums, driving staccato "
+                "strings and cello ostinato, a confident catchy brass melody that lifts and soars, determined, upbeat and "
+                "feel-good, no choir, not childish, seamless background music loop"),
+    # the multiplayer page's music (Blaine, 2026-11-07: "a more elevator version of [the Battlegrounds' take 18] for the
+    # home screen"): the same feel, calm
+    dict(name="music_home", src="eleven", n=3, dur=30.0, hit=0, loop=True, label="calm home screen music",
+         prompt="calm relaxed easy-listening version of uplifting fantasy adventure music: soft pizzicato strings and a "
+                "gentle cello line, warm muted brass pads, light brushed percussion, a hopeful laid-back melody, smooth "
+                "and pleasant lounge feel, seamless background music loop"),
     dict(name="wind", src="eleven", n=3, dur=8.0, hit=0, loop=True, label="wind blowing",
          prompt="cold wind blowing across an empty moor at night, steady, no music"),
-    # the camp's bonfire takes what you throw in (gone for good), and a pick-up click in the inventory
-    dict(name="burn_item", src="eleven", n=4, dur=1.8, hit=0, label="something thrown into a fire",
-         prompt="an object thrown into a roaring campfire, a soft thump then a burst of flames flaring up and crackling sparks" + DRY),
-    dict(name="bonfire_open", src="eleven", n=3, dur=1.6, hit=0, label="the camp's bonfire roaring up when clicked",
-         prompt="a campfire roaring up, a deep soft whoosh of flames swelling then settling into warm crackling" + DRY),
+    # a pick-up click in the inventory
     # Halvar at his anvil (forest_camp.gd / Inter: each hammer blow on the metal); Kenney metal hits layered with a ring
     dict(name="anvil", src="mix", n=5, dur=1.0, hit=0, label="a hammer striking hot metal on an anvil"),
     # the Battlegrounds antechamber's stash chest (jj, 2026-11-02): opening it before a raid is a big deal (and costs
@@ -293,10 +291,6 @@ SPEC = [
     dict(name="forest", src="eleven", n=4, dur=14.0, hit=0, loop=True, label="trees rustling in a breeze",
          prompt="a soft gentle breeze through the leaves of an old forest, branches swaying and leaves rustling softly, "
                 "calm and peaceful, steady and even, no birds, no music"),
-    # day and night (DayNight): the camp's bed after dark, jj picks one of three
-    dict(name="night_forest", src="eleven", n=3, dur=16.0, hit=0, loop=True, label="the old forest at night",
-         prompt="an old forest at night, crickets chirping softly in the grass, a distant owl hooting now and then, "
-                "a faint breeze in the leaves, calm and dark, steady and even, no music, no voices"),
     # jj: "those choices are bad": a second round, four moods as field recordings, the best take of each sent
     dict(name="night_deep", src="eleven", n=4, dur=22.0, hit=0, loop=True, label="deep old woods at night",
          prompt="high quality stereo field recording deep inside an ancient forest at midnight, cold night wind "
@@ -379,14 +373,6 @@ SPEC += [
 # Thunderstep (jj, 2026-11-04; the archer's R in place of Storm Snare; ThunderstepFx): the vault, the sigil charging,
 # its detonation
 SPEC += [
-    # the camp's life (jj, 2026-11-04): Halvar quenching the work in his bucket (SmithForge), the ravens on the roofs
-    # (CampRavens: a caw, wings beating as one goes up)
-    dict(name="quench", src="eleven", n=4, dur=1.6, hit=0, label="red-hot iron plunged into a bucket of water",
-         prompt="a blacksmith plunging red-hot iron into a wooden bucket of water, a violent sizzling hiss and bubbling steam" + DRY),
-    dict(name="raven_caw", src="eleven", n=5, dur=1.4, hit=0, label="a raven calling",
-         prompt="a single common raven calling from a rooftop, two or three deep hoarse croaking caws, outdoors" + DRY),
-    dict(name="raven_wings", src="eleven", n=4, dur=1.2, hit=0, label="a raven taking off",
-         prompt="a large black bird taking off from a roof, a few heavy wing beats and the flutter of feathers, close" + DRY),
     dict(name="thunder_vault", src="eleven", n=4, dur=0.9, hit=0, label="a leap away crackling with electricity",
          prompt="a quick athletic leap with a sharp electric crackle and a whoosh, static discharge snapping in the air" + DRY),
     dict(name="sigil_charge", src="eleven", n=4, dur=1.2, hit=0.85, label="a lightning rune charging up",

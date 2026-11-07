@@ -91,3 +91,66 @@ static func stalker(en: Enemy, delta: float, hero: Node3D, to: Vector3, dist: fl
 	en.fv_weave += delta * 2.6
 	var side := Vector3(-to.z, 0, to.x).normalized() if to.length() > 0.05 else Vector3.ZERO
 	return v + side * sin(en.fv_weave) * en.speed * 0.3 * en.fv_side
+
+# ---------------------------------------------------------------- their moves (Monsters.begin_move ... finish_move)
+## Each signature attack moves the body along its own path (no snapping into range).
+static func begin(en: Enemy, sp: String) -> void:
+	en.atk_style = sp
+	en.atk_dur = en.def["atk_time"]
+	en.tele_done = false
+	en.begin_attack(sp)
+	path(en, sp)
+
+static func during(en: Enemy, a: float, hero: Node3D) -> void:
+	match en.special:
+		"skirm_lunge":
+			if a < 0.3:
+				en._face(hero.global_position - en.global_position)
+		"reaver_cleave":
+			if a < 0.15:
+				en._face(hero.global_position - en.global_position)
+			elif not en.tele_done:
+				en.tele_done = true
+				en._fx("reaver_tele")
+		"stalk_hook":
+			if a > 0.22 and a < 0.45:
+				en._face(hero.global_position - en.global_position)
+
+static func impact(en: Enemy, hero: Node3D, _dist: float) -> void:
+	var fwd := -en.rig.global_transform.basis.z
+	match en.special:
+		"skirm_lunge", "stalk_hook":
+			# one blow, on the target, only if it is still there and in front
+			if is_instance_valid(hero) and not hero.dead:
+				var th: Vector3 = hero.global_position - en.global_position
+				th.y = 0
+				var reach: float = en.radius + hero.radius + (1.0 if en.special == "skirm_lunge" else 1.1)
+				if th.length() <= reach and fwd.dot(th.normalized()) > (0.3 if en.special == "skirm_lunge" else 0.2):
+					hero.take_hit(en.roll(), en.global_position, "melee")
+		"reaver_cleave":
+			# everyone in the 120-degree arc out to 2.6 m is caught
+			for h in en.game.all_heroes():
+				if h.dead:
+					continue
+				var tc: Vector3 = h.global_position - en.global_position
+				tc.y = 0
+				if tc.length() < 2.6 + en.radius * 0.5 and (tc.length() < 0.3 or fwd.dot(tc.normalized()) > 0.5):
+					h.take_hit(en.roll(), en.global_position, "melee")
+			en.game.add_shake(0.15)
+
+## Committed: a real opening after each move.
+static func finish(en: Enemy) -> void:
+	match en.special:
+		"skirm_lunge":
+			en.cooldown = randf_range(1.3, 1.7)
+			en.f_state = "recover"
+			en.f_t = randf_range(0.45, 0.65)
+		"reaver_cleave":
+			en.cooldown = randf_range(1.1, 1.5)
+			en.f_state = "rest"
+			en.f_t = 1.0
+			en.rv_spd = en.speed * 0.3
+		"stalk_hook":
+			en.cooldown = randf_range(1.6, 2.2)
+			en.f_t = 1.0
+			en.fv_side = -en.fv_side if randf() < 0.5 else en.fv_side

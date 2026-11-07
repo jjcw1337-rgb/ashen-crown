@@ -11,7 +11,7 @@ const RATE := 22050
 const BANK := preload("res://game/systems/audio/sfx_bank.gd").BANK
 const BANK_DIR := "res://assets/audio/sfx/"
 ## Rendered sounds that loop (a channel, the ambience beds)
-const LOOPS := ["drain_loop", "soul_feast", "eclipse_storm", "wind", "forest", "night_forest", "drip", "music_town", "music_select"]
+const LOOPS := ["drain_loop", "soul_feast", "eclipse_storm", "wind", "forest", "drip", "music_select"]
 var streams := {}
 ## name -> [streams] for the rendered sounds
 var bank := {}
@@ -221,9 +221,10 @@ func start_loop(nm: String, vol := 0.0, pitch := 1.0, owner: Node = null) -> Aud
 	return p
 
 ## The zone's music and its ambience bed (the wind; `amb` picks another, like Act I's forest rustle outside the camp).
-## `amb_take` picks which take of the bed plays (the camp's nights rotate theirs, DayNight.night_take).
+## `amb_take` picks which take of the bed plays.
 ## kind "" = no music, only the ambience bed (a zone with no song of its own: better quiet than the old drone).
-func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
+## `amb_over` names the ambience bed under it ("none": silence; "": the wind); `vol_db` a recorded song's level.
+func play_music(kind: String, amb_over := "", amb_take := 0, vol_db := -6.0) -> void:
 	if silent_runtime:
 		return # No device/listener: settings must not start procedural music in a worker.
 	if kind == "":
@@ -241,12 +242,16 @@ func play_music(kind: String, amb_over := "", amb_take := 0) -> void:
 	if music.stream != song:
 		music.stream = song
 		# the recorded songs are levelled already (build_sfx.py); the synthesized drones are louder
-		music.volume_db = -6.0 if bank.has(key) else -14.0
+		music.volume_db = vol_db if bank.has(key) else -14.0
 		if not muted:
 			music.play()
 	_ambience(kind, amb_over, amb_take)
 
 func _ambience(kind: String, amb_over: String, amb_take: int) -> void:
+	if amb_over == "none":
+		ambience.stop()
+		ambience.stream = null
+		return
 	var amb := amb_over if amb_over != "" and bank.has(amb_over) else "wind"
 	var amb_st: AudioStream = bank[amb][posmod(amb_take, (bank[amb] as Array).size())] if bank.has(amb) else streams.get(amb)
 	if ambience.stream != amb_st:

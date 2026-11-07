@@ -23,7 +23,7 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "warlock")
 	g.ui.close_all()
-	await g.load_zone(0, "town", "start")
+	await g.load_zone(0, "sandbox", "start")
 	g.ui.close_all()
 	g.zoom = 0.6
 	await wait(1.5)

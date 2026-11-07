@@ -74,10 +74,6 @@ static func secs(n: float) -> float:
 	return n / 8.0 if fast else n       # (tests: a 150 s round, portals at 37.5 s, joining closes at 112.5 s)
 
 # ---------------------------------------------------------------- the map
-## The Hollow Crypt. Cell (i, j) of a 4x4 grid; the middle 2x2 is the great hall.
-## The raid's map: the Verdant Reach (BgForest).
-static func build(w: World) -> void:
-	BgForest.build(w)
 
 static func portal_list(w: World) -> Array:
 	return w.interactables.filter(func(t) -> bool: return is_instance_valid(t) and t.kind == "extract")
