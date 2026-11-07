@@ -29,6 +29,12 @@ The Archer is the example to copy. Most other heroes still keep every skill in o
   that strikes at a beat) and `DelayedArea` (a spot that goes off after a fuse). They are plain data, with no nodes, so a server could run them.
 - **The look keeps its own copy.** The rules send one event (an arrow's "loose"), and every game's look flies its own
   arrow from it with the same `Missile` step (`shared/arrow_flight_fx.gd`). The look never makes game state.
+- **It runs on the server in a match.** A skill creates what its rules act on with `make(kind, data)`: here it makes
+  it at once (`made`); in a match on our server it goes to the server, whose copy of the hero checks it
+  (`server_ok`: near where it has him, within the skill's numbers) and makes it there (`ServerRules`). So `made`,
+  `update` and `hit` are the rules, and they only ever run where the hits are decided; whatever the rules show
+  (a sigil blowing) the server sends to every game. A hero's class joins `ServerRules.CLASSES` once its skills work
+  this way.
 - Every one of his skills has its folder now. His wolf (`companion/spirit_beast.gd`) is a summon with its own brain,
   and each game runs its own copy; it isn't split into rules and look yet.
 

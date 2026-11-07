@@ -16,7 +16,7 @@ How a skill's look reaches every screen, and when it is good enough.
 
 ## When it's good enough
 
-Fire Arrow (`scripts/arrow_fx.gd`) is the reference.
+Fire Arrow (`game/heroes/archer/shared/arrow_fx.gd`) is the reference.
 - **Real things:** simulated fire and smoke, Meshy models, real fractured pieces, not glowing tubes or flat sprites.
 - **Every phase shows:** the wind-up, the release, each foe struck, the end, and the ground's reaction.
 - **Real light** on impact that decays, a continuous trail, and sound synced to the animation.

@@ -39,6 +39,11 @@ hit (`hit_mult`, `on_hit`), on a kill, when struck, on a cooldown, every frame, 
 
 ## Who decides
 
-Today each player's game decides its own hero's damage, cooldowns and mana, and the server trusts it (PvP numbers
-are clamped). The host or match server decides monsters, deaths and loot. Moving damage onto the server, with a
-combat log of every hit, is the next big piece of work. Until then there is no combat log.
+**The Archer's skills run on the match server** (`game/systems/skills/server_rules.gd`). In a Battlegrounds, Arena
+or Sandbox match his game sends what a skill makes (an arrow, a rain, a sigil); the server's copy of him makes it,
+decides who it hits with its own positions and its own stand-ins for players, and deals the damage from the build his
+game sends it (level, attributes, the run's skills, rites and gems). His wolf still bites from his own game.
+
+Every other hero's game still decides its own damage, cooldowns and mana, and the server trusts it (PvP numbers are
+clamped). The host or match server decides monsters, deaths and loot. Each hero moves onto the server as it moves
+onto the skill layout ([skills](../content/skills.md)). There is no combat log yet.
