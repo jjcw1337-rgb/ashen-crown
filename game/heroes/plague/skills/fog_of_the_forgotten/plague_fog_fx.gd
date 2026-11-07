@@ -225,6 +225,9 @@ static func seen(h: Hero, ev: Dictionary, node: Fog = null) -> bool:
 		"fog":
 			if not st.has("fogs"):
 				st["fogs"] = []
+			if Enemy.server_nopose:
+				# (a match server never runs `update`: its lifted fogs go here)
+				st["fogs"] = (st["fogs"] as Array).filter(func(f) -> bool: return float(f["until"]) > GameClock.now())
 			(st["fogs"] as Array).append({"pos": ev["p"], "r": float(ev.get("r", Skill.num("fog", "radius", 6.0))),
 				"until": GameClock.now() + float(ev.get("x", Skill.num("fog", "secs", 6.0))), "node": node})
 			st["fog_reveal"] = 0.0

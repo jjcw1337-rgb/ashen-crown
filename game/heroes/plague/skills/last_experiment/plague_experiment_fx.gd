@@ -614,10 +614,10 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 			PvpObjects.drop(lab.get("proxy"))
 			lab.erase("proxy")
 			lab["coid"] = coid
-			var node: Vat = lab["node"]
-			if is_instance_valid(node):
-				node.burst(r)
-				lab["cproxy"] = PlagueFx.proxy(h, coid, "creature", node.c_pos)
+			var vat = lab["node"]
+			if is_instance_valid(vat):
+				(vat as Vat).burst(r)
+				lab["cproxy"] = PlagueFx.proxy(h, coid, "creature", (vat as Vat).c_pos)
 			h.game.add_shake(0.45 if not h.puppet else 0.12)
 			Sfx.play_at("ice_shatter", lab["pos"], 0.0, 0.7)
 			Sfx.play_at("phase_erupt", lab["pos"], -2.0, 0.6)

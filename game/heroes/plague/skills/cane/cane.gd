@@ -22,9 +22,9 @@ func swing(style: String) -> void:
 	reveal_if_fogged()
 	make("blow", {"s": style, "d": hero.aim_dir()})
 
-## Server: a blow of his: a known swing, his facing.
+## Server: a swing of his (its style sets its reach and arc; only the cane's styles, STYLES, leave a mark) and his facing.
 func server_ok(kind: String, d: Dictionary) -> bool:
-	if kind != "blow" or not STYLES.has(str(d.get("s", ""))) or not d.get("d") is Vector3:
+	if kind != "blow" or not d.get("s") is String or not d.get("d") is Vector3:
 		return false
 	d["d"] = ((d["d"] as Vector3) * Vector3(1, 0, 1)).normalized()
 	return true
