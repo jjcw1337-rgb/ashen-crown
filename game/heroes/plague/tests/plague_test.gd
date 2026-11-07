@@ -202,7 +202,7 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "plague")
 	g.test_immortal = true
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "bg", "start")
 	await _clear_foes()
 	var h = g.hero
 	h.level = 20          # (The Last Epidemic, his ultimate, opens at 20)

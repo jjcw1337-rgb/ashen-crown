@@ -46,7 +46,7 @@ func _run() -> void:
 	g.apply_quality(0)
 	await g.start_game(false, "plague")
 	g.ui.close_all()
-	await g.load_zone(0, "wild", "road")
+	await g.load_zone(0, "bg", "start")
 	g.ui.close_all()
 	var h = g.hero
 	h.level = 24
