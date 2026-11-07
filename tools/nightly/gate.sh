@@ -63,7 +63,7 @@ check pvp_victim "$OUT/gate_pvp_b.log" 0
 
 
 # the co-op pairs
-for f in tools/mp_test.gd game/heroes/plague/tests/plague_mp_test.gd; do
+for f in game/ui/lobby/tests/mp_test.gd game/heroes/plague/tests/plague_mp_test.gd; do
   t=$(basename "$f" .gd)
   "$G" --headless --path . -s "$f" -- host > "$OUT/gate_${t}_host.log" 2>&1 & h=$!
   sleep 3
