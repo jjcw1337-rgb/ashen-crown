@@ -90,7 +90,7 @@ var welcomed := false
 
 func join_failure(fallback: String) -> String:
 	if game.bg_wait_until > Time.get_ticks_msec():
-		return "The crypt is closing. The next raid opens in %s." % game.bg_wait_text()
+		return "The raid is closing. The next opens in %s." % game.bg_wait_text()
 	if game.bg_refusal == "boosted":
 		return "Only admins can raid in \"Go to level 20\" gear. Take it off, or pick another character."
 	if game.bg_refusal != "":

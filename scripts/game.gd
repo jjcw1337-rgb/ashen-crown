@@ -103,11 +103,9 @@ var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed 
 var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
 var bg_roster: Array = []       # the antechamber's matchup (Net.cl_bg_roster): [{pid, cls, lvl}], this player too
-var bg_from_waypoint := false   # the raid was taken from the camp's waypoint: it ends back on the dais, not on the title
 var bg_gained := -1             # ... items brought out of it (-1: no extraction; the news told back at the camp)
 var bg_wait_until := 0         # turned away late in a round: when (ticks msec) the next raid lets players in
 var bg_refusal := ""           # why the raid server last turned us away ("closed", "refused")
-var bg_retry := []             # [addr, character id] to rejoin with when the wait is over
 ## The camp's stash, one for every character on this PC (SharedStash; a tool script's own file under -s).
 var stash: SharedStash
 ## Characters and the stash in Nakama (cloud_saves.gd), in builds with BuildEnv.cloud() on; null otherwise.
@@ -1845,63 +1843,15 @@ func start_join_steam(owner: int) -> void:
 		net.shutdown()
 		on_net_failed(net.join_failure("Your friend's world didn't answer. Ask them to invite you again."))
 
-## Battlegrounds from the title screen: the character `id` (one of the player's own; what it carries in, it risks)
-## joins the raid server at `addr` ("host" or "host:port"). Its save is marked in_raid until it extracts, so closing
-## the game mid-raid counts as dying (_bury_lost_raiders). Dying costs every item it wore and carried, and its gold
-## (bg_strip); it keeps its levels, stats and talents. The camp's stash isn't carried, so it is never lost.
-## Into a raid. With MpMode.RUNS the raider is a fresh run character (RunBuild, level 0) of `cls`, or of character
-## `id`'s class when none is given (the old screens pass a character): that character's save isn't touched.
+## Into a raid (the lobby browser hands over its match server's address): the raider is a fresh run character
+## (RunBuild, level 0) of `cls`, or of character `id`'s class when none is given; that character's save isn't touched.
 func start_battlegrounds(addr: String, id: String, cls := "") -> void:
 	while _busy:
 		await get_tree().process_frame
-	if MpMode.RUNS:
-		await _start_run_raid(addr, id, cls)
-		return
-	Telemetry.crumb("raid", {"server": addr, "from": "waypoint" if bg_from_waypoint else "title"})
-	bg_retry = [addr, id]
-	bg_refusal = ""
-	bg_wait_until = 0
-	Sfx.play("click")
-	net.stop_listening()
-	char_id = id
-	bg_gained = -1
-	if id == "" or not load_game():
-		ui.message("Pick a character for the crypt first", Color(1, 0.6, 0.4))
-		if bg_from_waypoint:
-			bg_from_waypoint = false     # (the character playing couldn't be read back: stay in the camp)
-			return
-		char_id = ""
-		ui.open_battlegrounds()
-		return
-	ui.hide_title()
-	ui.close_all()
-	playing = true
-	bg_mode = true
-	bg_raid = {}
-	bg_roster = []
-	if hero.dead:
-		hero.respawn(hero.global_position)
-	var a: Array = Battlegrounds.parse_address(addr)
-	_save_setting("battlegrounds", "address", addr.strip_edges())
-	_save_setting("battlegrounds", "character", id)
-	if cloud != null and not await cloud.ensure():
-		_bg_abort("Could not sign in to your account (%s)." % cloud.nk.last_error)
-		return
-	save_game()             # (marked in_raid from here on)
-	loading_lbl.text = "Entering %s..." % Battlegrounds.map_title()
-	set_loading_art(Battlegrounds.ZONE)
-	loading.visible = true
-	if net.join(a[0], int(a[1])) != OK:
-		on_net_failed("Could not reach the Battlegrounds server.")
-		return
-	await get_tree().create_timer(8.0).timeout
-	if bg_mode and net.is_client() and loading.visible and not _busy and cur_zone != Battlegrounds.ZONE:
-		net.shutdown()
-		on_net_failed(net.join_failure("No answer from the Battlegrounds server at %s." % a[0]))
+	await _start_run_raid(addr, id, cls)
 
 func _start_run_raid(addr: String, id: String, cls: String) -> void:
 	Telemetry.crumb("raid", {"server": addr, "run": true})
-	bg_retry = [addr, id, cls]
 	bg_refusal = ""
 	bg_wait_until = 0
 	Sfx.play("click")
@@ -1944,17 +1894,10 @@ func _start_run_raid(addr: String, id: String, cls: String) -> void:
 		on_net_failed(net.join_failure("No answer from the Battlegrounds server at %s." % a[0]))
 
 ## The raid server turned us away (Net.cl_bg_refused): too late into the round, or the account. For a closed raid,
-## wait out the rest of it on the Battlegrounds screen (UI.bg_status counts down) and rejoin by ourselves.
+## the join failure says when the next one opens (Net.join_failure, bg_wait_text).
 func bg_refused(why: String, secs: float) -> void:
 	bg_refusal = why
 	bg_wait_until = Time.get_ticks_msec() + int((secs + 1.5) * 1000.0) if why == "closed" else 0
-	if why == "closed" and not bg_retry.is_empty():
-		var want: Array = bg_retry.duplicate()
-		get_tree().create_timer(secs + 1.5, false).timeout.connect(func():
-			# still waiting on the Battlegrounds screen, nothing else started meanwhile
-			if bg_retry == want and not playing and (ui.bg_panel.visible or (ui.title_panel.visible and ui.bg_page.visible)):
-				ui.message("The next raid is open", Color(0.6, 1.0, 0.6))
-				start_battlegrounds(str(want[0]), str(want[1]), str(want[2]) if want.size() > 2 else ""))
 
 func bg_wait_text() -> String:
 	var s := maxi(0, (bg_wait_until - Time.get_ticks_msec()) / 1000)
@@ -1987,11 +1930,6 @@ func _bg_abort(msg: String) -> void:
 	loading.visible = false
 	if net.active:
 		net.shutdown()
-	if bg_from_waypoint:
-		bg_from_waypoint = false
-		ui.big_message("Couldn't enter the crypt")
-		ui.message(msg, Color(1, 0.6, 0.4))
-		return
 	await exit_to_title()
 	ui.open_battlegrounds()
 	ui.big_message("Couldn't enter the crypt")
@@ -2082,7 +2020,6 @@ func run_return() -> void:
 	run_results_open = false
 	run_survived = false
 	bg_mode = false
-	bg_from_waypoint = false
 	if lobby_client != null:
 		lobby_client.match_id = ""
 		lobby_client.room = {}
@@ -2149,43 +2086,8 @@ func _leave_battlegrounds() -> void:
 	_bg_home()
 	bg_raid = {}
 	bg_roster = []
-	if bg_from_waypoint and char_id != "":
-		bg_from_waypoint = false
-		await _bg_home_camp(fell)
-		return
-	bg_from_waypoint = false
 	await exit_to_title()
 	ui.open_battlegrounds()
-
-## Back at the camp's waypoint after a raid taken from it: everything the raid put up comes down (the fallen hero's
-## screen, the spectator's camera, the raid's connection), the hero stands alive on the dais again (WaypointGrand
-## flares on his arrival) and hears how it went. A raid that never got in (the server unreachable) leaves him where
-## he stood. Levels, stats, talents and the camp's stash were never at stake; the save is written with in_raid off.
-func _bg_home_camp(fell: bool) -> void:
-	net_joining = false
-	death_t = -1.0
-	ui.death_panel.visible = false
-	spectate_stop()
-	ui.set_boss(null)
-	if net.active:
-		net.shutdown()
-	if paused:
-		toggle_pause()
-	ui.close_all()
-	if hero.dead:
-		hero.respawn(hero.global_position)
-	loading.visible = false
-	while _busy:
-		await get_tree().process_frame
-	if cur_zone == Battlegrounds.ZONE or world == null:
-		Sfx.play("portal")
-		await load_zone(cur_act, "town", "waypoint_town")
-	save_game()
-	if fell:
-		ui.message("%s is back from %s with nothing but their strength: everything they carried lies on its floor." % [char_name, Battlegrounds.map_title()], Color(1, 0.55, 0.45), 7.0)
-	elif bg_gained >= 0:
-		ui.message("%s is back from %s with %d new item%s. All of it is theirs to keep." % [char_name, Battlegrounds.map_title(), bg_gained, "" if bg_gained == 1 else "s"], Color(0.6, 1.0, 0.6), 7.0)
-	bg_gained = -1
 
 func on_net_failed(msg: String) -> void:
 	if steam != null:
@@ -2210,7 +2112,7 @@ func on_net_failed(msg: String) -> void:
 		ui.open_join()
 		return
 	if bg_mode:
-		ui.big_message("The crypt is closing" if bg_wait_until > Time.get_ticks_msec() else "Left the Battlegrounds")
+		ui.big_message("The raid is closing" if bg_wait_until > Time.get_ticks_msec() else "Left the Battlegrounds")
 		ui.message(msg, Color(1, 0.6, 0.4))
 		loading.visible = false
 		_leave_battlegrounds()
@@ -2682,72 +2584,10 @@ func default_name(cls: String) -> String:
 	var pool: Array = names.get(cls, names["knight"])
 	return str(pool[randi() % pool.size()])
 
-## The waypoint window's Battlegrounds card (Data.WAYPOINT_BATTLEGROUNDS): the way down into the Hollow Crypt from
-## the camp, with the character playing. A last word on what is at stake (everything worn and carried; levels,
-## talents and the stash are safe), then `_waypoint_descend`: the dais flares, the sigil's sound, and start_battlegrounds
-## joins the raid server (bg_server_address) with this character, the crypt's painting behind the loading words.
-## The raid ends back on this dais (_leave_battlegrounds -> _bg_home_camp). Not from co-op (the party's host
-## would lose a player mid-act), not from a raid, and never while a zone is still loading.
-func waypoint_battleground(id: String) -> void:
+## The waypoint window's Battlegrounds card (Data.WAYPOINT_BATTLEGROUNDS): the lobby browser's Battlegrounds.
+func waypoint_battleground(_id: String) -> void:
 	if lobby_client != null:
 		lobby_client.open("battlegrounds")
-		return
-	var entry := Data.waypoint_battleground(id)
-	if entry.is_empty() or (id != "crypt" and str(entry.get("address", "")) == ""):
-		ui.message("This raid is no longer available.")
-		return
-	if bg_mode or _busy or not playing or char_id == "":
-		return
-	if net.active:
-		ui.message("Leave co-op to enter the Battlegrounds.", Color(1.0, 0.6, 0.45))
-		return
-	var nm := char_name
-	ui.open_dialog(str(entry["name"]),
-		"%s goes down with everything they wear and carry, and it is all at stake. Reach an open Extraction Portal and all of it, and whatever they find, comes home. Fall down there and every item, the belt and the gold stay on the crypt floor for others to take.\n\nLevels, stats, rites and the camp's stash are safe whatever happens.\n\nDescend into %s?" % [nm, str(entry["name"])],
-		[["Descend", func(): _waypoint_descend(id)], ["Not yet", func(): pass]])
-
-## The trip down: the character is saved as he stands, the grand waypoint flares, the sigil's sound, a breath, and
-## the raid server is joined (start_battlegrounds).
-func _waypoint_descend(id := "crypt") -> void:
-	var entry := Data.waypoint_battleground(id)
-	if entry.is_empty() or (id != "crypt" and str(entry.get("address", "")) == ""):
-		return
-	if bg_mode or _busy or not playing or net.active or char_id == "":
-		return
-	ui.close_all()
-	hero.cmd_wasd(Vector3.ZERO)
-	hero.target = null
-	hero.path = PackedVector3Array()
-	hero.moving = false
-	bg_from_waypoint = true
-	bg_gained = -1
-	save_game()
-	for it in world.interactables:
-		if is_instance_valid(it) and it.kind == "waypoint" and it.global_position.distance_to(hero.global_position) < 8.0:
-			for c in it.get_children():
-				if c is WaypointGrand:
-					(c as WaypointGrand).pulse()
-	Sfx.play("portal")
-	Fx.pillar(world.fx_root, hero.global_position, Color(0.35, 0.6, 1.0), 1.0)
-	await get_tree().create_timer(0.75).timeout
-	if bg_mode or _busy or not playing or net.active:
-		bg_from_waypoint = false
-		return
-	entry = Data.waypoint_battleground(id)
-	if entry.is_empty() or (id != "crypt" and str(entry.get("address", "")) == ""):
-		bg_from_waypoint = false
-		return
-	start_battlegrounds(str(entry.get("address", bg_server_address())), char_id)
-
-## The raid server a trip from the waypoint joins: a LAN or test server last picked on the Battlegrounds page, else
-## this build's own raid server (local: this machine) at the port of the raid open now, as the page's Enter does
-## (Battlegrounds.best_raid: one server per raid, each on its own clock).
-func bg_server_address() -> String:
-	var own: String = (str(BuildEnv.value("bg_server")) if BuildEnv.env() != "local" else "127.0.0.1").split(":")[0]
-	var a := str(_load_setting("battlegrounds", "address", "")).strip_edges()
-	if a != "" and str(Battlegrounds.parse_address(a)[0]) != own:
-		return a
-	return "%s:%d" % [own, int(Battlegrounds.best_raid(Time.get_unix_time_from_system()).get("port", Net.PORT))]
 
 ## Back to the title screen to pick another character (the pause menu's "Save and Exit to Title").
 func exit_to_title(save_current := true) -> void:
@@ -2779,7 +2619,6 @@ func exit_to_title(save_current := true) -> void:
 	bg_mode = false
 	bg_raid = {}
 	bg_roster = []
-	bg_from_waypoint = false
 	bg_gained = -1
 	net_joining = false
 	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,

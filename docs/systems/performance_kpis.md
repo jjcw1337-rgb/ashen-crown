@@ -18,8 +18,8 @@ seconds, every frame. Run one yourself, in any build:
 | `fight` | Act I moor | The knight fights 24 monsters at once with his attack and every skill; kills are replaced | 20 |
 | `boss` | Grubb's fort | The King Grubb fight: the knight on him with skills | 25 |
 | `arena` | A2 Aurelia | The arena games running (lions, the crowd), the knight on the sand | 25 |
-| `crypt` | Battlegrounds | The Hollow Crypt: walking a loop through the rooms, fighting what's there | 20 |
-| `server` | Battlegrounds server | The headless dedicated server running the crypt (`-- --server --kpi server out.json`) | 30 |
+| `crypt` | Battlegrounds | The Verdant Reach (the id is older): walking a loop, fighting what's there | 20 |
+| `server` | Battlegrounds server | The headless dedicated server running the raid (`-- --server --kpi server out.json`) | 30 |
 | `download` | (export) | The macOS export: the .zip players download and the .pck inside | |
 
 Compare at **High** (preset 2) on the Game Factory Mac (Apple M6) unless the change is about another preset.
@@ -33,7 +33,7 @@ Compare at **High** (preset 2) on the Game Factory Mac (Apple M6) unless the cha
 | `frame_ms_median` | Median frame time (ms) | ≤ 16.7 |
 | `frame_ms_p99` | 99th-percentile frame time (ms) | ≤ 25 |
 | `hitches_per_min` | Frames of 100 ms or longer (a visible stutter), per minute | **0** |
-| `load_ms` | Entering the zone: `Game.load_zone` start to ready (for `server`: engine start to the crypt being up) | **≤ 3000** |
+| `load_ms` | Entering the zone: `Game.load_zone` start to ready (for `server`: engine start to the raid being up) | **≤ 3000** |
 | `cpu_process_peak_ms` | Godot's `TIME_PROCESS`: the slowest frame's main-thread process time in each second, averaged | ≤ 16 |
 | `cpu_physics_peak_ms` | The same for the physics step | ≤ 4 |
 | `script_ms` | Every node's `_process` in a frame (average), timed between two probe nodes processed first and last (`scripts/kpi_probe.gd`). `cpu_process_peak_ms` includes drawing and the wait for the GPU, so this is the scripts' real cost | ≤ 8 |

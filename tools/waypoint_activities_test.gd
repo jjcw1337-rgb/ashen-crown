@@ -79,11 +79,9 @@ func _run():
  await settle()
  await shot("pvp")
  g.ui.close_all()
- g.waypoint_battleground("not_a_raid")
- ok(not g.ui.dialog_panel.visible and not g.bg_from_waypoint, "unknown PvP id cannot descend into another raid")
  g.waypoint_battleground("crypt")
- ok(g.ui.dialog_panel.visible and not g.bg_mode, "Hollow Crypt opens its confirmation without silently connecting")
- g.ui.close_all()
+ ok(g.lobby_client.panel.visible and not g.bg_mode, "the Battlegrounds card opens the lobbies without connecting")
+ g.lobby_client.panel.hide()
  g.hero.level = 20
  g.max_run = 2
  g.waypoints_known = ["town", "wild"]
@@ -121,13 +119,6 @@ func _run():
  daily["enabled"] = false
  ok(spy.waypoint_activity("test_daily").is_empty(), "disabled daily withdrawn")
  data.WAYPOINT_ACTIVITIES.erase(daily)
- spy.dispatched.clear()
- await spy._waypoint_descend("crypt")
- ok(spy.dispatched.has(["raid", spy.bg_server_address(), "waypoint-test"]), "crypt dispatches configured raid endpoint with current character")
- spy.bg_from_waypoint = false
- spy.dispatched.clear()
- await spy._waypoint_descend("missing")
- ok(spy.dispatched.is_empty(), "removed raid cannot dispatch")
  panel.game = g
  spy.queue_free()
  # Every enabled zone route reaches an actual world and a clear, named spawn.

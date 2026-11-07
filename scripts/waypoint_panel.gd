@@ -247,7 +247,6 @@ func open(from: Node3D = null) -> void:
 func close() -> void:
 	visible = false
 	stone = null
-	_probe_stop()
 	ui.tooltip.visible = false
 	ui.tip_owner = null
 
@@ -275,8 +274,6 @@ func _fill() -> void:
 	_catalog_stamp = _catalog_hash()
 	here_icons.clear()
 	bg_icons.clear()
-	probe_lbl = null
-	_probe_stop()
 	route_head.text = "THE ROUTE"
 	for c in tabs_box.get_children():
 		c.queue_free()
@@ -405,7 +402,7 @@ func _fill_battlegrounds() -> void:
 	banner.modulate = Color(1, 1, 1)
 	banner_sub.text = "BATTLEGROUNDS   ·   PLAYER LOBBIES"
 	banner_title.text = str(first.get("name", "Battlegrounds"))
-	banner_note.text = "Raids where other heroes hunt too. What you carry down is at stake; your levels, rites and the camp's stash never are."
+	banner_note.text = "Raids where other heroes hunt too, each with a fresh run character."
 	seal.visible = false
 	route_head.text = "THE DESCENT"
 	for c in route_box.get_children():
@@ -435,16 +432,13 @@ func _fill_battlegrounds() -> void:
 	bt.add_child(ui._label("Gather first, start when ready", 13, INK, true))
 	bt.add_child(ui._label("Browse or create a lobby with this character", 11, DIM))
 	route_box.add_child(back)
-	_probe_stop()
 	_size_route.call_deferred()
 	route_line.queue_redraw()
 
 ## One battleground, laid out like a route stop: its sigil and name with a RAID plaque, the mode and the round's
-## numbers (Battlegrounds' constants), what the place is, the stakes in plain words, the character going down and
-## what they carry, the server and whether it answers (the probe), and Descend. Hover lights it like a stop; the
-## button or a click on the card asks Game.waypoint_battleground (a last word on the stakes, then the way down).
+## numbers (Battlegrounds' constants), what the place is, the stakes in plain words, and the button: the card opens
+## the lobby browser's Battlegrounds (Game.waypoint_battleground).
 func _bg_card(b: Dictionary) -> Control:
-	var h = game.hero
 	var in_coop: bool = game.net.active
 	var card := PanelContainer.new()
 	var idle := ui._box(Color(0.06, 0.05, 0.04, 0.9), Color(0.3, 0.24, 0.15), 1, 6, 10)
@@ -496,51 +490,10 @@ func _bg_card(b: Dictionary) -> Control:
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		vb.add_child(l)
 	# the stakes, in plain words
-	var risk := ui._label("☠  Fall down there and every item you wear and carry, your belt and your gold stay on the crypt floor. Your levels, stats, rites and the camp's stash are safe.", 12, RISK, true)
+	var risk := ui._label("☠  You go in as a fresh run character of your class. Reach an Extraction Portal to keep it as a survivor; fall and the run is over. This character is never touched.", 12, RISK, true)
 	risk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	risk.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	vb.add_child(risk)
-	# who goes down, and with what
-	var rule := ColorRect.new()
-	rule.color = Color(GOLD, 0.25)
-	rule.custom_minimum_size = Vector2(0, 1)
-	rule.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(rule)
-	var worn := 0
-	for slot in h.equipment:
-		if h.equipment[slot] != null:
-			worn += 1
-	var carried := 0
-	for it in h.inventory + h.belt:
-		if it != null:
-			carried += 1
-	var stashed: int = game.stash.count() if game.stash != null else 0      # (the shared stash, SharedStash)
-	var who := HBoxContainer.new()
-	who.add_theme_constant_override("separation", 14)
-	who.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	vb.add_child(who)
-	var cls_name := str(Data.CLASSES.get(h.cls, {}).get("name", h.cls))
-	var wv := VBoxContainer.new()
-	wv.add_theme_constant_override("separation", 0)
-	wv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	wv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	who.add_child(wv)
-	wv.add_child(ui._label("%s  ·  level %d %s" % [game.char_name, h.level, cls_name], 13, GOLD, true))
-	wv.add_child(ui._label("At stake: %d worn, %d in the bag and belt, %d gold" % [worn, carried, h.gold], 11, INK))
-	wv.add_child(ui._label("Safe in the stash (all your characters'): %d item%s" % [stashed, "" if stashed == 1 else "s"], 11, DIM))
-	var sv := VBoxContainer.new()
-	sv.add_theme_constant_override("separation", 0)
-	sv.alignment = BoxContainer.ALIGNMENT_END
-	sv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	who.add_child(sv)
-	var addr: String = str(b.get("address", game.bg_server_address()))
-	var server_name := "the %s server" % BuildEnv.env() if BuildEnv.env() != "local" else addr
-	sv.add_child(ui._label("Server  ·  " + server_name, 11, DIM))
-	var status := ui._label("Starts with your lobby", 11, DIM)
-	status.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	sv.add_child(status)
-	if str(b["id"]) == "crypt" and not b.has("address"):
-		probe_lbl = status
 	# the way down
 	if in_coop:
 		var why := ui._label("Leave co-op to go down: the party's host would lose you mid-act.", 12, RISK)
@@ -563,8 +516,7 @@ func _bg_card(b: Dictionary) -> Control:
 			lines.append(["Leave co-op to go down", RISK])
 		else:
 			lines.append(["Click to find a lobby with %s" % game.char_name, INK])
-			lines.append(["Death costs everything worn and carried", RISK])
-		ui.show_tooltip(lines)
+			ui.show_tooltip(lines)
 		ui.tip_owner = card)
 	card.mouse_exited.connect(func():
 		card.add_theme_stylebox_override("panel", idle)
@@ -607,77 +559,7 @@ func _plaque(word: String, col: Color) -> Control:
 	return plq
 
 # ---------------------------------------------------------------- is the raid server there?
-## A cheap look at the server before anyone goes down: an ENet connection attempt (the raid's own protocol) that is
-## dropped the moment the handshake answers. The game server rejects a peer with no player id before any player
-## hears of it, so nobody in the raid sees a thing. Three seconds without an answer is "no answer". Not from a
-## browser (no UDP there).
-const PROBE_SECS := 3.0
-var probe: ENetConnection = null
-var probe_t := 0.0
-var probe_state := ""          # "" | "checking" | "ok" | "fail" | "web"
-var probe_lbl: Label = null
 var bg_icons: Array = []       # the raid cards' sigils, turning slowly
-
-func _probe_start(addr: String) -> void:
-	_probe_stop()
-	probe_t = 0.0
-	if OS.has_feature("web"):
-		probe_state = "web"
-		_probe_show()
-		return
-	var a: Array = Battlegrounds.parse_address(addr)
-	var c := ENetConnection.new()
-	if c.create_host(1) != OK:
-		probe_state = "fail"
-		_probe_show()
-		return
-	var peer: ENetPacketPeer = c.connect_to_host(str(a[0]), int(a[1]), 1, 0)
-	if peer == null:
-		c.destroy()
-		probe_state = "fail"
-		_probe_show()
-		return
-	probe = c
-	probe_state = "checking"
-	_probe_show()
-
-func _probe_stop() -> void:
-	if probe != null:
-		for p in probe.get_peers():
-			(p as ENetPacketPeer).peer_disconnect_now(0)
-		probe.destroy()
-		probe = null
-
-func _probe_poll(delta: float) -> void:
-	if probe == null:
-		return
-	probe_t += delta
-	var ev: Array = probe.service(0)
-	var kind: int = int(ev[0])
-	if kind == ENetConnection.EVENT_CONNECT:
-		probe_state = "ok"
-		_probe_stop()
-	elif kind == ENetConnection.EVENT_DISCONNECT or kind == ENetConnection.EVENT_ERROR or probe_t > PROBE_SECS:
-		probe_state = "fail"
-		_probe_stop()
-	_probe_show()
-
-func _probe_show() -> void:
-	if probe_lbl == null or not is_instance_valid(probe_lbl):
-		return
-	match probe_state:
-		"ok":
-			probe_lbl.text = "answering  ●"
-			probe_lbl.add_theme_color_override("font_color", Color(0.55, 0.9, 0.55))
-		"fail":
-			probe_lbl.text = "no answer  ●"
-			probe_lbl.add_theme_color_override("font_color", RISK)
-		"web":
-			probe_lbl.text = "not from a browser"
-			probe_lbl.add_theme_color_override("font_color", RISK)
-		_:
-			probe_lbl.text = "checking..."
-			probe_lbl.add_theme_color_override("font_color", DIM)
 
 func _boss_name(act: Dictionary) -> String:
 	var b: String = act.get("boss", "")
@@ -993,7 +875,6 @@ func _process(delta: float) -> void:
 	for ic in bg_icons:
 		if is_instance_valid(ic):
 			(ic as Control).rotation -= delta * 0.45      # the crypt's sigil turns the other way, slowly, in a cold light
-	_probe_poll(delta)
 	# the banner drifts slowly, a little alive
 	if banner_clip.size.x > 0:
 		var z := 1.06 + 0.03 * sin(_t * 0.25)

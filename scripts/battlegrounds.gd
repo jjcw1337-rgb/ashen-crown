@@ -26,11 +26,6 @@ const RESET_SECS := 20.0        # after the collapse, before the next round
 const LOBBY_MAX := 75.0         # the lobby: at most this long before the raid starts by itself
 const ADMIN_RESTART := 3.0      # an admin's "restart": seconds until the new round
 const PREP_SECS := 20.0         # (a "prep" countdown with the matchup shown: start_prep goes straight to the raid today)
-const RAIDS := 3                # raids run side by side, staggered on the clock (phase)
-const RAID_PORTS := [24567, 24571, 24572]
-const LIVE_RAIDS := 1           # deployed so far (staging: one until its servers and firewall ports are up)
-const PERIOD := RAID_SECS + RESET_SECS
-const RAID_NAMES := ["I", "II", "III"]
 const EXTRACT_R := 4.0          # how close to an open portal the server accepts an extraction
 const OPEN_PORTALS := 2         # of the four candidate portals
 const PVP_MULT := 0.6           # a player's damage to another player
@@ -47,11 +42,10 @@ static var fast := false        # tests: `--raid-fast` = rounds in seconds
 
 var game: Node
 var raid_t := 0.0               # server: seconds into the round
-var raid_idx := -1              # server: which of the RAIDS this is (`--raid N`), -1 = a lone raid on its own time
 var prep_left := 0.0            # server: seconds of the prep countdown left
 var state := "lobby"            # server: "lobby" | "prep" | "raid" | "reset"
 var reset_t := 0.0
-var forced := false             # server: an admin restarted the round, which runs off the clock until it ends
+var forced := false             # server: an admin restarted the round (until it ends)
 var open: Array = []            # server: indices (in the portal list) of the open Extraction Portals
 var carried := {}               # server: peer id -> Array of items picked up this raid (dropped if they vanish)
 var died_items := {}            # server: peer id -> true once their death drop was handled
@@ -79,32 +73,6 @@ static func server_tick() -> int:
 static func secs(n: float) -> float:
 	return n / 8.0 if fast else n       # (tests: a 150 s round, portals at 37.5 s, joining closes at 112.5 s)
 
-## Seconds into raid i's current period (0 .. PERIOD: a round, then its reset) at unix time `now`.
-static func phase(i: int, now: float) -> float:
-	return fposmod(now - float(i) * PERIOD / float(RAIDS), PERIOD)
-
-## Every live raid's state now, from the clock: {i, name, port, state ("raid"/"reset"), left (s of the round),
-## open (takes joiners), opens_in (s until it next does)}.
-static func schedule(now: float, n := LIVE_RAIDS) -> Array:
-	var out := []
-	for i in mini(n, RAIDS):
-		var ph := phase(i, now)
-		var raid := ph < RAID_SECS
-		out.append({"i": i, "name": RAID_NAMES[i], "port": RAID_PORTS[i], "state": "raid" if raid else "reset",
-			"left": maxf(0.0, RAID_SECS - ph), "open": raid and ph < JOIN_CLOSE,
-			"opens_in": 0.0 if raid and ph < JOIN_CLOSE else PERIOD - ph})
-	return out
-
-## The raid to send a player to: the open one with the most time left, else the one that opens soonest.
-static func best_raid(now: float, n := LIVE_RAIDS) -> Dictionary:
-	var best := {}
-	for r in schedule(now, n):
-		if r["open"] and (best.is_empty() or not best["open"] or float(r["left"]) > float(best["left"])):
-			best = r
-		elif not r["open"] and (best.is_empty() or (not best["open"] and float(r["opens_in"]) < float(best["opens_in"]))):
-			best = r
-	return best
-
 # ---------------------------------------------------------------- the map
 ## The Hollow Crypt. Cell (i, j) of a 4x4 grid; the middle 2x2 is the great hall.
 ## The raid's map: the Verdant Reach (BgForest).
@@ -120,11 +88,6 @@ static func start_server(g: Node, port: int) -> void:
 	var args := OS.get_cmdline_user_args()
 	fast = args.has("--raid-fast")
 	var bg := Battlegrounds.new()
-	var ri := args.find("--raid")
-	if ri >= 0 and ri + 1 < args.size():
-		bg.raid_idx = clampi(int(args[ri + 1]), 0, RAIDS - 1)
-		if not args.has("--port"):
-			port = RAID_PORTS[bg.raid_idx]
 	bg.name = "Battlegrounds"
 	bg.game = g
 	g.add_child(bg)
@@ -144,8 +107,6 @@ static func start_server(g: Node, port: int) -> void:
 	# hosting first, so the zone's monsters are registered with the network as they spawn
 	var err: int = g.net.host(port, MAX_PLAYERS)
 	await bg.new_round()
-	if bg.aligned():
-		print("[BG] raid %s on the clock: %d s into its period" % [RAID_NAMES[bg.raid_idx], int(bg.raid_t)])
 	print("[BG] accounts through ", "Nakama at " + nurl if bg.nk != null else "the per-PC id (no Nakama)")
 	print("[BG] server ", "up on UDP port %d" % port if err == OK else "FAILED to open port %d (error %d)" % [port, err])
 
@@ -153,24 +114,10 @@ static func start_server(g: Node, port: int) -> void:
 static func lobby_max() -> float:
 	return 40.0 if fast else LOBBY_MAX
 
-## A raid of several (`--raid N`, real time): its rounds follow the clock.
-func aligned() -> bool:
-	return raid_idx >= 0 and not fast and not forced
-
 func new_round() -> void:
 	state = "lobby"
 	raid_t = 0.0
 	prep_left = 0.0
-	if aligned():
-		var ph := phase(raid_idx, Time.get_unix_time_from_system())
-		if ph >= RAID_SECS:
-			# (started in its reset: wait it out, then the round begins on time)
-			state = "reset"
-			reset_t = PERIOD - ph
-		else:
-			raid_t = ph
-			if ph > LOBBY_MAX + PREP_SECS:
-				state = "raid"         # (a server restarted mid-round: the crypt is already open)
 	open = []
 	carried.clear()
 	cc_dr.clear()
@@ -258,11 +205,7 @@ func _process(delta: float) -> void:
 	if raid_t >= secs(RAID_SECS):
 		_announce("The raid is over")
 		collapse()
-		forced = false               # (an admin's round is over: back on the clock)
-		if aligned():
-			reset_t = PERIOD - phase(raid_idx, Time.get_unix_time_from_system())
-			if reset_t > PERIOD * 0.5:
-				reset_t = 0.5        # (the clock is a hair behind the round: start the next one now)
+		forced = false
 		broadcast()
 		return
 	# a player who fell: their client sends what they had (sv_bg_died); if it never comes, what they picked up drops
@@ -301,7 +244,7 @@ func collapse() -> void:
 
 ## An admin's raid controls (Escape → Admin in a raid, Net.sv_bg_admin; refused for anyone without the admin role),
 ## for testing without waiting on the clock:
-##   "restart"  the crypt collapses now and a new round begins in ADMIN_RESTART s, off the clock (`forced`) until it ends
+##   "restart"  the raid ends now and a new round begins in ADMIN_RESTART s
 ##   "gates"    the wait and countdown skipped: the raid starts now
 ##   "portals"  the Extraction Portals open now
 func admin_cmd(pid: int, cmd: String) -> void:

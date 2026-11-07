@@ -44,8 +44,8 @@ func _run() -> void:
 		await shot("characters_list", 1.5)
 		ui.chars_panel.visible = false
 	ui.open_battlegrounds()
-	await shot("bg_page", 1.5)
-	ui.bg_page.visible = false
+	await shot("bg_lobbies", 1.5)
+	g.lobby_client.panel.hide()
 	ui.open_join()
 	await shot("coop_join", 1.0)
 	ui.join_panel.visible = false

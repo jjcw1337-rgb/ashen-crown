@@ -18,7 +18,7 @@ const SCENARIOS := {
 	"fight": {"zone": "wild", "run": 0, "secs": 20.0, "what": "Act I moor: the knight fighting 24 monsters at once with every skill (kills replaced)"},
 	"boss": {"zone": "lair", "run": 0, "secs": 25.0, "what": "Grubb's fort: the King Grubb fight, the knight on him with skills"},
 	"arena": {"zone": "lair", "run": 1, "secs": 25.0, "what": "A2 Aurelia: the arena games (lions, the crowd) with the knight on the sand"},
-	"crypt": {"zone": "bg", "run": 0, "secs": 20.0, "what": "Battlegrounds Hollow Crypt: walking the corridors and rooms, fighting what's there"},
+	"crypt": {"zone": "bg", "run": 0, "secs": 20.0, "what": "Battlegrounds (the Verdant Reach; the id is kept for history): walking and fighting what's there"},
 	"server": {"zone": "bg", "run": 0, "secs": 30.0, "what": "The dedicated Battlegrounds server (headless): its frame time with the crypt running"},
 	# a place a player reported as slow (tools/telemetry_query.sh spots): --zone Z --run R --pos x,z [--foes N]
 	"spot": {"zone": "wild", "run": 0, "secs": 15.0, "what": "Any place: the hero standing at --pos in --zone (--run), turning, --foes N monsters about"},

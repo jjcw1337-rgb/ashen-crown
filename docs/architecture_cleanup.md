@@ -137,8 +137,7 @@ Touch points to coordinate:
 
 - Claude-2: the Archer, end to end (`game/heroes/archer/**`, `game/systems/**`, plus the Archer's places in `hero.gd`,
   `class_skills.gd`, `skill_fx.gd` and `run_talents.gd`).
-- Claude-1: the old Battlegrounds' raid page and permanent raid servers (`bg_page.gd`, the waypoint's trip,
-  `Battlegrounds.schedule`/`best_raid`), then the Verdant Reach into `game/maps/verdant_reach/`.
+- Claude-1: the Verdant Reach into `game/maps/verdant_reach/` (`bg_forest.gd`, `camps.gd`, `forest_life.gd`, its props).
 
 ## Cutting an old system
 
@@ -219,6 +218,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [x] `concepts/` removed (2026-11-06)
 - [x] Docs by concept: one root `AGENTS.md`, and a doc per piece of content, system and pipeline (2026-11-06)
 - [x] The old crypt Battlegrounds cut (its map, floors below, antechamber gates, bells, stash daises and the stash's
-  slow); its models in `archive/hollow_crypt/` (2026-11-06).
+  slow); its models in `archive/hollow_crypt/`. The old raid page, server screen, raids on the clock and the
+  waypoint's walk down go too: the lobby browser is the only way in (2026-11-06).
 - [x] Maps: the Arena is `game/maps/arena/` (the template for every map: its map, props, modes, tests, README;
   2026-11-06).

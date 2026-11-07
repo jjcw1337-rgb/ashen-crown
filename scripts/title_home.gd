@@ -272,7 +272,6 @@ func _process(_delta: float) -> void:
 	# Subpages own the screen and input
 	visible = not ((ui.class_panel != null and ui.class_panel.visible)
 		or (ui.chars_panel != null and ui.chars_panel.visible)
-		or (ui.bg_page != null and ui.bg_page.visible)
 		or (ui.join_panel != null and ui.join_panel.visible)
 		or (game.lobby_client != null and game.lobby_client.panel.visible))
 	if is_visible_in_tree():
