@@ -21,6 +21,7 @@ PAL = {
     "archer": "dark forest green, worn leather brown and pale spirit-green glow, misty woods",
     "plague": "black leather, tarnished brass, sickly toxic green glow and amber, foul mist, a cursed plague-ridden medieval town",
     "doug": "faded mustard yellow and circus red, cream white, warm lantern light in the gloom of a dark, run-down travelling circus",
+    "necromancer": "bone white and grave-moss grey, deep plum and black robes, ghostly soul green glow, mist over a moonlit graveyard",
 }
 TREES = {
  "knight_0": ("knight", ["a longsword held upright, its blade burning with white-gold holy fire", "an armored gauntlet slamming a sword down onto cracked stone in a burst of white light", "an expanding ring of golden holy fire bursting outward across the ground", "a sword mid-swing leaving three golden motion arcs", "a blessed sword edge with a brilliant star-shaped glint and glowing runes", "a golden hourglass wrapped in holy flame", "a radiant golden heart sigil glowing on consecrated ground with healing light rising", "a white heater shield with a red cross and a golden sunburst behind it", "a holy sun halo above two crossed swords"]),

@@ -12,7 +12,8 @@ const STYLES := ["over", "back", "side", "thrust", "bow", "cast", "claw", "slam"
 	"fists", "icharge", "cslam", "hurl", "grip", "wrath_roar", "wrath_stomp", "chop",
 	"pd_swarm", "pd_bloom", "pd_fog", "pd_transfuse", "pd_crank",
 	"pie", "peels", "slide", "doppel", "juggle", "bounce", "car",
-	"icharge_wind", "icharge_skid", "hurl2", "grip_throw", "grip_haul", "crucible", "breath", "dive"]
+	"icharge_wind", "icharge_skid", "hurl2", "grip_throw", "grip_haul", "crucible", "breath", "dive",
+	"bone_bolt", "grave_slam"]
 const SEND_RATE := 0.05
 const ALLY_COLORS := [Color(0.45, 0.8, 1.0), Color(0.5, 1.0, 0.5), Color(1.0, 0.6, 0.9)]
 

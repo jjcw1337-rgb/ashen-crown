@@ -157,6 +157,9 @@ func _run() -> void:
 					dsk.clear()       # (the Storm Wyvern's Thunderhead goes on striking where he cast it)
 			if h.is_plague():
 				Plague.clear(h)  # the Plague Doctor's clouds and dome linger where he cast them, over the fresh pack
+			for nsk in h.kit.values():
+				if str(nsk.get_script().resource_path).begins_with("res://game/heroes/necromancer/"):
+					nsk.clear()       # (the Necromancer's graveyard goes on striking where he raised it)
 			var en2: Array = await pack(far + OFF + Vector3(0, 0, -2.5), 3)
 			var l0 := lives(en2)
 			puppet.life = 50.0

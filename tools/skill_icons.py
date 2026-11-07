@@ -17,6 +17,18 @@ STYLE = ("A 3x3 grid of nine square fantasy action-RPG skill icons for a dark go
          "and a dark vignette background. No text, no letters, no numbers, no borders or frames. Palette: {pal}. "
          "Left to right, top to bottom: {cells}.")
 CELLS = {
+    # the Necromancer (game/heroes/necromancer/): his first two, and spares for the rest of his kit
+    "necromancer": [
+        ("bone_bolt", "a jagged shard of pale bone hurtling through the air trailing ghostly green soul fire"),
+        ("graveyard", "a graveyard tearing up out of the earth, tombstones rising, rotting undead hands clawing up from glowing green graves under a hooded stone guardian"),
+        ("-", "a skull-masked lich raising a scythe-staff, green soul fire swirling"),
+        ("-", "a lantern of trapped green souls hanging from a bony hand"),
+        ("-", "a wall of interlocking bones erupting from the ground"),
+        ("-", "a skeletal hand ripping a glowing green soul out of a body"),
+        ("-", "a swirling ring of ghostly skulls"),
+        ("-", "a cracked tombstone with a green rune glowing on it"),
+        ("-", "a bone armour breastplate of ribs glowing green at the seams"),
+    ],
     "plague": [
         ("toxic", "a corked glass vial of glowing green poison tumbling through the air, about to shatter, droplets flying"),
         ("swarm", "a dense black swarm of plague flies with glowing green eyes pouring out of an open gothic brass reliquary"),

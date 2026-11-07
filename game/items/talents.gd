@@ -141,6 +141,18 @@ static var TREES: Dictionary = {
 			{"id": "l_eternal", "name": "Eternal Covenant", "row": 3, "max": 1, "icon": "covenant", "fx": {"buff_dur": 6}, "text": "Fel Covenant lasts {buff_dur} seconds longer."},
 		]},
 	],
+	"necromancer": [
+		{"name": "Grave", "desc": "The graveyard and its risen dead.", "talents": [
+			{"id": "n_horde", "name": "Restless Horde", "row": 0, "max": 3, "icon": "t_star", "fx": {"dmg:graveyard": 15}, "text": "Graveyard's risen dead strike for {dmg:graveyard}% more."},
+		]},
+		{"name": "Bone", "desc": "Bolts of bone.", "talents": [
+			{"id": "n_marrow", "name": "Marrow Shards", "row": 0, "max": 3, "icon": "t_star", "fx": {"dmg:bone_bolt": 12}, "text": "Bone Bolt deals {dmg:bone_bolt}% more damage."},
+			{"id": "n_thrift", "name": "Bone Thrift", "row": 1, "max": 2, "icon": "t_star", "fx": {"cost:bone_bolt": 25}, "text": "Bone Bolt costs {cost:bone_bolt}% less mana."},
+		]},
+		{"name": "Soul", "desc": "What the dead give back.", "talents": [
+			{"id": "n_dirge", "name": "Endless Dirge", "row": 0, "max": 2, "icon": "t_star", "fx": {"cd:graveyard": 15}, "text": "Graveyard's cooldown is {cd:graveyard}% shorter."},
+		]},
+	],
 	"doug": [
 		{"name": "Slapstick", "desc": "The drumstick and the pie: closer, harder, messier.", "talents": [
 			{"id": "d_drum", "name": "Extra Gravy", "row": 0, "max": 3, "icon": "t_fist", "fx": {"dmg:attack": 10}, "text": "Drumstick Smack deals {dmg:attack}% more damage."},
@@ -233,6 +245,7 @@ static var TREES: Dictionary = {
 ## The build an old save gets (and the window's Auto button follows): talents in order, each taken to
 ## its maximum while points last and its row is open.
 const AUTO := {
+	"necromancer": ["n_marrow", "n_horde", "n_dirge", "n_thrift"],
 	"doug": ["d_drum", "d_belly", "d_cream", "d_arm", "d_cheap", "d_slip", "d_sauce", "d_slide", "d_wits", "d_double", "d_pins",
 		"d_patter", "d_nimble", "d_encore", "d_spring", "d_tough", "d_flop", "d_horn", "d_tune", "d_crowd", "d_finale"],
 	"plague": ["p_dose", "p_study", "p_venom", "p_cloud", "p_linger", "p_thrift", "p_miasma", "p_charge", "p_steady", "p_blast", "p_quick", "p_ignite",

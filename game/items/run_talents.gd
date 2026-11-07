@@ -70,6 +70,11 @@ const THEMES := {
 		{"id": "showman", "name": "Showmanship", "color": Color(0.95, 0.5, 0.75), "desc": "Misdirection and juggling."},
 		{"id": "bigtop", "name": "Big Top", "color": Color(1.0, 0.35, 0.3), "desc": "The bounce and the clown car."},
 	],
+	"necromancer": [
+		{"id": "grave", "name": "Grave", "color": Color(0.45, 1.0, 0.6), "desc": "The graveyard and its risen dead."},
+		{"id": "bone", "name": "Bone", "color": Color(0.92, 0.88, 0.76), "desc": "Bolts of bone."},
+		{"id": "soul", "name": "Soul", "color": Color(0.55, 0.75, 1.0), "desc": "What the dead give back."},
+	],
 	"serpent": [
 		{"id": "frost", "name": "Frost", "color": Color(0.55, 0.82, 1.0), "desc": "Breath, chill and shatter."},
 		{"id": "beast", "name": "Beast", "color": Color(0.7, 0.8, 0.85), "desc": "Claws, coils and the tail."},
@@ -87,10 +92,12 @@ const TREE_THEME := {
 "knight": ["crusader", "bulwark", "vanguard"],
 	"wraith": ["render", "shadow", "night"], "demon": ["magma", "cataclysm", "pit"],
 	"doug": ["slapstick", "showman", "bigtop"],
+	"necromancer": ["grave", "bone", "soul"],
 	"warlock": ["drain", "corruption", "fear"],      # (her talent trees Affliction, Plague, Binding)
 }
 ## Which theme each skill is for (the shared skills by element, so they join a build that fits).
 const SKILL_THEMES := {
+	"bone_bolt": "bone", "graveyard": "grave",
 	"pierce": "flame", "volley": "frost", "snare": "storm", "beast": "storm", "a_multishot": "",
 	"a_explosive": "flame", "a_glacial": "frost", "a_stormshot": "storm", "a_mark": "storm", "a_barrage": "",
 	"toxic": "toxin", "swarm": "vermin", "bloom": "vermin", "fog": "alchemy", "transfusion": "alchemy", "experiment": "alchemy",

@@ -415,6 +415,8 @@ static func item_model(item: Dictionary) -> Node3D:
 				return Plague.cane_model()
 			if str(base.get("cls", "")) == "doug":
 				return DougBody.drumstick_model()
+			if str(base.get("cls", "")) == "necromancer":
+				return NecromancerBody.staff_model()
 			return weapon(kind, sh, p)
 		"shield": return shield(kind, sh, p)
 		"helm": return helm(kind, p)

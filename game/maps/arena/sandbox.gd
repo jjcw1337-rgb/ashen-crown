@@ -18,7 +18,7 @@ const GEARS := ["fresh", "geared"]
 ## Stat points per level by class (as tools/pvp_sim.gd spends them).
 const POINTS := {"knight": {"str": 2, "dex": 1, "vit": 2}, "wraith": {"str": 1, "dex": 2, "vit": 2}, "demon": {"str": 2, "vit": 2, "ene": 1},
 	"warlock": {"str": 1, "vit": 2, "ene": 2}, "archer": {"dex": 2, "vit": 2, "str": 1}, "plague": {"dex": 1, "vit": 2, "ene": 2},
-	"doug": {"str": 2, "dex": 1, "vit": 2}}
+	"doug": {"str": 2, "dex": 1, "vit": 2}, "necromancer": {"vit": 2, "ene": 2, "dex": 1}}
 ## Monster packs the panel can call in: label -> [kind, count]
 const PACKS := [["Zombies x5", "zombie", 5], ["Fallen x3", "fallen_reaver", 3], ["Skeleton archers x3", "skel_archer", 3],
 	["A champion", "fallen_reaver", 1]]

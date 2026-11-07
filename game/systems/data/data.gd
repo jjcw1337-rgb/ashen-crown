@@ -20,6 +20,8 @@ const WEAPON_PROFILES := {
 	"knight": {"motion": "knight", "store": "hilt", "draw_time": 0.85, "holster_time": 0.9, "grab": 0.38, "disengage": 4.0},
 	# the other classes keep the default over-the-shoulder draw until their new models arrive
 	"warlock": {"motion": "back", "store": "back"},
+	# the Necromancer carries his scythe-staff across his back
+	"necromancer": {"motion": "back", "store": "back"},
 	# the archer's bow goes across his back beside the quiver
 	"archer": {"motion": "back", "store": "back"},
 	"wraith": {"motion": "back", "store": "back"},
@@ -219,6 +221,7 @@ const BASES := {
 	"gold": {"name": "Gold", "slot": "gold", "kind": "gold", "lvl": 1, "price": 0},
 	# the plague doctor's cane ("cls": only he carries it; Plague.cane_model draws it)
 "roast_drumstick": {"name": "Roast Drumstick", "slot": "weapon", "kind": "club", "cls": "doug", "dmg": [3, 7], "speed": 1.2, "lvl": 1, "price": 30, "shape": {"len": 0.55, "w": 0.12}},
+"grave_scythe": {"name": "Gravekeeper's Scythe", "slot": "weapon", "kind": "staff", "cls": "necromancer", "dmg": [3, 7], "speed": 1.0, "lvl": 1, "price": 35},
 "physician_cane": {"name": "Physician's Cane", "slot": "weapon", "kind": "cane", "cls": "plague", "dmg": [3, 7], "speed": 1.1, "lvl": 1, "price": 35},
 "crow_cane": {"name": "Crow-Skull Cane", "slot": "weapon", "kind": "cane", "cls": "plague", "dmg": [8, 16], "speed": 1.1, "lvl": 12, "price": 210},
 # bows: the archer's weapons ("cls": only he can draw them)
@@ -448,6 +451,11 @@ static var SKILLS: Array = [
 		"desc": "Lash thorned vines all around you for 180% spell damage. Each enemy hit heals you."},
 	{"id": "w_soulfeast", "cls": "warlock", "name": "Soul Feast", "key": "", "lvl": 20, "mana": 30, "cd": 30.0, "use": 3.0, "aim": "self", "tags": ["ultimate", "channel", "sustain"], "role": "Ultimate",
 		"desc": "Channel for 3 seconds to drain every enemy within 7 metres. Healing past full life becomes a shield."},
+	# the Necromancer (game/heroes/necromancer/): the dead fight for him
+	{"id": "bone_bolt", "cls": "necromancer", "name": "Bone Bolt", "key": "", "lvl": 1, "mana": 3, "cd": 0.0, "use": 0.75, "hit": 0.45, "style": "bone_bolt", "speed": "attack", "aim": "facing", "range": 16.0, "tags": ["projectile", "attack", "spell"],
+		"desc": "Hurl a shard of bone for 110% weapon damage; it pierces the first foe."},
+	{"id": "graveyard", "cls": "necromancer", "name": "Graveyard", "key": "Q", "lvl": 1, "mana": 28, "cd": 16.0, "use": 1.3, "hit": 0.55, "style": "grave_slam", "aim": "point", "range": 14.0, "tags": ["summon", "area"],
+		"desc": "Slam your staff: a graveyard tears up from the ground at the cursor for 8 s. Its risen dead strike foes inside it every second and the grave chill slows them."},
 	# Doug (game/heroes/doug/): the trickster; every tool readable, every tool answerable
 	{"id": "pie", "cls": "doug", "name": "Cream Pie", "key": "", "lvl": 1, "mana": 6, "cd": 0.0, "use": 0.9, "hit": 0.5, "style": "pie", "speed": "attack", "dmg": 120, "type": "phys", "aim": "point", "range": 12.0, "tags": ["projectile", "attack"],
 		"desc": "Lob a cream pie at the cursor (12 m): a splat for 120% weapon damage and the target is Pied: monsters blinded for 2 seconds, a player's screen creamed at the edges and their aim assist gone for 1.5 seconds. The same target can't be Pied again for 6 seconds."},
@@ -517,6 +525,8 @@ const CLASSES := {
 		"desc": "A washed-up circus brawler with a roast drumstick and a bag of tricks. Every gag is a weapon: pies that blind, peels that trip, a double that runs the other way, and a clown car nobody wants to see coming."},
 	"plague": {"name": "Plague Doctor", "str": 14, "dex": 18, "vit": 18, "ene": 24, "weapon": "physician_cane",
 		"desc": "A beaked physician of the cursed years, belted with vials and a smoking censer. Fights by control: vials of plague, a swarm of flies, a corpse flower that roots the careless, a fog to vanish in, a transfusion to outlast a beating, and a last experiment that turns the ground to quarantine."},
+	"necromancer": {"name": "Necromancer", "str": 10, "dex": 12, "vit": 16, "ene": 24, "weapon": "grave_scythe",
+		"desc": "A lich-priest in grave-rune robes behind a skull mask, a lantern of trapped souls at his belt. Fights from behind the dead: bolts of bone, and a graveyard torn up from the ground whose risen dead claw at everything inside it."},
 	"warlock": {"voice": "gnome", "name": "Warlock", "str": 10, "dex": 10, "vit": 10, "ene": 10,
 		"desc": "A hooded sorcerer bound by a fel pact. Drains the life from foes in a forking green beam, rots them with blight and chains them where they stand."},
 	# the dragons (game/heroes/<dragon>/, their body game/systems/dragons/dragon.gd): the basic attack is their claw, bite and tail spin; "claws" is the
@@ -687,6 +697,7 @@ const PVP_CLASS := {
 	"wraith": {"dmg": [0.85, 0.75], "taken": [1.05, 1.2]},
 	"doug": {"dmg": [1.0, 1.25], "taken": [0.9, 0.85]},
 	"warlock": {"dmg": [1.25, 1.35], "taken": [0.88, 0.85]},
+	"necromancer": {"dmg": [1.0, 1.1], "taken": [1.0, 0.95]},
 	"plague": {"dmg": [0.7, 1.4], "taken": [1.1, 0.9]},
 	"demon": {"dmg": [1.25, 1.35], "taken": 1.0},
 	"knight": {"dmg": [1.05, 1.0], "taken": [0.9, 1.0]},

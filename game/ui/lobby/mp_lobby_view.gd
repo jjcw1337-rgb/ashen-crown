@@ -37,6 +37,7 @@ const PLAYSTYLE := {
 	"plague": ["Control", "Poison vials, a fly swarm, a rooting corpse flower and a fog to vanish in."],
 	"warlock": ["Caster", "Drains life down a forking beam, rots foes with blight and chains them in place."],
 	"doug": ["Trickster", "Every gag is a weapon: pies that blind, peels that trip, a clown car nobody sees coming."],
+	"necromancer": ["Summoner", "Bolts of bone, and a graveyard torn up from the ground whose risen dead claw at all within."],
 	"wyrm": ["Dragon", "A heavy obsidian dragon that rakes, bites and sweeps its tail through crowds."],
 	"serpent": ["Dragon", "A long ice dragon: frost breath and a shell of ice to hide in."],
 	"wyvern": ["Dragon", "A storm dragon that chains lightning and dodges by taking to the air."]}

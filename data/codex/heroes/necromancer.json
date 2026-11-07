@@ -1,0 +1,49 @@
+{
+	"cls": "necromancer",
+	"name": "Necromancer",
+	"fantasy": "A lich-priest in grave-rune robes behind a skull mask, a lantern of trapped souls at his belt. He fights from behind the dead: bolts of bone, and graveyards torn up from the ground whose risen dead claw at all within.",
+	"directions": [
+		{"id": "Grave", "name": "Grave", "desc": "The graveyard and its risen dead: bigger, longer, more of them."},
+		{"id": "Bone", "name": "Bone", "desc": "Bolts of bone: harder, faster, cheaper."},
+		{"id": "Soul", "name": "Soul", "desc": "What the dead give back: mana and quicker graves."}
+	],
+	"skills": [
+		{
+			"id": "bone_bolt",
+			"status": "live",
+			"name": "Bone Bolt",
+			"rarity": 0,
+			"direction": "Bone",
+			"desc": "Hurl a shard of bone for 110% weapon damage. It pierces the first foe.",
+			"mana": 3,
+			"cd": 0.0,
+			"use": 0.75,
+			"range": 16.0,
+			"tags": ["projectile", "attack", "spell"],
+			"lvl": 1,
+			"k": {"dmg": 110, "speed": 26, "pierce": 1}
+		},
+		{
+			"id": "graveyard",
+			"status": "live",
+			"name": "Graveyard",
+			"rarity": 0,
+			"direction": "Grave",
+			"desc": "Tear a graveyard up from the ground at the cursor for 8 s. Its 4 risen dead strike a foe inside it every second for 45% weapon damage each, and its chill slows foes 25%.",
+			"mana": 28,
+			"cd": 16.0,
+			"use": 1.3,
+			"range": 14.0,
+			"tags": ["summon", "area"],
+			"lvl": 1,
+			"aoe": {"r": "radius"},
+			"k": {"radius": 6.0, "secs": 8.0, "rise": 1.0, "beat": 1.0, "risen": 4, "dmg": 45, "slow": 25}
+		}
+	],
+	"rites": [
+		{"id": "n_marrow", "status": "live", "name": "Marrow Shards", "rarity": 0, "direction": "Bone", "max": 3, "fx": {"dmg:bone_bolt": 12.0}, "text": "Bone Bolt deals {dmg:bone_bolt}% more damage.", "icon": "t_star"},
+		{"id": "n_thrift", "status": "live", "name": "Bone Thrift", "rarity": 0, "direction": "Bone", "max": 2, "fx": {"cost:bone_bolt": 25.0}, "text": "Bone Bolt costs {cost:bone_bolt}% less mana.", "icon": "t_star"},
+		{"id": "n_dirge", "status": "live", "name": "Endless Dirge", "rarity": 1, "direction": "Soul", "max": 2, "fx": {"cd:graveyard": 15.0}, "text": "Graveyard's cooldown is {cd:graveyard}% shorter.", "icon": "t_star"},
+		{"id": "n_horde", "status": "live", "name": "Restless Horde", "rarity": 1, "direction": "Grave", "max": 3, "fx": {"dmg:graveyard": 15.0}, "text": "Graveyard's risen dead strike for {dmg:graveyard}% more.", "icon": "t_star"}
+	]
+}

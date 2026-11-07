@@ -213,6 +213,9 @@ func is_archer() -> bool:
 func is_doug() -> bool:
 	return cls == "doug"
 
+func is_necromancer() -> bool:
+	return cls == "necromancer"
+
 func is_plague() -> bool:
 	return cls == "plague"
 
@@ -415,6 +418,8 @@ func _build_rig() -> void:
 		rig = ArcherBody.build()
 	elif is_doug():
 		rig = DougBody.build()
+	elif is_necromancer():
+		rig = NecromancerBody.build()
 	elif is_plague():
 		rig = Plague.build_body()
 	elif is_dragon():

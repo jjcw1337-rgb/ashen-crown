@@ -9,7 +9,8 @@ extends Control
 const CARD := Vector2(132, 168)
 const GAP := 12.0
 const ACCENTS := {"knight": Color(0.95, 0.72, 0.35), "wraith": Color(0.4, 0.85, 1.0), "demon": Color(1.0, 0.38, 0.1), "warlock": Color(0.45, 1.0, 0.35), "archer": Color(0.92, 0.24, 0.3), "plague": Color(0.6, 0.95, 0.3),
-	"doug": Color(1.0, 0.82, 0.2), "wyrm": Color(1.0, 0.3, 0.12), "serpent": Color(0.55, 0.88, 1.0), "wyvern": Color(0.45, 0.95, 0.85)}     # (ClassStage.ACCENTS)
+	"doug": Color(1.0, 0.82, 0.2), "wyrm": Color(1.0, 0.3, 0.12), "serpent": Color(0.55, 0.88, 1.0), "wyvern": Color(0.45, 0.95, 0.85),
+	"necromancer": Color(0.45, 1.0, 0.6)}     # (ClassStage.ACCENTS)
 
 var ui
 var shown := ""                 # the roster last drawn (a change rebuilds the cards)

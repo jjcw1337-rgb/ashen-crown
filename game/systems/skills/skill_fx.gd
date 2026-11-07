@@ -50,6 +50,7 @@ static func _play(h: Hero, ev: Dictionary) -> void:
 		"archer": done = ArcherFx.play(h, ev)
 		"plague": done = PlagueFx.play(h, ev)
 		"doug": done = DougFx.play(h, ev)
+		"necromancer": done = NecromancerFx.play(h, ev)
 		"serpent": done = SerpentFx.play(h, ev)
 		"wyvern": done = WyvernFx.play(h, ev)
 	if not done:
