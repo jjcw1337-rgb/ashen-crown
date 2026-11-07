@@ -70,8 +70,7 @@ func _run() -> void:
 		var plan: Array = PLAN[sk]
 		for e in g.enemies_near(home, 80.0):
 			e.queue_free()
-		if h.pd != null:
-			h.pd.clear()
+		Plague.clear(h)
 		await process_frame
 		h.global_position = home
 		h.life = h.max_life
@@ -189,8 +188,7 @@ var break_id := 0
 
 ## The other player: a knight as a partner's game shows him (a puppet posed from what his game sends).
 func _rival_at(h: Hero, at: Vector3) -> void:
-	if h.pd != null:
-		h.pd.clear()
+	Plague.clear(h)
 	if rival == null or not is_instance_valid(rival):
 		rival = Hero.new()
 		rival.puppet = true
@@ -244,13 +242,13 @@ func _pvp_frame(h: Hero, f: int) -> void:
 		_use(h, "swarm", rival_spot)
 	if f == 120:
 		_use(h, "toxic", rival_spot)
-	if pulse_f < 0 and not h.pd.blooms.is_empty() and is_instance_valid(h.pd.blooms[0]["node"]) and int(h.pd.blooms[0]["node"].get("last_pulse")) >= 1:
+	if pulse_f < 0 and not _lk(h).get("blooms", []).is_empty() and is_instance_valid(_lk(h).get("blooms", [])[0]["node"]) and int(_lk(h).get("blooms", [])[0]["node"].get("last_pulse")) >= 1:
 		pulse_f = f
-	if vial_f < 0 and h.pd.clouds.any(func(c) -> bool: return c["src"] == "toxic"):
+	if vial_f < 0 and not (Plague.skill(h, "toxic") as PestilenceVial).clouds.is_empty():
 		vial_f = f
 	var bits := 0
 	var bl := 0
-	if not h.pd.swarm.is_empty() and (h.pd.swarm["pos"] as Vector3).distance_to(rival_spot) < Plague.SWARM_R:
+	if not _lk(h).get("swarm", {}).is_empty() and (_lk(h)["swarm"]["pos"] as Vector3).distance_to(rival_spot) < Skill.num("swarm", "radius", 3.0):
 		bits |= PvpStatusFx.HARRIED
 		bl = 1
 	if pulse_f >= 0:
@@ -273,29 +271,29 @@ func _break_frame(h: Hero, f: int) -> void:
 	var target := h.global_position
 	if f == 6:
 		_use(h, "bloom", rival_spot + Vector3(-1.6, 0, -0.3))
-	if f == 26 and not h.pd.blooms.is_empty():
-		break_id = int(h.pd.blooms[0]["oid"])
-		var bp: Vector3 = h.pd.blooms[0]["pos"]
+	if f == 26 and not _lk(h).get("blooms", []).is_empty():
+		break_id = int(_lk(h).get("blooms", [])[0]["oid"])
+		var bp: Vector3 = _lk(h).get("blooms", [])[0]["pos"]
 		_walk(bp + (rival_spot - bp).normalized() * 1.25, f, 16)
-	if not h.pd.blooms.is_empty():
-		target = h.pd.blooms[0]["pos"]
+	if not _lk(h).get("blooms", []).is_empty():
+		target = _lk(h).get("blooms", [])[0]["pos"]
 	if f in [50, 69, 88]:
 		swing_at = f
 	if f in [60, 79, 98] and break_id > 0:
-		h.pd.obj_hit(break_id, 99)
+		Plague.obj_hit(h, break_id, 99)
 	if f == 124:
 		_use(h, "experiment", rival_spot + Vector3(-1.5, 0, -0.8))
-	if not h.pd.lab.is_empty():
-		target = h.pd.lab["pos"]
-		if vat_f < 0 and int(h.pd.lab.get("stage", 0)) == 1:
+	if not _lk(h).get("lab", {}).is_empty():
+		target = _lk(h).get("lab", {})["pos"]
+		if vat_f < 0 and int(_lk(h).get("lab", {}).get("stage", 0)) == 1:
 			vat_f = f
 	# three blows on the vat while he cranks it, one every 0.63 s (the server lets one through per 0.6 s)
 	if vat_f >= 0:
 		var t := f - vat_f
 		if t in [4, 23, 42]:
 			swing_at = f
-		if t in [14, 33, 52] and not h.pd.lab.is_empty() and int(h.pd.lab.get("stage", 0)) == 1:
-			h.pd.obj_hit(int(h.pd.lab.get("oid", 0)), 99)
+		if t in [14, 33, 52] and not _lk(h).get("lab", {}).is_empty() and int(_lk(h).get("lab", {}).get("stage", 0)) == 1:
+			Plague.obj_hit(h, int(_lk(h)["lab"].get("oid", 0)), 99)
 	_rival_pose(target, f, 0.0)
 
 func _use(h, id: String, at: Vector3) -> bool:
@@ -303,3 +301,7 @@ func _use(h, id: String, at: Vector3) -> bool:
 	h.mana = h.max_mana
 	h.cursor = at
 	return h.use_skill(id, h.skill_aim(id, at))
+
+## This game's look of him (PlagueFx): the blooms, the swarm, the vat it shows.
+func _lk(h) -> Dictionary:
+	return PlagueFx.state(h)

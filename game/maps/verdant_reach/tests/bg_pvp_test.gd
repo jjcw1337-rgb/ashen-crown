@@ -13,6 +13,9 @@ extends SceneTree
 ## With "archer" instead, a plays the Archer and drops Thunderstep's sigil on b, and b checks it was stunned for its
 ## three seconds (Thunderstep -> PvpStatus "stagger" -> the server -> b). His skills, his wolf and his rites run on
 ## the server (ServerRules): the server checks it made them; a checks its own game holds none.
+## With "plague" instead, a plays the Plague Doctor and throws Pestilence Vial at b: the server's copy of him flies the
+## vial and lays the pool (ServerRules), whose poison is on b's stand-in there and whose Blight reaches b (PvpStatus
+## "blight" -> the server -> b); a checks its own game holds no vial, pool or poison.
 
 var g
 var role := "a"
@@ -79,6 +82,10 @@ func _server() -> void:
 		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "the Archer's skills ran here: the server made his arrow and his sigil (%d)" % ServerRules.made_count)
 		var arch = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "archer")
 		check(not arch.is_empty() and arch[0].decides() and await until(func(): return arch[0].beasts.any(func(w): return is_instance_valid(w) and w._deals()), 10.0), "his wolf runs here too, the one that bites, and his rites fire here (Hero.decides)")
+	if OS.get_cmdline_user_args().has("plague"):
+		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "the Plague Doctor's skills ran here: the server made his vials (%d)" % ServerRules.made_count)
+		var doc = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "plague")
+		check(not doc.is_empty() and doc[0].decides() and await until(func(): return _poisons_player(doc[0]), 20.0), "his pool's poison is on the other player's stand-in here (his rules: Hero.decides)")
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
 	await until(func(): return g.net.players.is_empty(), 90.0)
 
@@ -92,7 +99,8 @@ func _player() -> void:
 		DirAccess.remove_absolute(g.char_dir + fn)
 	var doug := OS.get_cmdline_user_args().has("doug")
 	var archer := OS.get_cmdline_user_args().has("archer")
-	g.hero.set_class(("doug" if doug else ("archer" if archer else "knight")) if role == "a" else "wraith")
+	var plague := OS.get_cmdline_user_args().has("plague")
+	g.hero.set_class(("doug" if doug else ("archer" if archer else ("plague" if plague else "knight"))) if role == "a" else "wraith")
 	g.hero.new_character()
 	g.hero.set_level(8)
 	g.char_id = g.new_char_id()
@@ -135,6 +143,19 @@ func _player() -> void:
 			check(Archer.skill(g.hero, "snare").sigils.is_empty() and Archer.skill(g.hero, "pierce").shots.is_empty(), "my game keeps no sigil or arrow of its own: the server's copy of me deals them")
 			check(not g.hero.decides() and not g.hero.beasts.is_empty() and not g.hero.beasts[0]._deals(), "and my wolf here is only seen (the server's bites)")
 			await secs(1.7)
+		if plague:
+			# Pestilence Vial from a few steps off: it lands on them and its pool poisons and Blights them
+			await secs(1.0)
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(5.0, 0, 0), 0.5)
+			await secs(0.6)      # (the server hears where I am before the vial goes: it checks that)
+			g.hero.mana = g.hero.max_mana
+			check(g.hero.use_skill("toxic", foe.global_position), "Pestilence Vial thrown at them")
+			await secs(1.2)
+			var vial: PestilenceVial = Plague.skill(g.hero, "toxic")
+			check(vial.flights.is_empty() and vial.clouds.is_empty() and not g.hero.kit.has("poison") and not g.hero.decides(),
+				"my game keeps no vial, pool or poison of its own: the server's copy of me deals them")
+			check(not (g.hero.get_meta("plague_fx", {}) as Dictionary).get("pools", []).is_empty(), "and it shows its pool")
+			await secs(2.5)
 		var life_seen: Array = []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
@@ -175,6 +196,9 @@ func _player() -> void:
 		if archer:
 			check(await until(func(): return g.hero.daze_t > 2.0, 60.0), "Thunderstep stunned me through the server (%.1f s)" % g.hero.daze_t)
 			check(await until(func(): return SkillFx.aimed_at_me > 0, 10.0), "and its blast was aimed at me on my screen (%d effects)" % SkillFx.aimed_at_me)
+		if plague:
+			check(await until(func(): return PvpStatus.has(g.hero, "blight"), 60.0), "the Plague Doctor's pool Blighted me through the server (%d stacks)" % int(PvpStatus.strength(g.hero, "blight")))
+			check(await until(func(): return g.hero.life < l0, 10.0), "and its poison hurt me (%d -> %d)" % [int(l0), int(g.hero.life)])
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		# fallen, I watch the one still alive (Game.spectate_*), until they leave too
@@ -200,6 +224,16 @@ func _saved_items(p: String) -> int:
 	var d = JSON.parse_string(FileAccess.get_file_as_string(p)) if FileAccess.file_exists(p) else null
 	var h: Dictionary = d.get("hero", {}) if d is Dictionary else {}
 	return (h.get("inventory", []) as Array).filter(func(x): return x != null).size()
+
+## Server: the Plague Doctor's poison (his rules, here) is on a player's stand-in.
+func _poisons_player(doc) -> bool:
+	var a = doc.kit.get("poison")
+	if a == null:
+		return false
+	for pz in a.poisoned.values():
+		if is_instance_valid(pz["e"]) and int(pz["e"].pvp_pid) > 0:
+			return true
+	return false
 
 func _proxy():
 	for e in g.world.enemies_root.get_children():
