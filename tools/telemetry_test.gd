@@ -40,8 +40,8 @@ func _run() -> void:
 	check(not TM.wanted(), "off in tools and tests")
 	# a crash left by an earlier session: its run file still says running, its log is the newest rotated one
 	var f := FileAccess.open(TM.RUN_FILE, FileAccess.WRITE)
-	f.store_string(JSON.stringify({"running": true, "session": "testcrash", "context": {"zone": "wild", "class": "knight"},
-		"crumbs": [{"k": "enter", "to": "wild"}]}))
+	f.store_string(JSON.stringify({"running": true, "session": "testcrash", "context": {"zone": "bg", "class": "knight"},
+		"crumbs": [{"k": "enter", "to": "bg"}]}))
 	f.close()
 	DirAccess.make_dir_recursive_absolute("user://logs")
 	var lf := FileAccess.open("user://logs/godot9999-12-31T23.59.59.log", FileAccess.WRITE)
@@ -51,7 +51,7 @@ func _run() -> void:
 	g.add_child(t)
 	await secs(0.2)
 	check(t.errors.size() == 1 and t.errors[0]["kind"] == "crash" and str(t.errors[0]["tail"]).contains("signal 11"), "a session that didn't end is reported as a crash, with its log's end")
-	check(t.errors[0]["crumbs"].size() == 1 and t.errors[0]["context"].get("zone", "") == "wild", "with where it was and what it did")
+	check(t.errors[0]["crumbs"].size() == 1 and t.errors[0]["context"].get("zone", "") == "bg", "with where it was and what it did")
 	DirAccess.remove_absolute("user://logs/godot9999-12-31T23.59.59.log")
 	# an error in this session, twice: one issue, counted
 	TM.crumb("boss", {"kind": "test"})

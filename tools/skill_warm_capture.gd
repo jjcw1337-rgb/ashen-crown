@@ -86,7 +86,7 @@ func _run() -> void:
 	for cls in Data.CLASSES.keys():
 		await g.start_game(false, cls)
 		g.ui.close_all()
-		await g.travel(0, "wild", "start")
+		await g.travel(0, "sandbox", "start")
 		while g._busy:
 			await process_frame
 		g.exit_grace = 1e9
@@ -118,7 +118,7 @@ func _run() -> void:
 				h.run = null
 			await wait(2.2)
 			if id == "drain":
-				h.end_drain()
+				h.end_channel()
 			for w in events:
 				var pw = _plain(w, origin)
 				if pw is Dictionary and pw.has("s") and pw.has("e"):

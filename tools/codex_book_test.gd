@@ -36,7 +36,7 @@ func _run() -> void:
 		g._intro_skip = true
 		await process_frame
 	await g.start_game(false, "warlock")
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "sandbox", "start")
 	g.ui.hide_title()
 	# the data
 	var hs := CodexBook.heroes()

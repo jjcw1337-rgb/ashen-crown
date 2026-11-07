@@ -106,7 +106,7 @@ func _on_lobby_created(result: int, id: int) -> void:
 	lobby = id
 	steam.setLobbyData(lobby, "game", LOBBY_TAG)
 	steam.setLobbyData(lobby, "host", str(game.char_name))
-	steam.setLobbyData(lobby, "act", ["Act I", "Act II", "Act III"][clampi(int(game.difficulty), 0, 2)])
+	steam.setLobbyData(lobby, "act", "Act I")
 	steam.setRichPresence("connect", "+connect_lobby %d" % lobby)
 	steam.setRichPresence("status", "Playing %s" % str(game.char_name))
 	pick_friend()

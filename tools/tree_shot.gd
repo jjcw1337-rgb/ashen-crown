@@ -1,5 +1,5 @@
 extends SceneTree
-## Screenshots of the oaks in the game: the hero stands next to the nearest oak in the moor and in
+## Screenshots of the oaks in the game: the hero stands next to the nearest oak in the Verdant Reach and in
 ## town; plus a lineup of the oak kinds. Needs a display. Usage: -- outdir
 var g
 func _initialize():
@@ -31,7 +31,7 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	var zones := ["wild"] if OS.get_cmdline_user_args().has("wild") else ["wild", "town"]
+	var zones := ["bg"] if OS.get_cmdline_user_args().has("bg") else ["bg", "town"]
 	if OS.get_cmdline_user_args().has("zoom"):
 		g.zoom = 1.3
 	for zone in zones:

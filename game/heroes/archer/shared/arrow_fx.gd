@@ -95,7 +95,7 @@ static func surface(game, p: Vector3) -> String:
 		return str((w.get_meta("surface_fn") as Callable).call(p))
 	if game.has_method("indoor") and game.indoor():
 		return "stone"
-	if w.cobble_at(p.x, p.z) > 0.45 or (int(w.run) == 1 and str(w.kind) == "lair"):
+	if w.cobble_at(p.x, p.z) > 0.45:
 		return "stone"
 	if w.dirt_at(p.x, p.z) > 0.45:
 		return "dirt"

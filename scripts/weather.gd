@@ -1,6 +1,6 @@
 class_name Weather
 extends Node3D
-## Snowfall for A2: two layers of drifting flakes that follow the camera, footprints that the
+## Snowfall (no zone has it today: Game.is_snowy): two layers of drifting flakes that follow the camera, footprints that the
 ## knights leave in the snow (fading over half a minute), and frosty breath puffs.
 
 const FOOTPRINTS := 180
@@ -8,8 +8,6 @@ const FLAKES := [1400, 3500, 7000, 14000]       # fine flakes per graphics setti
 const BIG_FLAKES := [160, 420, 900, 1800]       # larger, closer flakes
 
 var snowing := false
-var burning := false
-const EMBERS := [250, 600, 1200, 2400]
 var _layers: Array = []
 var _soft: Texture2D
 var _prints: Array = []
@@ -43,7 +41,6 @@ func _soft_disc() -> Texture2D:
 ## Turn the snowfall on or off for the area just loaded, at the density for this setting.
 func set_snow(on: bool, quality: int) -> void:
 	snowing = on
-	burning = false
 	for l in _layers:
 		l.queue_free()
 	_layers.clear()
@@ -112,120 +109,6 @@ func _layer(amount: int, size: float, speed: float, ext: Vector3, life: float, t
 	quad.material = m
 	p.draw_pass_1 = quad
 	add_child(p)
-	return p
-
-## A3: grey ash drifting down and glowing embers rising from the burning ground.
-func set_ash(on: bool, quality: int) -> void:
-	burning = on
-	if not on:
-		return
-	var q := clampi(quality, 0, 3)
-	var ash := _layer(int(FLAKES[q] * 0.6), 0.09, 0.9, Vector3(30, 13, 26), 22.0, 1.3)
-	var am := (ash.draw_pass_1 as QuadMesh).material as StandardMaterial3D
-	am.albedo_color = Color(0.42, 0.4, 0.38, 0.85)
-	_layers.append(ash)
-	_layers.append(_embers(EMBERS[q]))
-
-func _embers(amount: int) -> GPUParticles3D:
-	var p := GPUParticles3D.new()
-	p.amount = amount
-	p.lifetime = 6.0
-	p.preprocess = 6.0
-	p.local_coords = false
-	p.position = Vector3(0, 0.5, 4.0)
-	p.visibility_aabb = AABB(Vector3(-40, -10, -40), Vector3(80, 40, 80))
-	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var pm := ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
-	pm.emission_box_extents = Vector3(28, 0.5, 24)
-	pm.direction = Vector3(0.1, 1.0, 0.0)
-	pm.spread = 25.0
-	pm.initial_velocity_min = 0.5
-	pm.initial_velocity_max = 1.6
-	pm.gravity = Vector3(0.2, 0.35, 0.0)
-	pm.turbulence_enabled = true
-	pm.turbulence_noise_strength = 2.0
-	pm.turbulence_noise_scale = 3.0
-	pm.turbulence_influence_min = 0.08
-	pm.turbulence_influence_max = 0.2
-	pm.scale_min = 0.5
-	pm.scale_max = 1.4
-	var ramp := Gradient.new()
-	ramp.set_color(0, Color(1.0, 0.75, 0.3, 0.0))
-	ramp.add_point(0.08, Color(1.0, 0.65, 0.2, 1.0))
-	ramp.add_point(0.6, Color(1.0, 0.35, 0.08, 0.9))
-	ramp.set_color(ramp.get_point_count() - 1, Color(0.6, 0.1, 0.02, 0.0))
-	var rt := GradientTexture1D.new()
-	rt.gradient = ramp
-	pm.color_ramp = rt
-	p.process_material = pm
-	var quad := QuadMesh.new()
-	quad.size = Vector2(0.07, 0.07)
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	m.vertex_color_use_as_albedo = true
-	m.albedo_color = Color(2.2, 1.6, 1.0, 1.0)
-	m.albedo_texture = _soft
-	quad.material = m
-	p.draw_pass_1 = quad
-	add_child(p)
-	return p
-
-## A tall column of dark smoke rising from somewhere burning.
-func make_smoke(parent: Node3D, pos: Vector3, s: float = 1.0) -> GPUParticles3D:
-	var p := GPUParticles3D.new()
-	p.amount = int(36 * s)
-	p.lifetime = 16.0
-	p.preprocess = 16.0
-	p.local_coords = false
-	p.visibility_aabb = AABB(Vector3(-20, -2, -20), Vector3(40, 60, 40))
-	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var pm := ParticleProcessMaterial.new()
-	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	pm.emission_sphere_radius = 1.2 * s
-	pm.direction = Vector3(0.15, 1.0, 0.05)
-	pm.spread = 8.0
-	pm.initial_velocity_min = 1.6 * s
-	pm.initial_velocity_max = 2.4 * s
-	pm.gravity = Vector3(0.35, 0.1, 0.1)
-	pm.damping_min = 0.05
-	pm.damping_max = 0.1
-	pm.angle_min = 0.0
-	pm.angle_max = 360.0
-	pm.angular_velocity_min = -12.0
-	pm.angular_velocity_max = 12.0
-	var sc := Curve.new()
-	sc.add_point(Vector2(0, 0.35))
-	sc.add_point(Vector2(1, 2.2))
-	var sct := CurveTexture.new()
-	sct.curve = sc
-	pm.scale_curve = sct
-	var ramp := Gradient.new()
-	ramp.set_color(0, Color(0.35, 0.18, 0.1, 0.0))
-	ramp.add_point(0.08, Color(0.25, 0.16, 0.12, 0.55))
-	ramp.add_point(0.5, Color(0.16, 0.14, 0.13, 0.42))
-	ramp.set_color(ramp.get_point_count() - 1, Color(0.14, 0.13, 0.13, 0.0))
-	var rt := GradientTexture1D.new()
-	rt.gradient = ramp
-	pm.color_ramp = rt
-	p.process_material = pm
-	var quad := QuadMesh.new()
-	quad.size = Vector2(4.5, 4.5) * s
-	var m := StandardMaterial3D.new()
-	m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	m.billboard_mode = BaseMaterial3D.BILLBOARD_PARTICLES
-	m.vertex_color_use_as_albedo = true
-	m.albedo_texture = _soft
-	m.proximity_fade_enabled = true
-	m.proximity_fade_distance = 2.0
-	quad.material = m
-	p.draw_pass_1 = quad
-	p.position = pos
-	parent.add_child(p)
 	return p
 
 ## Keep the snowfall centred on what the camera is looking at.

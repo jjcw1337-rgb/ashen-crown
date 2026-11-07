@@ -46,7 +46,7 @@ func _run() -> void:
 	check(["Q", "E", "R", "F", "G", "V"].map(func(k): return h.bound(k)) == ids, "bound Q E R F G V")
 	check(h.rig.get("shots") is Dictionary and (h.rig.get("shots") as Dictionary).has("night_fall"), "the rig has a clip per skill")
 	print("[W] stats str %d dex %d vit %d ene %d life %d mana %d" % [h.str_, h.dex, h.vit, h.ene, h.max_life, h.max_mana])
-	await g.travel(0, "wild", "start")
+	await g.travel(0, "sandbox", "start")
 	while g._busy:
 		await process_frame
 	h.set_level(20)

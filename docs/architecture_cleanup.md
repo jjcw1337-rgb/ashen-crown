@@ -103,10 +103,12 @@ Each step is done for the Archer first, all the way through, and the other heroe
    `talents.gd` go, and then so do `code_base.json` and the three-way merge.
 6. **Real ids** (`pierce` → `fire_arrow`) everywhere at once, with aliases for saved survivors. Ids travel over the
    network, so the server deploy and the clients ship together.
+7. **Upgrade Godot** from 4.4.1 to the current release (Blaine and JJ, 2026-11-07), last, once the migration is done:
+   on a `test-` branch first, with the full test set, the server export and GodotSteam checked before switching.
 
-Cuts run alongside: the old crypt, the old Warlock (the gnome body and the four-skill kit), Act II, Act I's story
-(the moor and the fort), the co-op server, plus archiving sailing and the Last Flame. The starting camp stays for
-now. Follow "Cutting an old system".
+Cuts run alongside: the old crypt, the old Warlock (the gnome body and the four-skill kit), the story mode (Act I's
+moor and fort, Act II, Act III), the co-op server, plus archiving sailing, the Last Flame and the starting camp.
+Follow "Cutting an old system".
 
 Touch points to coordinate:
 - Claude-1's loader: its recorded file lists and the coming per-class lists, which become "load the hero's folder".
@@ -135,10 +137,11 @@ Touch points to coordinate:
 
 ### In progress
 
-- Claude-2: the Archer, end to end (`game/heroes/archer/**`, `game/systems/**`, plus the Archer's places in `hero.gd`,
-  `class_skills.gd`, `skill_fx.gd` and `run_talents.gd`).
+- Claude-2 (2026-11-07, one agent per hero, each on its own branch): the Plague Doctor, the Warlock, Doug, the Wraith
+  and the Demon onto the Archer's template with their skills on the server; then the Knight and the dragons. Also
+  click-to-cast for AoE skills (`game/systems/skills/aiming.gd`, JJ and Blaine).
 - Claude-1: the monsters into `game/monsters/<name>/` (the Verdant Reach's first; King Grubb as a boss any camp can
-  use), then the remaining cuts (Act II, the moor and fort).
+  use), then the remaining cuts (the old Warlock, the co-op server).
 
 ## Cutting an old system
 
@@ -185,26 +188,23 @@ Do one old system per push.
 ### What the live game still borrows
 
 Known borrowings (2026-11-06; check again with `git grep` before each cut):
-- **The Verdant Reach** (`game/maps/verdant_reach/`) uses models from:
-  - Act II: `models/roman/` arch, broken, column, drum (its ruins);
-  - Grubb's fort: `models/fort/tower`;
-  - the Sloths' lairs: `models/lairs/ice_rock`, plus the frost floor texture `SlothLair._ground_tex("cold")`;
-  - the camp: `models/camp/` tent and runestone;
-  - the waypoint: `models/waypoint/` banner and crystal_rune;
-
-  These move to `game/maps/verdant_reach/props/`.
+- **The Verdant Reach** (`game/maps/verdant_reach/`) uses the camp's models: `game/maps/camp/props/camp/` tent and
+  runestone, `props/waypoint/` banner and crystal_rune.
 - **Monsters:** the forest camps use Act I monsters (zombies, the three Fallen, the Feral, the bear, the goblin
   guard).
   - All of them are built on `Goblin.imported_rig` (`goblin.gd`, King Grubb's file). It goes to `game/systems/bodies/`.
   - The Poison Mushroom's body is the forest's `props/fungus` (`Enemy`, its `"prop"`).
-- **The archer's wolf** runs on `lion.gd` (the Act II arena lion's skeleton and pose).
+- **The archer's wolf** runs on `lion.gd` (the arena lion's skeleton and pose).
 - **Every camp chest** is built by `World._chest` (`world.gd`).
-- **`World.crypt_shell`** and its pillar, bones and sconce (`ArenaProps`) are used by Act III's crypt.
 
 ## Status
 
 - [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
-  Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`.
+  Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`. Shared systems out of
+  `scripts/` (2026-11-07): `game/systems/fx/`, `bodies/`, `audio/`, `combat/`, `skills/`, `data/` and `game/items/`.
+  Left in `scripts/`: the big shared files (`game.gd`, `hero.gd`, `net.gd`, `enemy.gd`, `ui.gd`), the net stack,
+  the screens, the world and loading (Claude-1's), and the heroes not moved yet. A skill's own sounds live in its
+  `sounds/` folder (the Archer's first).
 - [ ] 2. The Archer, end to end. Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
   `GroundZone`, `DelayedArea`); all eleven of his skills in their own folders with their numbers in the codex,
   Thunderstep's stun 3 s and on players too (Blaine, 2026-11-07); Hunter's Mark no longer named in `enemy.gd`; his
@@ -223,6 +223,7 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   thorns go through the server first); then the gameplay core.
 - [ ] 5. One data source
 - [ ] 6. Real ids
+- [ ] 7. Upgrade Godot
 - [x] `concepts/` removed (2026-11-06)
 - [x] Docs by concept: one root `AGENTS.md`, and a doc per piece of content, system and pipeline (2026-11-06)
 - [x] The old crypt Battlegrounds cut (its map, floors below, antechamber gates, bells, stash daises and the stash's
@@ -238,3 +239,8 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   the bosses' brains, props, tests; 2026-11-06).
 - [x] Maps: the Arena is `game/maps/arena/` (the template for every map: its map, props, modes, tests, README;
   2026-11-06).
+- [x] The story mode cut: Act I's moor, Grubb's fort and the Sloths' lairs; Act II (the Imperial Road, Aurelia, its
+  games); Act III (the Ashen King's crypt, the ash and fire look); the acts (A2/A3, the victory screen, act travel at
+  the waypoint) and their quests. The Verdant Reach's borrowed ruins, watchtower and
+  ice rock are in its `props/`; the fort, the Roman set, the lairs' models, the Ashen King, the act banners and the
+  arena crowd's sounds are in `archive/story/` (2026-11-06).

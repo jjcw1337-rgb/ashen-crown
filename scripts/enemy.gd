@@ -21,10 +21,7 @@ var rig: Node3D
 var dead := false
 var dead_t := 0.0
 var aggro := false
-var scripted := 0.0             # seconds something else drives this monster (the champion's charge, games.gd)
-var leap_t := -1.0              # springing from an ambush (leap_from): 0..1 through the leap
-var leap_a := Vector3.ZERO
-var leap_b := Vector3.ZERO
+var scripted := 0.0             # seconds something else drives this monster (a tool holding it still for the camera)
 var atk_t := -1.0
 var atk_dur := 1.0
 var atk_style := "over"
@@ -133,14 +130,12 @@ func setup(g: Node, k: String, lvl: int, champ := false, champ_name := "") -> vo
 	boss = def.get("boss", false)
 	var lf := 1.0 + 0.3 * (lvl - 1)
 	var df := 1.0 + 0.17 * (lvl - 1)
-	var hard: float = g.run_mult("boss_life" if boss else "life")
-	var hit: float = g.run_mult("dmg")
-	max_life = def["life"] * lf * (2.4 if champ else 1.0) * hard
+	max_life = def["life"] * lf * (2.4 if champ else 1.0)
 	life = max_life
-	dmg = [def["dmg"][0] * df * (1.4 if champ else 1.0) * hit, def["dmg"][1] * df * (1.4 if champ else 1.0) * hit]
-	armor = int(def.get("armor", 0) * (1.0 + 0.1 * lvl) * hard)
+	dmg = [def["dmg"][0] * df * (1.4 if champ else 1.0), def["dmg"][1] * df * (1.4 if champ else 1.0)]
+	armor = int(def.get("armor", 0) * (1.0 + 0.1 * lvl))
 	speed = def["speed"] * (1.15 if champ else 1.0)
-	xp = int(def["xp"] * (1.0 + 0.12 * (lvl - 1)) * (3.0 if champ else 1.0) * g.xp_mult())
+	xp = int(def["xp"] * (1.0 + 0.12 * (lvl - 1)) * (3.0 if champ else 1.0))
 	radius = def.get("radius", 0.5)
 	display_name = champ_name if champ_name != "" else def["name"]
 	atk_style = def["atk"]
@@ -751,9 +746,6 @@ func _process(delta: float) -> void:
 		if rival != null and (hero.dead or rival.global_position.distance_to(global_position) < hero.global_position.distance_to(global_position) * 0.85):
 			hero = rival
 			aggro = true
-	if leap_t >= 0.0:
-		_update_leap(delta, hero)
-		return
 	if scripted > 0.0:
 		scripted -= delta
 		return
@@ -881,7 +873,7 @@ static func model_paths(kind: String) -> PackedStringArray:
 	return res
 
 ## A monster kind's body (its Meshy model, sculpted goblin, skeleton or code-built figure), as setup gives
-## it; also used to draw the arena's crowd (games.gd). variant: the Feral's model.
+## it. variant: the Feral's model.
 static func build_rig(kind: String, variant := 1) -> Node3D:
 	var d: Dictionary = Data.ENEMIES[kind]
 	var look: Dictionary = d["look"]
@@ -1280,31 +1272,6 @@ func _shoot(at: Vector3, pkind: String) -> void:
 # ---------------------------------------------------------------- the Feral (feral.gd)
 ## Clinging head-down to a trunk until someone comes close, then down it in a skitter, and the rest of
 ## its pack with it.
-## An ambusher (Via's bandits): leaps from where it hid, over the rocks, down onto the road, and is in
-## the fight as it lands.
-func leap_from(a: Vector3, b: Vector3) -> void:
-	leap_a = a
-	leap_b = Vector3(b.x, game.world.height_at(b.x, b.z), b.z)
-	leap_t = randf_range(-0.35, 0.0)     # not all at once
-	aggro = true
-
-func _update_leap(delta: float, hero: Node3D) -> void:
-	leap_t += delta / 0.75
-	var k := clampf(leap_t, 0.0, 1.0)
-	var p := leap_a.lerp(leap_b, smoothstep(0.0, 1.0, k))
-	p.y = lerpf(game.world.height_at(leap_a.x, leap_a.z), leap_b.y, k) + sin(k * PI) * 2.6
-	global_position = p
-	var d := leap_b - leap_a
-	if d.length() > 0.1:
-		rig.rotation.y = atan2(-d.x, -d.z)
-	_pose({"time": anim_time, "phase": phase, "move": 1.0 - k, "atk": 0.25 + k * 0.5, "style": "over", "hit": 0.0})
-	if leap_t >= 1.0:
-		leap_t = -1.0
-		home = global_position
-		Fx.burst(game.world.fx_root, global_position + Vector3(0, 0.2, 0), Color(0.45, 0.38, 0.28, 0.7), 14, 2.5, 0.25, 0.6, false, 0.5)
-		if is_instance_valid(hero) and hero is Node3D:
-			rig.rotation.y = atan2(-(hero.global_position.x - global_position.x), -(hero.global_position.z - global_position.z))
-
 func perch_on(trunk: Vector3, out_dir: Vector3, h := Feral.PERCH_H) -> void:
 	perch_dir = Vector3(out_dir.x, 0, out_dir.z).normalized()
 	perch_h = h

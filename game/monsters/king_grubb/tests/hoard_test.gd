@@ -1,6 +1,6 @@
 extends SceneTree
-## King Grubb the Gilded (`-- camp`: as a Verdant Reach camp boss, no vault): his guards, the intro cackle, a Gilded Bomb, a burst sack (piles, grabbers
-## from the tunnels), a hero taking a pile (gold, and it hurts him), a grabber hauling a pile back to him
+## King Grubb the Gilded as a Verdant Reach camp boss (no vault): his guards, the
+## intro cackle, a Gilded Bomb, a burst sack (piles, grabbers from round him), a hero taking a pile (gold, and it hurts him), a grabber hauling a pile back to him
 ## (heal), killing a hauling grabber (it drops the gold), the end of the scramble, the last sack
 ## enraging him, and cleanup on his death.
 var g
@@ -17,26 +17,16 @@ func _run() -> void:
 		await process_frame
 	await g.start_game(false, "knight")
 	g.ui.close_all()
-	# `-- camp`: Grubb as a camp's boss in the Verdant Reach (no vault, no tunnels: his grabbers come from round him);
-	# else his own vault (Act I's fort)
-	var camp := OS.get_cmdline_user_args().has("camp")
-	if camp:
-		g.hero.start_run()
-		g.bg_mode = true
-		await g.load_zone(0, "bg", "start")
-	else:
-		await g.load_zone(0, "lair", "start")
+	# Grubb as a camp's boss in the Verdant Reach (no vault, no tunnels: his grabbers come from round him)
+	g.hero.start_run()
+	g.bg_mode = true
+	await g.load_zone(0, "bg", "start")
 	var h = g.hero
 	h.level = 10
 	h.recalc()
 	g.test_immortal = true
-	var boss = null
-	if camp:
-		var at: Vector3 = g.world.free_spot_near(g.world.spawns.get("start", Vector3.ZERO) + Vector3(0, 0, -14.0), 2.0)
-		boss = g.spawn_enemy("goblin_king", at, 6, false, "", 900)
-	for e in g.world.enemies_root.get_children():
-		if e is Enemy and e.boss and boss == null:
-			boss = e
+	var at: Vector3 = g.world.free_spot_near(g.world.spawns.get("start", Vector3.ZERO) + Vector3(0, 0, -14.0), 2.0)
+	var boss = g.spawn_enemy("goblin_king", at, 6, false, "", 900)
 	await wait(0.3)
 	for e in g.enemies_near(boss.global_position, 18.0):
 		if not e.boss and e.kind != "grabber":
@@ -49,7 +39,7 @@ func _run() -> void:
 		var sp := cam.unproject_position(boss.global_position + Vector3(0, y, 0))
 		picks.append(g.pick_enemy(cam.project_ray_origin(sp), cam.project_ray_normal(sp)) == boss)
 	print("[H] clickable at feet, gut, crown: %s (stands %.1f m, body radius %.2f)" % [picks, boss.top(), boss.body_r()])
-	print("[H] boss %s (%s) has a hoard: %s, guards %d, tunnels %d" % [boss.kind, boss.display_name, hd != null, alive("grabber").size(), g.world.hoard_holes.size()])
+	print("[H] boss %s (%s) has a hoard: %s, guards %d" % [boss.kind, boss.display_name, hd != null, alive("grabber").size()])
 	h.global_position = g.world.free_spot_near(boss.global_position + Vector3(0, 0, 4.0), 1.0)
 	await wait(0.5)
 	print("[H] aggro %s state %s cackling %s" % [boss.aggro, hd.state, boss.special == "cackle"])

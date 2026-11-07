@@ -541,8 +541,6 @@ const GRASS_TOP_TEX := "res://assets/textures/grass/top%d.png"
 const GRASS_TOP := [[0.85, 22], [0.75, 14], [0.8, 8], [0.8, 9], [0.85, 12], [0.8, 7], [0.5, 14], [0.8, 6], [0.75, 8]]
 ## the camera looks down at about 46 degrees (Game.CAM_OFFSET), so the cards lean back by 44
 const GRASS_TOP_LEAN := 44.0
-## the rare Sunstar Bloom (World._rare_flowers) is painted the same way
-const FLOWER_TEX := "res://assets/textures/grass/flower_sun.png"
 
 static func grass_top_ok() -> bool:
 	return ResourceLoader.exists(GRASS_TOP_TEX % GRASS_TOP.size())
@@ -561,9 +559,6 @@ static func grass_top_kind(rng: RandomNumberGenerator) -> int:
 
 static func grass_top(k: int, colors: Dictionary) -> ArrayMesh:
 	return _camera_card("gtop%d" % k, GRASS_TOP_TEX % k, GRASS_TOP[k - 1][0], colors.get("dry_col", Color(0.42, 0.38, 0.18)), 0.0)
-
-static func flower_card() -> ArrayMesh:
-	return _camera_card("flower_sun", FLOWER_TEX, 1.2, Color(0.42, 0.38, 0.18), 0.9)
 
 ## A painted cut-out on one quad that leans back to face the fixed camera; `glow` lights it from within.
 static func _camera_card(key: String, tex: String, w: float, dry: Color, glow: float) -> ArrayMesh:
@@ -709,11 +704,9 @@ uniform vec3 col : source_color = vec3(0.35, 0.25, 0.17);
 uniform vec3 col2 : source_color = vec3(0.15, 0.1, 0.07);
 uniform float moss = 0.4;
 global uniform float snow_amt;
-global uniform float ash_amt;
 global uniform vec3 player_pos;
 global uniform float occlude_k;
 varying vec3 bwp;
-varying float smoulder;
 varying float sway;
 varying vec3 wn;
 varying float wy;
@@ -733,7 +726,6 @@ void vertex(){
 	wn = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 	bwp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	wy = bwp.y - o.y;
-	smoulder = step(0.55, h21(o.xz * 0.37));
 }
 void fragment(){
 	{
@@ -762,12 +754,6 @@ void fragment(){
 		c = mix(c, vec3(0.85, 0.9, 0.97) * (0.9 + plates * 0.1), sn);
 	}
 	vec3 em = vec3(0.0);
-	if (ash_amt > 0.0) {
-		c = mix(c, vec3(0.045, 0.04, 0.035) * (0.8 + plates * 0.6), ash_amt * 0.92);
-		c = mix(c, vec3(0.3, 0.28, 0.26), ash_amt * smoothstep(0.55, 0.9, wn.y) * 0.4);
-		float pulse = 0.6 + 0.4 * sin(TIME * 2.0 + bwp.y * 3.0 + bwp.x);
-		em = vec3(1.0, 0.32, 0.06) * fis * smoothstep(0.3, 0.7, vn(uv * 0.7 + 5.0)) * smoulder * pulse * 2.2 * ash_amt;
-	}
 	ALBEDO = c;
 	EMISSION = em;
 	ROUGHNESS = 0.92;
@@ -786,7 +772,6 @@ uniform bool use_normal = false;
 uniform float height = 6.0;
 uniform float tint = 1.0;
 global uniform float snow_amt;
-global uniform float ash_amt;
 global uniform vec3 player_pos;
 global uniform float occlude_k;
 varying vec3 bwp;
@@ -824,9 +809,6 @@ void fragment(){
 	if (snow_amt > 0.0) {
 		c = mix(c, vec3(0.85, 0.88, 0.92), snow_amt * smoothstep(0.45, 0.85, wn.y));
 	}
-	if (ash_amt > 0.0) {
-		c = mix(c, vec3(0.05, 0.045, 0.04), ash_amt * 0.85);
-	}
 	ALBEDO = c;
 	ROUGHNESS = 0.88;
 	SPECULAR = 0.25;
@@ -857,12 +839,11 @@ void fragment(){
 
 ## FOLIAGE_SHADER's shadow caster (shadow_twin): the same sway and the same cut-out, read from the baked mask
 ## (tools/bake_foliage_mask.gd) instead of worked out per texel: the procedural leaf shapes in every texel of every
-## shadow cascade were ~8 ms of the moor's GPU frame at High (nightly 2026-11-02). Burnt-away leaves (ash) cut the same.
+## shadow cascade were ~8 ms of the moor's GPU frame at High (nightly 2026-11-02).
 const FOLIAGE_SHADOW_SHADER := """
 shader_type spatial;
 render_mode cull_disabled, unshaded;
 uniform sampler2D mask : filter_linear, repeat_disable;
-global uniform float ash_amt;
 varying vec3 wp;
 float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vn(vec2 p){ vec2 i = floor(p); vec2 f = fract(p); vec2 u = f * f * (3.0 - 2.0 * f);
@@ -880,7 +861,6 @@ void vertex(){
 }
 void fragment(){
 	if (texture(mask, UV).r < 0.5) { discard; }
-	if (ash_amt > 0.0 && vn(wp.xz * 1.1 + wp.y * 0.9 + 3.0) < 0.72 * ash_amt) { discard; }
 	ALBEDO = vec3(0.0);
 }
 """
@@ -893,7 +873,6 @@ uniform vec3 col : source_color = vec3(0.1, 0.17, 0.09);
 uniform vec3 col2 : source_color = vec3(0.2, 0.28, 0.13);
 uniform vec3 dry : source_color = vec3(0.32, 0.3, 0.16);
 global uniform float snow_amt;
-global uniform float ash_amt;
 global uniform vec3 player_pos;
 global uniform float occlude_k;
 varying vec4 vc;
@@ -959,12 +938,6 @@ float fern(vec2 uv){
 void fragment(){
 	float a = kind == 0 ? needles(UV) : (kind == 1 ? leaves(UV) : fern(UV));
 	if (a < 0.5) { discard; }
-	float singe = 0.0;
-	if (ash_amt > 0.0) {
-		float keep = vn(wp.xz * 1.1 + wp.y * 0.9 + 3.0);
-		if (keep < 0.72 * ash_amt) { discard; }
-		singe = smoothstep(0.72, 0.9, keep);
-	}
 	{
 		vec3 d = wp - player_pos;
 		float hh = wp.y - player_pos.y;
@@ -985,10 +958,6 @@ void fragment(){
 		c = mix(c, vec3(0.8, 0.84, 0.91) * (0.88 + lump * 0.14), sn);
 	}
 	vec3 fem = vec3(0.0);
-	if (ash_amt > 0.0) {
-		c = mix(vec3(0.05, 0.035, 0.025), vec3(0.32, 0.14, 0.05), singe) * (0.8 + vn(UV * 6.0) * 0.4);
-		fem = vec3(1.0, 0.35, 0.06) * smoothstep(0.92, 1.0, vn(UV * 9.0 + wp.xz)) * 1.5 * ash_amt;
-	}
 	ALBEDO = c;
 	EMISSION = fem;
 	ROUGHNESS = 0.8;
@@ -1007,7 +976,6 @@ uniform vec3 dry_col : source_color = vec3(0.42, 0.38, 0.18);
 uniform float wind = 1.0;
 uniform float glow = 0.0;
 global uniform float snow_amt;
-global uniform float ash_amt;
 varying float hgt;
 varying vec3 wpos;
 varying vec4 vc;
@@ -1025,7 +993,6 @@ void vertex(){
 	VERTEX.x += (w * 0.1 + flick) * hgt * hgt * wind * (1.0 - snow_amt * 0.5);
 	VERTEX.z += (w * 0.06 + flick) * hgt * hgt * wind * (1.0 - snow_amt * 0.5);
 	VERTEX.y -= snow_amt * 0.16;
-	VERTEX.y *= 1.0 - ash_amt * 0.4;
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment(){
@@ -1043,9 +1010,6 @@ void fragment(){
 	c = mix(c, c * dry_col / max(dot(dry_col, vec3(0.33)), 0.05) * 0.45, smoothstep(0.6, 0.95, patch) * 0.2);
 	c *= 0.82 + h21(floor(MODEL_MATRIX[3].xz * 3.0)) * 0.3;
 	c *= 1.0 + (gust - 0.5) * 0.2 * hgt;
-	if (ash_amt > 0.0) {
-		c = mix(c, mix(vec3(0.06, 0.05, 0.04), vec3(0.3, 0.27, 0.23), hgt), ash_amt * 0.92);
-	}
 	if (snow_amt > 0.0) {
 		c = mix(c, vec3(0.42, 0.38, 0.26), snow_amt * 0.6);
 		c = mix(c, vec3(0.86, 0.9, 0.96), snow_amt * smoothstep(0.75, 1.0, hgt) * 0.75);
@@ -1073,7 +1037,6 @@ uniform vec3 tip_col : source_color = vec3(0.3, 0.36, 0.14);
 uniform vec3 dry_col : source_color = vec3(0.42, 0.38, 0.18);
 uniform float wind = 1.0;
 global uniform float snow_amt;
-global uniform float ash_amt;
 varying float hgt;
 varying vec3 wpos;
 varying vec4 vc;
@@ -1093,13 +1056,12 @@ void vertex(){
 	VERTEX.z += (w * 0.07 + flick) * hgt * hgt * wind * (1.0 - snow_amt * 0.5);
 	// half buried: sink the clump so only the upper blades show above the snow
 	VERTEX.y -= snow_amt * 0.16;
-	VERTEX.y *= 1.0 - ash_amt * 0.4;
 	wpos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 }
 void fragment(){
 	if (snow_amt > 0.0 && hgt < snow_amt * 0.5) { discard; }
 	if (vc.a < 0.5) {
-		if (snow_amt > 0.5 || ash_amt > 0.5) { discard; }
+		if snow_amt > 0.5 { discard; }
 		// wildflower petals
 		ALBEDO = vc.rgb;
 		ROUGHNESS = 0.6;
@@ -1110,12 +1072,6 @@ void fragment(){
 		vec3 tip = mix(tip_col, dry_col, smoothstep(0.45, 0.85, patch * 0.8 + fine * 0.3));
 		vec3 c = mix(base_col, tip, smoothstep(0.0, 0.9, hgt)) * vc.rgb;
 		c *= 1.0 + (gust - 0.5) * 0.25 * hgt;
-		if (ash_amt > 0.0) {
-			// burned grass: charred stubble with grey ash, the odd ember at a tip
-			c = mix(c, mix(vec3(0.06, 0.05, 0.04), vec3(0.3, 0.27, 0.23), hgt) * vc.rgb, ash_amt * 0.92);
-			float tipglow = step(0.965, h21(floor(wpos.xz * 4.0))) * smoothstep(0.7, 1.0, hgt);
-			EMISSION = vec3(1.0, 0.35, 0.05) * tipglow * (0.6 + 0.4 * sin(TIME * 4.0 + wpos.x * 5.0)) * 2.0 * ash_amt;
-		}
 		if (snow_amt > 0.0) {
 			// winter-dried blades with frost on the tips
 			c = mix(c, vec3(0.42, 0.38, 0.26) * vc.rgb, snow_amt * 0.6);

@@ -9,11 +9,13 @@ extends RefCounted
 ## blowing, a mark landing) comes from the server to everyone. Single player and Enter World co-op are unchanged.
 
 ## The classes whose skills run on the server (the rest still deal their own hits until they move over).
-const CLASSES := ["archer", "wraith"]
+const CLASSES := ["archer", "warlock", "wraith"]
 
-## Tests: what the server made from players' skills, and what it refused.
+## Tests: what the server made from players' skills, and what it refused; what a player's game took from its skills'
+## rules on the server (Skill.give: life back, mana).
 static var made_count := 0
 static var refused_count := 0
+static var given_count := 0
 
 ## This hero's skills run on the server: the server's copy deals them; the player's own game only shows them.
 static func on(h) -> bool:
@@ -35,6 +37,15 @@ static func received(game, pid: int, id: String, kind: String, data: Dictionary)
 	var h = p["hero"]
 	if not is_instance_valid(h) or h.dead or not on(h):
 		return
+	if id == "run":
+		# what the run gives every hero (a flask thrown, thorns on a blow taken): RunTalents checks and makes it
+		Hero.striker = h
+		if RunTalents.server_made(h, kind, data):
+			made_count += 1
+		else:
+			refused_count += 1
+			print("[RULES] refused %s's run %s" % [h.peer_id, kind])
+		return
 	if id != "attack" and str(Data.skill_def(id).get("cls", "")) != str(h.cls):
 		return
 	var m = ClassSkills.of(h.cls)
@@ -49,6 +60,25 @@ static func received(game, pid: int, id: String, kind: String, data: Dictionary)
 	made_count += 1
 	s.made(kind, data)
 
+## Server: what a player's skill's rules gave its own hero here (Skill.give) goes to that player's game
+## (Net.tell_self: "give").
+static func give(h, id: String, kind: String, data: Dictionary) -> void:
+	h.game.net.tell_self(h, {"give": [id, kind, data]})
+
+## A player's game: the server's rules gave its hero something (life back, mana); the skill takes it (Skill.given).
+static func got(game, id: String, kind: String, data: Dictionary) -> void:
+	var h = game.hero
+	if h == null or not is_instance_valid(h) or h.dead or str(Data.skill_def(id).get("cls", "")) != str(h.cls):
+		return
+	var m = ClassSkills.of(h.cls)
+	if m == null or not m.has_method("skill"):
+		return
+	var s = m.skill(h, id)
+	if s == null:
+		return
+	given_count += 1
+	s.given(kind, data)
+
 ## Server, every frame: the copies' skills fly, beat and blow, and what else of theirs acts here (the class's
 ## `server_update`: the Archer's wolf).
 static func update(h, delta: float) -> void:
@@ -57,6 +87,7 @@ static func update(h, delta: float) -> void:
 	var m = ClassSkills.of(h.cls)
 	if m != null and m.has_method("server_update"):
 		m.server_update(h, delta)
+	h.buff_t = maxf(0.0, h.buff_t - delta)      # (the battle buff its game sent wears off here too)
 	if h.dead:
 		return
 	Hero.striker = h

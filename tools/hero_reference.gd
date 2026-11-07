@@ -117,7 +117,7 @@ func _run() -> void:
 	await g.start_game(false, cls)
 	g.test_immortal = true
 	g.test_allskills = true
-	await g.load_zone(0, "wild", "start")
+	await g.load_zone(0, "bg", "start")
 	for e in g.world.enemies_root.get_children():
 		e.queue_free()
 	await frames(2)

@@ -100,7 +100,6 @@ var bg_mode := false:
 			hero.recalc()
 			hero.life = hero.max_life
 var net_joining := false     # a co-op join sent, no welcome yet (on_net_failed then goes back to the co-op screen)
-var bg_home_run := -1        # in a raid: the character's own act (Net.cl_welcome swaps to the raid's, saves keep this)
 var bg_raid := {}               # the round as the raid server last said (Net.cl_bg_raid): state, t, open portals...
 var bg_roster: Array = []       # the antechamber's matchup (Net.cl_bg_roster): [{pid, cls, lvl}], this player too
 var bg_gained := -1             # ... items brought out of it (-1: no extraction; the news told back at the camp)
@@ -128,20 +127,16 @@ var exit_grace := 0.0
 var test_block := false        # a tool holding the guard up (game/heroes/archer/tools/fire_range.gd's "block" take)
 var waypoints_known := ["town"]
 var boss_killed := false
-var difficulty := 0          # 0 = Act I, 1 = A2, 2 = A3: Act I again with tougher monsters and loot each time
-var max_run := 0             # highest of those reached; any of them can be picked at the camp waypoint
-## TESTING: unlock Act I, A2 and A3 at the camp waypoint from the start. Set to false to
-## go back to unlocking them by beating each final boss. Only takes effect where dev_tools is on.
-const UNLOCK_ALL_ACTS := true
-## Developer tools (unlock-all-acts and the Escape menu's Admin column): only for the admins. On when running from
+## Always 0: Act I is the only act (the story's A2 and A3 are cut). Kept because saves and tools still set it.
+var difficulty := 0
+## Developer tools (the Escape menu's Admin column): only for the admins. On when running from
 ## the Godot editor (or a local debug run), for an account with the admin role (Nakama, tools/admin_role.sh;
 ## CloudSaves turns it on after signing in), or when this PC holds a valid admin key (AdminKey: signed with the owner's private key, so it can't be made up or shared by editing a file).
 ## Off for everyone else in every production build.
 var admin_name := AdminKey.holder()
-var dev_tools := UNLOCK_ALL_ACTS and (OS.has_feature("editor") or admin_name != "" or (BuildEnv.env() == "local" and OS.has_feature("debug")))
+var dev_tools := OS.has_feature("editor") or admin_name != "" or (BuildEnv.env() == "local" and OS.has_feature("debug"))
 var account_id := ""            # this player's Nakama account (CloudSaves), shown in the Admin column to be made an admin
 var account_admin := false      # the account has the admin role (Nakama, tools/admin_role.sh): the admin tools on
-var run_progress := {}       # per run: its waypoints and whether its boss is dead
 var played_s := 0.0          # seconds this character has been played (saved); the clock trees regrow on (Harvest)
 var harvest_saved := {}      # "<run>:<act>:<zone>" -> Harvest.to_save() (the felled trees and when they regrow)
 var tp_link := {}
@@ -173,8 +168,6 @@ func _ready() -> void:
 			shot_spawn = args[i + 1]
 		if args[i] == "--zone" and i + 1 < args.size():
 			shot_zone = args[i + 1]
-		if args[i] == "--run" and i + 1 < args.size():
-			difficulty = int(args[i + 1])
 		if args[i] == "--render-scale" and i + 1 < args.size():
 			render_scale_arg = float(args[i + 1])
 	quality = _initial_quality()
@@ -215,7 +208,7 @@ func _ready() -> void:
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
 	if not args.has("--server"):
-		lobby_client = load("res://scripts/lobby_client.gd").new()
+		lobby_client = load("res://game/ui/lobby/lobby_client.gd").new()
 		add_child(lobby_client)
 		lobby_client.setup(self)
 	if not args.has("--server"):
@@ -396,42 +389,11 @@ func _setup_env() -> void:
 	add_child(day_night)
 	apply_quality(quality)
 
-## A3: set the camp and the moor ablaze, with smoke columns rising beyond the trees.
-func _set_fires() -> void:
-	var r := RandomNumberGenerator.new()
-	r.seed = 99 + ["town", "wild", "lair"].find(cur_zone)
-	var lit := 0
-	for bp in world.burn_points:
-		var pos: Vector3 = bp[0]
-		var sz: float = bp[1]
-		if cur_zone == "wild" and r.randf() < 0.35:
-			continue
-		var with_light := lit < (8 if quality >= 2 else 4)
-		Props.fire(world.fx_root, pos, sz, Color(1.0, 0.45, 0.12), with_light, false, true, "building" if sz >= 1.0 else "ground")
-		if with_light:
-			lit += 1
-		if r.randf() < 0.45:
-			weather.make_smoke(world.fx_root, pos + Vector3(0, 1.0, 0), 0.6 + sz * 0.3)
-	var b: Rect2 = world.bounds
-	for i in 10:
-		var t := float(i) / 10.0
-		var edge := r.randi() % 4
-		var p := Vector3.ZERO
-		match edge:
-			0: p = Vector3(lerpf(b.position.x, b.end.x, r.randf()), 0, b.position.y - r.randf_range(8, 22))
-			1: p = Vector3(lerpf(b.position.x, b.end.x, r.randf()), 0, b.end.y + r.randf_range(8, 22))
-			2: p = Vector3(b.position.x - r.randf_range(8, 22), 0, lerpf(b.position.y, b.end.y, r.randf()))
-			_: p = Vector3(b.end.x + r.randf_range(8, 22), 0, lerpf(b.position.y, b.end.y, r.randf()))
-		p.y = world.height_at(p.x, p.z)
-		weather.make_smoke(world.fx_root, p, r.randf_range(1.6, 2.6))
-		Props.fire(world.fx_root, p + Vector3(0, 0.6, 0), 2.2, Color(1.0, 0.42, 0.1), false, false, false, "building")
-
-## Snow over every outdoor area, falling snow, colder light. (A2 was winter until it became the Imperial
-## Road and Aurelia, which are warm; nothing is snowy now, kept for a later act.)
+## Snow over every outdoor area, falling snow, colder light. Nothing is snowy now: kept for a later map.
 func is_snowy() -> bool:
 	return false
 
-## The zone's song and ambience. Act I outside the camp (the forest moor, Grubb's fort): soft trees in the breeze
+## The zone's song and ambience. Act I's forest outside the camp (the Verdant Reach): soft trees in the breeze
 ## instead of the wind.
 func zone_music() -> void:
 	# on the title screen (and the class picker over it) the hero select's theme plays, not the camp's song
@@ -444,22 +406,19 @@ func zone_music() -> void:
 	var night_bed := cur_zone == "town" and day_night != null and day_night.on and day_night.night > 0.5
 	# the Verdant Reach (the Battlegrounds) has no song: its forest bed alone, not the old synthesized drone, which
 	# played under the whole match as a hum and hiss (Blaine, 2026-11-06)
-	var song := "" if cur_zone == Battlegrounds.ZONE else ("fort" if cur_zone == "lair" and world.fort else cur_zone)
+	var song := "" if cur_zone == Battlegrounds.ZONE else cur_zone
 	Sfx.play_music(song, "forest" if world.oak_forest and cur_zone != "town" and not indoor() else ("night_forest" if night_bed else ""),
 			day_night.night_take() if night_bed else 0)
 
-## The crypt (A3's lair) is underground; every other zone, Grubb's fort and Aurelia included, is under the sky.
+## The Arena's hall (the Arena and the Sandbox) is indoors; every other zone is under the sky.
 func indoor() -> bool:
-	return cur_zone == "arena" or cur_zone == Sandbox.ZONE or (cur_zone == "lair" and not (world != null and (world.fort or world.run == 1)))
+	return cur_zone == "arena" or cur_zone == Sandbox.ZONE
 
 func _zone_env(kind: String) -> void:
-	var inside := kind == "arena" or kind == Sandbox.ZONE or (kind == "lair" and not (world.fort or world.run == 1))
+	var inside := kind == "arena" or kind == Sandbox.ZONE
 	var snowy := is_snowy() and not inside
-	var ashen := difficulty >= 2 and not inside
 	RenderingServer.global_shader_parameter_set("snow_amt", 1.0 if snowy else 0.0)
-	RenderingServer.global_shader_parameter_set("ash_amt", 1.0 if ashen else 0.0)
 	weather.set_snow(snowy, quality)
-	weather.set_ash(ashen, quality)
 	env.glow_intensity = 0.7
 	env.glow_bloom = 0.06
 	sun.shadow_blur = 1.5
@@ -569,23 +528,6 @@ func _zone_env(kind: String) -> void:
 			hero.light.light_energy = 1.7
 			hero.light.omni_range = 12.0
 			grade_look = "forest_camp"
-		if difficulty == 1 and kind != "town":
-			# A2, the Imperial Road and Aurelia: a warm late afternoon, low golden sun, dusty haze
-			sky_mat.sky_top_color = Color(0.34, 0.42, 0.55)
-			sky_mat.sky_horizon_color = Color(0.78, 0.62, 0.45)
-			sky_mat.ground_horizon_color = Color(0.5, 0.4, 0.3)
-			env.ambient_light_energy = 0.62
-			env.tonemap_exposure = 1.12
-			env.fog_light_color = Color(0.6, 0.5, 0.38)
-			env.fog_density = 0.006
-			env.fog_height_density = 0.04
-			env.adjustment_saturation = 0.98
-			env.adjustment_contrast = 1.08
-			env.volumetric_fog_density = 0.012
-			env.volumetric_fog_albedo = Color(0.9, 0.78, 0.62)
-			env.volumetric_fog_emission = Color(0.04, 0.03, 0.02)
-			sun.light_color = Color(1.0, 0.82, 0.6)
-			sun.light_energy = 1.05
 		if snowy:
 			# overcast winter: pale sky, cold light, snow bouncing light back up
 			sky_mat.sky_top_color = Color(0.5, 0.55, 0.62)
@@ -604,29 +546,6 @@ func _zone_env(kind: String) -> void:
 			sun.light_color = Color(0.8, 0.86, 1.0)
 			sun.light_energy = 0.7
 			hero.light.light_energy = 1.1
-		if ashen:
-			# everything burning: smoke-red sky, a dim orange sun, embers blooming in the dark
-			sky_mat.sky_top_color = Color(0.16, 0.06, 0.04)
-			sky_mat.sky_horizon_color = Color(0.62, 0.24, 0.09)
-			sky_mat.ground_horizon_color = Color(0.4, 0.15, 0.06)
-			env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-			env.ambient_light_color = Color(0.62, 0.55, 0.5)
-			env.ambient_light_energy = 0.5
-			env.tonemap_exposure = 1.08
-			env.fog_light_color = Color(0.3, 0.2, 0.15)
-			env.fog_density = 0.004
-			env.fog_height_density = 0.02
-			env.adjustment_saturation = 0.92
-			env.adjustment_contrast = 1.12
-			env.volumetric_fog_density = 0.012
-			env.volumetric_fog_albedo = Color(0.6, 0.4, 0.3)
-			env.volumetric_fog_emission = Color(0.05, 0.012, 0.0)
-			env.glow_intensity = 1.0
-			env.glow_bloom = 0.12
-			sun.light_color = Color(1.0, 0.74, 0.55)
-			sun.light_energy = 0.6
-			hero.light.light_energy = 1.0
-			_set_fires()
 	# the World-Tree Island (CampIsland): real space round the camp instead of the forest's dusk sky; the light keeps
 	# the camp's own day (DayNight), its fill a colour now that the sky is black
 	var island: bool = kind == "town" and world.island_r > 0.0 and not inside
@@ -687,10 +606,6 @@ func _rim_kind() -> String:
 		return "dusk"
 	if not sun.visible:
 		return "inside"
-	if difficulty >= 2:
-		return "ash"
-	if difficulty == 1:
-		return "day"
 	return "dusk"
 
 ## Every frame: keeps the rim light behind the hero (away from the camera, above his shoulders); every
@@ -1042,71 +957,12 @@ void fragment(){
 
 # ---------------------------------------------------------------- zones
 func zone_title(act: int, zone: String) -> String:
-	var a: Dictionary = Data.act_info(act, difficulty)
-	var tag: String = ["", "  ·  A2", "  ·  A3"][clampi(difficulty, 0, 2)]
 	match zone:
-		"town": return a["town"] + tag
-		"wild": return a["wild"] + tag
-		"lair": return ("Throne of the Ashen King" if difficulty >= 2 else a["lair"]) + tag
+		"town": return str(Data.ACTS[act]["town"])
 		Battlegrounds.ZONE: return Battlegrounds.map_title()
 		"arena": return "The Proving Arena"
 		Sandbox.ZONE: return Sandbox.TITLE
 	return ""
-
-## The current run's multipliers on Act I (Data.RUNS).
-func run_mult(key: String, d: int = -1) -> float:
-	return float(Data.RUNS[clampi(difficulty if d < 0 else d, 0, Data.RUNS.size() - 1)][key])
-
-func xp_mult() -> float:
-	return run_mult("xp")
-
-func loot_mult() -> float:
-	return run_mult("loot")
-
-## How much stronger this act's items are (Items.empower; Data.RUNS "power").
-func power_mult() -> float:
-	return run_mult("power")
-
-## How a run compares to Act I, in words, for banners and the victory panel.
-func run_note(d: int) -> String:
-	if d <= 0:
-		return "Monsters and loot at their normal strength."
-	var x := func(v: float) -> String: return ("%d" % int(round(v))) if v >= 10.0 else ("%.1f" % v).trim_suffix(".0")
-	return "Monsters have %s times the life and %s times the damage of Act I. Every item they drop is %s times stronger." % [x.call(run_mult("life", d)), x.call(run_mult("dmg", d)), x.call(run_mult("power", d))]
-
-func run_name(d: int = -1) -> String:
-	if d < 0:
-		d = difficulty
-	return str(Data.RUNS[clampi(d, 0, Data.RUNS.size() - 1)]["name"])
-
-func run_banner() -> void:
-	ui.big_message(run_name() + " begins")
-	ui.message(("The Ashen King has risen. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.45, 0.2) if difficulty >= 2 else Color(1.0, 0.55, 0.3))
-
-func boss_kind() -> String:
-	return "ashen_king" if difficulty >= 2 else world.boss_spawn["kind"]
-
-## After the final boss falls: everyone starts over at the camp one step harder, keeping their knight.
-func start_a2() -> void:
-	if net.is_client():
-		net.request_a2()
-		return
-	_store_progress()
-	difficulty = mini(difficulty + 1, 2)
-	max_run = maxi(max_run, difficulty)
-	boss_killed = false
-	waypoints_known = ["town"]
-	run_progress.erase(str(difficulty))
-	tp_link = {}
-	ui.victory_panel.visible = false
-	ui.set_boss(null)
-	if hero.dead:
-		hero.respawn(hero.global_position)
-	hero.life = hero.max_life
-	hero.mana = hero.max_mana
-	net.next_goto_new_run = true
-	await load_zone(cur_act, "town", "start")
-	run_banner()
 
 ## The zone's felled trees into the save's record (the host's forest is the one that counts in co-op).
 func _harvest_key() -> String:
@@ -1129,35 +985,6 @@ func _restore_harvest() -> void:
 	if h == null or net.is_client():
 		return
 	h.from_save(harvest_saved.get(_harvest_key(), {}), played_s)
-
-func _store_progress() -> void:
-	run_progress[str(difficulty)] = {"waypoints": waypoints_known.duplicate(), "boss": boss_killed}
-
-func _restore_progress(d: int) -> void:
-	var p: Dictionary = run_progress.get(str(d), {})
-	waypoints_known = p.get("waypoints", ["town"]).duplicate()
-	boss_killed = p.get("boss", false)
-
-## Switch to another act (any you have reached), arriving at its camp or at one of its waypoints.
-## Each act keeps its own waypoints and boss.
-func switch_run(d: int, zone := "town", spawn := "") -> void:
-	if net.is_client():
-		net.request_switch(d, zone, spawn)
-		return
-	if d == difficulty or d > max_run or d < 0 or _busy:
-		return
-	_store_progress()
-	difficulty = d
-	_restore_progress(d)
-	tp_link = {}
-	ui.set_boss(null)
-	Sfx.play("portal")
-	await load_zone(cur_act, zone, spawn if spawn != "" else ("start" if zone == "town" else "waypoint"))
-	run_switched_banner()
-
-func run_switched_banner() -> void:
-	ui.big_message(run_name())
-	ui.message(("The Ashen King's reign. " if difficulty >= 2 else "") + run_note(difficulty), Color(1.0, 0.7, 0.4))
 
 ## The boot's files (ResCache, "boot" scope): the home screen's models, read on the loader's threads at boot.
 ## Released once the title is up (the title's own nodes hold them).
@@ -1208,12 +1035,11 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 	World.detail = quality
 	world = World.new()
 	world.name = "World"
-	world.oak_forest = difficulty == 0     # Act I: the moor is an oak forest (A2/A3 keep their own look)
-	world.fort = difficulty == 0           # Act I: the lair is Grubb's goblin fort, outdoors (A3 keeps the crypt)
-	world.run = difficulty                 # A2 builds its own road and Aurelia
-	world.living_grass = true              # the living grass everywhere outdoors (its shader chars it under A3's ash)
+	world.oak_forest = true                # Act I's old forest: its grass, leaf litter and birds
+	world.living_grass = true              # the living grass everywhere outdoors
 	add_child(world)
-	world.build(act, zone, 4200 + act * 101 + ["town", "wild", "lair"].find(zone) * 7)
+	# the seed: the camp's 4200, every other zone 4193 (as when the story's zones sat between them in the sum)
+	world.build(act, zone, 4200 + act * 101 + (0 if zone == "town" else -7))
 	ResCache.prepare(scope, _monster_paths())     # (on the threads while the minimap is drawn)
 	_restore_harvest()
 	_reset_sky()
@@ -1255,8 +1081,6 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 				var dk := float(es.get("dmg_k", 1.0))
 				se.dmg = [se.dmg[0] * dk, se.dmg[1] * dk]
 				se.xp = int(se.xp * float(es.get("xp_k", 1.0)))
-	if not world.boss_spawn.is_empty() and not net.is_client():
-		spawn_enemy(boss_kind(), world.boss_spawn["pos"], world.level + 1, false, "", 999)
 	if OS.get_cmdline_user_args().has("--preload-record"):
 		ZonePreload.record(world, difficulty, zone)
 	if zone == "town":
@@ -1291,13 +1115,11 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		save_game()
 
 ## The zone's monsters' models, loaded on worker threads while the minimap is drawn (load_zone): each first load
-## of a kind's model was 23-34 ms on the main thread, ~0.6 s of the moor's arrival (nightly 2026-11-03).
+## of a kind's model was 23-34 ms on the main thread (nightly 2026-11-03).
 func _monster_paths() -> Array:
 	var kinds := {}
 	for es in (world.enemy_spawns if not net.is_client() else []):
 		kinds[str(es["kind"])] = true
-	if not world.boss_spawn.is_empty() and not net.is_client():
-		kinds[boss_kind()] = true
 	for k in MonsterWarm.kinds(self):       # (and what can still turn up here: MonsterWarm builds those)
 		kinds[k] = true
 	var out: Array = []
@@ -1332,8 +1154,8 @@ func _capture_map(zone: String) -> void:
 	me.background_mode = Environment.BG_COLOR
 	me.background_color = Color(0.03, 0.03, 0.03)
 	me.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	me.ambient_light_color = Color(0.62, 0.65, 0.6) if zone != "lair" else Color(0.55, 0.55, 0.6)
-	me.ambient_light_energy = 0.75 if zone != "lair" else 1.1
+	me.ambient_light_color = Color(0.62, 0.65, 0.6)
+	me.ambient_light_energy = 0.75
 	me.tonemap_mode = Environment.TONE_MAPPER_ACES
 	me.tonemap_exposure = 1.1
 	mc.environment = me
@@ -1379,10 +1201,6 @@ func _grass_zone(zone: String) -> void:
 		w = "calm"
 	elif zone == "town":
 		w = "camp"
-	elif zone == "wild":
-		w = "moor"
-	elif world.fort:
-		w = "fort"
 	grass_field.set_wind(w, 0.05)
 	grass_field.center = hero.global_position if hero else Vector3.ZERO
 
@@ -1415,37 +1233,6 @@ func spawn_enemy(kind: String, p: Vector3, lvl: int, champ := false, champ_name 
 	if net.active and net.is_host:
 		net.on_spawn(e)
 	return e
-
-## Via's bandit ambush (World.ambushes): when any hero comes near, the bandits spring from behind the
-## rocks onto the road (Enemy.leap_from), bowmen stay on the crests. Host only; the spawns replicate.
-func _check_ambushes() -> void:
-	if net.is_client() or world == null or world.ambushes.is_empty():
-		return
-	for am in world.ambushes:
-		if am["done"]:
-			continue
-		for h in all_heroes():
-			if is_instance_valid(h) and not h.dead and h.global_position.distance_to(am["pos"]) < float(am["radius"]):
-				am["done"] = true
-				_spring_ambush(am)
-				break
-
-func _spring_ambush(am: Dictionary) -> void:
-	ui.big_message(str(am.get("msg", "Ambush!")))
-	Sfx.play(str(am.get("sound", "battle_cry")), -6.0, float(am.get("pitch", 0.8)))
-	add_shake(0.2)
-	var land: Vector3 = am["land"]
-	for es in am["spawns"]:
-		for i in int(es["count"]):
-			var from: Vector3 = es["pos"] + Vector3(rng.randf_range(-1.6, 1.6), 0, rng.randf_range(-1.6, 1.6))
-			var e := spawn_enemy(es["kind"], from, int(es["level"]), es["champ"], ("%s, %s" % [Data.ENEMIES[es["kind"]]["name"], es["name"]]) if es.has("name") else "", int(es["pack"]))
-			if e == null:
-				continue
-			if str(es["kind"]).ends_with("archer"):
-				e.aggro = true
-			else:
-				var to := land.lerp(from, 0.25) + Vector3(rng.randf_range(-2.5, 2.5), 0, rng.randf_range(-2.5, 2.5))
-				e.leap_from(e.global_position, to)
 
 ## Every knight in the area: yours plus your partners'.
 func all_heroes() -> Array:
@@ -1513,18 +1300,14 @@ func start_game(cont: bool, cls := "knight", id := "", nm := "") -> void:
 		hero.set_class(cls)
 		hero.new_character()
 		difficulty = 0
-		max_run = 0
-		run_progress = {}
 		played_s = 0.0
 		harvest_saved = {}
 		quests.from_save({})
 		waypoints_known = ["town"]
 		boss_killed = false
 		tp_link = {}
-		if dev_tools:
-			max_run = 2
 		await load_zone(0, "town", "new_player")
-		ui.open_dialog(Data.VENDORS[0]["elder"], "Welcome to the Forsaken Wilds, %s. Since the goblin king Grubb tunnelled into the old crypt to loot the dead, the dead walk Cairnfell Moor and the Fallen raid our roads. He sits on a mountain of stolen gold down there and calls himself king. Trade with our folk, then head out through the north gate. End him, and the moor may yet heal." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
+		ui.open_dialog(Data.VENDORS["elder"], "Welcome to the Forsaken Wilds, %s. The gates are barred: the moor beyond them belongs to the dead now. Trade with our folk, then step onto the waypoint at the heart of the camp. It takes you down to the Battlegrounds, where the camps of the old forest hold skills, rites and gems for whoever can take them." % ("restless one" if hero.is_wraith() else ("pact-bound one" if hero.is_warlock() else "crusader")), [["I will", func(): pass]])
 	ui.refresh()
 
 ## Co-op from the title screen. Your last character is used if you have one.
@@ -1676,7 +1459,6 @@ func _bg_abort(msg: String) -> void:
 		lobby_client.finished(msg)
 		return
 	bg_mode = false
-	_bg_home()
 	loading.visible = false
 	if net.active:
 		net.shutdown()
@@ -1749,19 +1531,8 @@ func bg_strip() -> void:
 	hero.refresh_gear()
 	hero.recalc()
 	bg_mode = false
-	_bg_home()
 	save_game()
 	print("[BG] character ", char_id, " died in the crypt and lost everything it carried")
-
-## Out of a raid: the character's own act again (its waypoints and boss), as it was before Net.cl_welcome swapped in
-## the raid's.
-func _bg_home() -> void:
-	if bg_home_run < 0:
-		return
-	_store_progress()
-	_restore_progress(bg_home_run)
-	difficulty = bg_home_run
-	bg_home_run = -1
 
 ## The results window's Return: to the title and the lobby browser (a run character is never saved as a
 ## single-player character; a survivor was saved by its own button).
@@ -1833,7 +1604,6 @@ func _leave_battlegrounds() -> void:
 	if fell:
 		bg_strip()
 	bg_mode = false
-	_bg_home()
 	bg_raid = {}
 	bg_roster = []
 	await exit_to_title()
@@ -2160,13 +1930,11 @@ func save_game() -> void:
 		return      # (a run character is saved only as a survivor, at a successful exit: Survivors)
 	if char_id == "" and not _testing():
 		return
-	_store_progress()
 	_store_harvest()
 	var raid_admitted: bool = bg_mode and (lobby_client == null or lobby_client.match_id == "" or lobby_client.admitted)
 	var d := {"hero": hero.to_save(), "in_raid": raid_admitted, "act": cur_act, "waypoints": waypoints_known, "boss": boss_killed,
-		"difficulty": bg_home_run if bg_mode and bg_home_run >= 0 else difficulty,     # (a raid is Act I's; the character keeps its own)
-		"max_run": max_run, "runs": run_progress, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
-	var old_lobby_save: Dictionary = load("res://scripts/lobby_stakes.gd").read(save_path())
+		"difficulty": 0, "quests": quests.to_save(), "harvest": {"t": played_s, "zones": harvest_saved}, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
+	var old_lobby_save: Dictionary = load("res://game/ui/lobby/lobby_stakes.gd").read(save_path())
 	d["lobby_receipts"] = old_lobby_save.get("lobby_receipts", [])
 	d["lobby_locked"] = old_lobby_save.get("lobby_locked", [])
 	DirAccess.make_dir_recursive_absolute(char_dir)
@@ -2241,11 +2009,7 @@ func load_game() -> bool:
 	cur_act = int(d.get("act", 0))
 	waypoints_known = d.get("waypoints", ["town"])
 	boss_killed = d.get("boss", false)
-	difficulty = int(d.get("difficulty", 0))
-	max_run = maxi(int(d.get("max_run", 0)), difficulty)
-	if dev_tools:
-		max_run = 2
-	run_progress = d.get("runs", {})
+	difficulty = 0           # (a save from the story's A2 or A3 plays on in Act I)
 	quests.from_save(d.get("quests", {}))
 	var hv: Dictionary = d.get("harvest", {}) if d.get("harvest") is Dictionary else {}
 	played_s = float(hv.get("t", 0.0))
@@ -2365,17 +2129,15 @@ func exit_to_title(save_current := true) -> void:
 		bg_strip()           # leaving a raid without extracting is dying there (it saves)
 	elif save_current and not leaving_practice:
 		save_game()
-	_bg_home()
 	bg_mode = false
 	bg_raid = {}
 	bg_roster = []
 	bg_gained = -1
 	net_joining = false
-	# nothing of the character that was playing carries on: its death or victory screen still to come, its portal,
+	# nothing of the character that was playing carries on: its death screen still to come, its portal,
 	# its experience bonus, the admin switches
 	death_t = -1.0
 	ui.death_panel.visible = false
-	ui.victory_panel.visible = false
 	spectate_stop()
 	ui.set_boss(null)
 	tp_link = {}
@@ -2424,7 +2186,7 @@ func unload_world() -> void:
 
 # ---------------------------------------------------------------- shops
 func _stock_shops() -> void:
-	var V: Dictionary = Data.VENDORS[cur_act]
+	var V: Dictionary = Data.VENDORS
 	var lvl := maxi(hero.level, 1) + 1
 	var r := RandomNumberGenerator.new()
 	r.randomize()
@@ -2839,13 +2601,7 @@ func _vendor_talk(t: Inter) -> void:
 			[["See the auctions", func(): AuctionUI.open(ui, ui.auction_panel)], ["Leave", func(): pass]])
 		return
 	if role == "elder":
-		var txt := "The crypt lies at the far end of Cairnfell Moor. Bone archers and the restless dead guard the way. Raise your shield against their arrows: a good block turns them aside. And Grubb guards his gold like his life: rip open one of his sacks and his goblins come running for it. Get to the gold before they bring it back to him."
-		if difficulty == 1 and not boss_killed:
-			txt = "The old Imperial Road runs north to Aurelia. Bandits hold it now, the city too. Watch the pass where the rocks close in: they like to leave a wagon on its side and wait for travellers to stop and look. In Aurelia a man named Varro runs games in the old arena. They say his champion has never lost."
-		elif difficulty >= 2 and not boss_killed:
-			txt = "Something worse than Grubb sits on his stolen throne in the old crypt. They call him the Ashen King. His bone archers hold the moor, and he carries a blade that burns. Kill him and take it."
-		if boss_killed:
-			txt = "Grubb is dead and his gold is ours, and the moor already feels lighter. The Wilds owe you a debt it cannot pay. Rest a while, crusader."
+		var txt := "The gates stay barred: nothing good comes out of the moor now. If you want a fight, the waypoint takes you down to the Battlegrounds. Raise your shield against arrows there: a good block turns them aside."
 		ui.open_dialog(t.label, txt, [["Farewell", func(): pass]])
 	else:
 		var sh: Array = shops.get(role, ["", []])
@@ -2872,25 +2628,6 @@ func _interact(t: Inter) -> void:
 			elif bg_mode and net.is_client() and not hero.dead:
 				ui.message("Extracting...", Color(0.6, 0.85, 1.0))
 				net.request_extract()
-		"lanista":
-			ui.trade_with = t
-			# Varro, by Aurelia's arena: his games are A2's boss fight (games.gd)
-			var g = world.get_meta("games") if world.has_meta("games") else null
-			if g == null:
-				return
-			var txt := "Well now. A fighter, by the look of you, and a long way from home. The crowd's grown tired of farmers and debtors. Step onto my sand: three bouts, lions, gladiators, the beasts of my pit, and then Aurelius, who has never lost. Win, and the purse is yours. Lose... well. The lions eat either way."
-			var btns := [["Enter the games", func():
-				if net.is_client():
-					net.request_games()
-				else:
-					g.begin()], ["Not today", func(): pass]]
-			if g.state == "closed" and boss_killed:
-				# the games run again for a hero who has won them (and for one whose save beat the old A2)
-				txt = "Back again? Aurelius has mended, and he wants your blood more than my purse. The lions are hungry, the stands are full. Step onto my sand and do it all again."
-			elif g.state != "closed":
-				txt = "The games are on! Get onto the sand, the crowd is waiting."
-				btns = [["Farewell", func(): pass]]
-			ui.open_dialog(t.label, txt, btns)
 		"vendor":
 			ui.trade_with = t
 			Sfx.play("click")
@@ -2921,7 +2658,7 @@ func _interact(t: Inter) -> void:
 				travel(cur_act, "town", "portal")
 			else:
 				var link := tp_link
-				travel(int(link.get("act", 0)), link.get("zone", "wild"), "start", link.get("pos"), true)
+				travel(int(link.get("act", 0)), link.get("zone", "town"), "start", link.get("pos"), true)
 		"shrine":
 			if t.used:
 				return
@@ -2990,12 +2727,6 @@ func travel_waypoint(dest: Dictionary) -> void:
 ## Available activities are rebuilt from content data, never from a second UI-only list.
 func waypoint_activities() -> Array:
 	var entries: Array = Data.WAYPOINT_ACTIVITIES.duplicate(true)
-	for act in Data.WAYPOINT_ACTS:
-		var run := int(act["run"])
-		var info := Data.act_info(0, run)
-		entries.append({"id": "lair_%d" % run, "group": "pve", "name": "Throne of the Ashen King" if run >= 2 else info["lair"],
-			"kind": "Act dungeon", "description": "Enter the act's dungeon from its entrance.",
-			"route": "zone", "run": run, "zone": "lair", "spawn": "start", "requires_waypoint": "wild"})
 	var result := []
 	var seen := {}
 	for entry in entries:
@@ -3011,7 +2742,7 @@ func waypoint_activities() -> Array:
 func waypoint_activity_valid(entry: Dictionary) -> bool:
 	if str(entry.get("name", "")) == "": return false
 	var zone := str(entry.get("zone", ""))
-	return str(entry.get("group", "")) in ["pve", "daily"] and str(entry.get("route", "")) == "zone" and not Data.waypoint_act(int(entry.get("run", -1))).is_empty() and zone in ["town", "wild", "lair"]
+	return str(entry.get("group", "")) in ["pve", "daily"] and str(entry.get("route", "")) == "zone" and not Data.waypoint_act(int(entry.get("run", -1))).is_empty() and zone in Data.WAYPOINT_ZONES
 
 func waypoint_activity(id: String) -> Dictionary:
 	for entry in waypoint_activities():
@@ -3028,7 +2759,6 @@ func waypoint_activity_lock(entry: Dictionary) -> String:
 	if entry.has("requires_waypoint") and not waypoint_known(run, str(entry["requires_waypoint"])):
 		return "Discover this act's wilderness waypoint first."
 	if hero.level < int(entry.get("level", 1)): return "Requires level %d" % int(entry["level"])
-	if net.active and run != difficulty: return "Switch the party to this act first."
 	return ""
 
 func waypoint_activity_go(id: String) -> void:
@@ -3038,56 +2768,32 @@ func waypoint_activity_go(id: String) -> void:
 		ui.message(reason, Color(1.0, 0.6, 0.45))
 		return
 	ui.close_all()
-	var run := int(entry["run"])
 	Sfx.play("portal")
-	if run != difficulty:
-		switch_run(run, str(entry["zone"]), str(entry.get("spawn", "start")))
-	else:
-		travel(0, str(entry["zone"]), str(entry.get("spawn", "start")))
+	travel(0, str(entry["zone"]), str(entry.get("spawn", "start")))
 
 # ---------------------------------------------------------------- the waypoint network (Data.WAYPOINT_ACTS)
-## An act is open once the act before it has fallen (in co-op, the host's progress counts). An entry
-## with "requires": <run> opens instead once that act's lord has fallen. Dev tools open everything.
+## Is act `run` open? Act I, the only act, always is.
 func act_unlocked(run: int) -> bool:
-	var a := Data.waypoint_act(run)
-	if a.is_empty() or run < 0:
-		return false
-	if a.has("requires"):
-		return dev_tools_on() or act_boss_slain(int(a["requires"]))
-	return run <= (net.party_max_run if net.is_client() else max_run)
+	return run == 0 and not Data.waypoint_act(run).is_empty()
 
 ## True where the developer tools are (the owner's: see dev_tools).
 func dev_tools_on() -> bool:
 	return dev_tools
 
-## Has this character touched waypoint `id` in act `run`? Each act keeps its own (run_progress).
+## Has this character touched waypoint `id` of act `run`?
 func waypoint_known(run: int, id: String) -> bool:
-	if ForestCamp.ISLAND and run == 0 and id == "wild":
-		return true              # (the island camp's gates are barred: the waypoint is the only way to the moor)
-	if run == difficulty:
-		return waypoints_known.has(id)
-	return (run_progress.get(str(run), {}).get("waypoints", ["town"]) as Array).has(id)
+	return run == 0 and waypoints_known.has(id)
 
-## Has act `run`'s lord fallen?
-func act_boss_slain(run: int) -> bool:
-	if run == difficulty:
-		return boss_killed
-	return bool(run_progress.get(str(run), {}).get("boss", false))
-
-## Take waypoint `id` of act `run`: within this act, travel to its zone; to another act, switch to it and
-## arrive at that waypoint. Only open acts, and waypoints this character has touched.
+## Take waypoint `id` of act `run`: travel to its zone, arriving by its stone. Only waypoints this character has
+## touched.
 func waypoint_go(run: int, id: String) -> void:
 	var p := Data.waypoint_point(run, id)
 	if _busy or p.is_empty() or not act_unlocked(run) or not waypoint_known(run, id):
 		return
 	var zone: String = p["zone"]
-	var spawn := "waypoint_" + id
-	if run == difficulty:
-		if zone != cur_zone or id != _at_waypoint():
-			Sfx.play("portal")
-			travel(cur_act, zone, spawn)
-	else:
-		switch_run(run, zone, spawn)
+	if zone != cur_zone or id != _at_waypoint():
+		Sfx.play("portal")
+		travel(cur_act, zone, "waypoint_" + id)
 
 ## The waypoint stone the hero stands at, if any ("" if none).
 func _at_waypoint() -> String:
@@ -3101,7 +2807,7 @@ func _at_waypoint() -> String:
 func _make_portal(p: Vector3, dir: String) -> Inter:
 	var it := Inter.new()
 	it.kind = "portal"
-	it.label = "Town Portal" if dir == "town" else "Portal to " + zone_title(int(tp_link.get("act", 0)), tp_link.get("zone", "wild"))
+	it.label = "Town Portal" if dir == "town" else "Portal to " + zone_title(int(tp_link.get("act", 0)), tp_link.get("zone", "town"))
 	it.radius = 1.4
 	it.data = {"dir": dir}
 	world.add_child(it)
@@ -3182,24 +2888,12 @@ func on_enemy_killed(e: Enemy) -> void:
 		_drop_class_unique(e.global_position)
 	_boss_loot(e)
 	if e.boss:
+		# a boss is a camp's: its loot, and the Extraction Portals are the way out (no story ending, and no pillar of
+		# light: it read as a portal that went nowhere, Blaine 2026-11-06)
 		boss_killed = true
 		ui.set_boss(null)
 		ui.big_message(e.display_name + " has fallen")
 		add_shake(0.8)
-		if bg_mode or run_rules():
-			return       # a Battlegrounds boss is a camp: its loot, and the Extraction Portals are the way out (no story
-			             # ending, and no pillar of light: it read as a portal that went nowhere, Blaine 2026-11-06)
-		Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
-		var ptl := _make_portal(world.free_spot_near(e.global_position + Vector3(0, 0, 3.5), 1.0), "town")
-		ptl.label = "Portal to " + Data.act_info(cur_act, difficulty)["town"]
-		ptl.set_meta("boss", true)
-		net.portal_created(ptl)
-		save_game()
-		await get_tree().create_timer(3.5).timeout
-		if not playing:
-			return       # (left for the title meanwhile)
-		ui.show_victory(difficulty)
-		Sfx.play("levelup")
 
 ## The local hero rose again (any path: the death screen, co-op, a zone change): the death screen goes.
 func on_local_respawn() -> void:
@@ -3207,21 +2901,12 @@ func on_local_respawn() -> void:
 	ui.death_panel.visible = false
 	spectate_stop()
 
-## Co-op: the host's game reports the boss fell.
+## Co-op: the host's game reports the boss fell (no story ending, as in on_enemy_killed).
 func boss_down_remote(e: Enemy) -> void:
 	boss_killed = true
 	ui.set_boss(null)
 	ui.big_message(e.display_name + " has fallen")
 	add_shake(0.8)
-	if bg_mode:
-		return       # (a Battlegrounds boss: no story ending and no pillar, as in on_enemy_killed)
-	Fx.pillar(world.fx_root, e.global_position, Color(1.0, 0.3, 0.2), 2.0)
-	save_game()
-	await get_tree().create_timer(3.5).timeout
-	if not playing:
-		return
-	ui.show_victory(difficulty)
-	Sfx.play("levelup")
 
 func on_boss_aggro(e: Enemy) -> void:
 	net.boss_aggro(e)
@@ -3236,8 +2921,6 @@ func _drop_loot_roll(at: Vector3, lvl: int, good: bool) -> void:
 	var r := rng.randf()
 	if good or r < 0.3:
 		var it := Items.random_drop(lvl, hero.mf + (100 if good else 0), rng, good)
-		if difficulty >= 1:
-			Items.empower(it, power_mult())
 		drop_item(it, at)
 	elif r < 0.62:
 		drop_item(Items.gold(int(rng.randf_range(4, 12) * (1.0 + lvl * 0.6))), at)
@@ -3561,8 +3244,6 @@ func _boss_loot(e: Enemy) -> void:
 	hero.boss_luck[e.kind] = 0
 	var uid: String = str(e.def["boss_drop"]) if misses < 0 and e.def.has("boss_drop") else str(table[rng.randi() % table.size()])
 	var bu := Items.make_unique(uid)
-	if difficulty >= 1:
-		Items.empower(bu, power_mult())
 	drop_item(bu, e.global_position)
 	ui.message("%s dropped %s!" % [e.display_name, bu["name"]], Color(0.85, 0.66, 0.38))
 
@@ -3644,7 +3325,7 @@ func close_sandbox() -> void:
 		return
 	if hero.dead: hero.respawn(hero.global_position)
 	death_t = -1.0
-	await load_zone(difficulty, "town", "start")
+	await load_zone(0, "town", "start")
 	hero.life = hero.max_life
 	hero.mana = hero.max_mana
 	ui.refresh()
@@ -4014,7 +3695,6 @@ func _process(delta: float) -> void:
 	if playing and not paused and not _busy and not loading.visible:
 		_update_hover()
 		hero.cursor = _cursor_aim()     # the pointer aims everything (see Hero's aiming notes)
-		_check_ambushes()
 		hero.blocking = (skill_held("block") or test_block) and not ui.any_panel_open()
 		for slot in Hero.BIND_SLOTS:
 			if slot != "lmb" and slot_held(slot):
@@ -4124,7 +3804,7 @@ func _process(delta: float) -> void:
 			get_tree().quit()
 
 ## Performance capture for any build (an exported game too), e.g.
-##   AshenCrown.exe -- --shot grass.png --zone wild --perf 12 --quality 2 --grassspot
+##   AshenCrown.exe -- --shot grass.png --zone bg --perf 12 --quality 2 --grassspot
 ## --grassspot stands the hero in open grass off the road, --perf N walks him in a loop for N seconds
 ## measuring every frame, then writes <shot>.txt (frame times, draw calls, primitives, GPU) and the shot.
 var _perf := {}

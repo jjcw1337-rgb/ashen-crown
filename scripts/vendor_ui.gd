@@ -1,14 +1,12 @@
 class_name VendorUI
 extends RefCounted
-## The town's people on screen: nameplates over the vendors (and Varro) and the live portrait of
+## The town's people on screen: nameplates over the vendors and the live portrait of
 ## whoever you trade with, shown at the head of the trade window (ui.gd `_build_shop`).
 
 const ROLE_TITLES := {"smith": "Blacksmith", "armor": "Armourer", "alch": "Alchemist", "gamble": "Gambler",
-	"elder": "Keeper of the Camp", "lanista": "Master of the Games"}
+	"elder": "Keeper of the Camp"}
 
 static func title_for(it: Inter) -> String:
-	if it.kind == "lanista":
-		return ROLE_TITLES["lanista"]
 	return str(ROLE_TITLES.get(str(it.data.get("role", "")), ""))
 
 ## Head height of an NPC above its feet (measured once) for the plate and the portrait.
@@ -113,7 +111,7 @@ class Plates extends Control:
 		visible = true
 		var live := {}
 		for it in g.world.interactables:
-			if not is_instance_valid(it) or not (it.kind == "vendor" or it.kind == "lanista") or not it.is_inside_tree():
+			if not is_instance_valid(it) or it.kind != "vendor" or not it.is_inside_tree():
 				continue
 			live[it] = true
 			var p: PanelContainer = plates.get(it)

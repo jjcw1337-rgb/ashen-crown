@@ -40,7 +40,7 @@ func _run() -> void:
 	check(g.net.join("127.0.0.1", 24697) == OK, "joined a link")
 	var link: ENetMultiplayerPeer = g.net.peer
 	check(not g.net.still_joined(link), "a link that never connected doesn't count as joined")
-	g.net._client_goto(0, "wild", "start", null)
+	g.net._client_goto(0, "sandbox", "start", null)
 	var t := 0
 	while not g._busy and t < 120:
 		await wait(1)
@@ -53,7 +53,7 @@ func _run() -> void:
 		await wait(5)
 		t += 5
 	await wait(30)
-	check(not g._busy and g.cur_zone == "wild", "the zone finished loading")
+	check(not g._busy and g.cur_zone == "sandbox", "the zone finished loading")
 	check(not g.net.active and not g.net.loading, "offline and not waiting on a host")
 	var stale := Enemy.new()
 	stale.net_id = 23
