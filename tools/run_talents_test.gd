@@ -575,7 +575,7 @@ func _skills(h) -> void:
 	var under := [_foe(h, Vector3(8, 0, 0), "zombie", 5000.0), _foe(h, Vector3(9, 0, 2), "zombie", 5000.0)]
 	ok = await _cast(h, "v_cloud", under[0].global_position, 4.8)
 	var cl_hurt: float = under.reduce(func(acc, e): return acc + (e.max_life - e.life), 0.0)
-	check(ok and cl_hurt > 0.0 and (h.get_meta("drg")["clouds"] as Array).is_empty(), "Thunderhead: its bolts strike beneath it, then it's gone (%.0f dealt)" % cl_hurt)
+	check(ok and cl_hurt > 0.0 and (h.kit["v_cloud"].clouds as Array).is_empty(), "Thunderhead: its bolts strike beneath it, then it's gone (%.0f dealt)" % cl_hurt)
 	await _fresh(h, "wyvern", {})
 	var gale = _foe(h, Vector3(0, 0, -3), "zombie", 5000.0)
 	var behind = _foe(h, Vector3(0, 0, 4), "zombie", 5000.0)

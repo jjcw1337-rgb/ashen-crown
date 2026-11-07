@@ -152,7 +152,9 @@ func _run() -> void:
 				if str(wsk.get_script().resource_path).begins_with("res://game/heroes/warlock/"):
 					wsk.clear()
 			DemonSkills.clear(h)        # his lava on the ground would burn the fresh pack
-			DragonSkills.clear(h)       # (the Storm Wyvern's Thunderhead goes on striking where he cast it)
+			for dsk in h.kit.values():
+				if str(dsk.get_script().resource_path).begins_with("res://game/heroes/wyvern/"):
+					dsk.clear()       # (the Storm Wyvern's Thunderhead goes on striking where he cast it)
 			if h.pd != null:
 				h.pd.clear()  # the Plague Doctor's clouds and dome linger where he cast them, over the fresh pack
 			var en2: Array = await pack(far + OFF + Vector3(0, 0, -2.5), 3)

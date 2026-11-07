@@ -94,7 +94,7 @@ static func fx(h: Hero, ev: Dictionary) -> void:
 	SkillFx.snd(h, "swing_light", -4.0, 0.7)
 
 ## After the pose: the body tumbles forward once round its middle (the Wraith, who has no legs, swoops low instead;
-## a dragon lunges low).
+## a dragon flies it or lunges low: DragonFlight).
 ## The puppet's roll runs on its own clock here.
 static func pose(h: Hero, delta: float) -> void:
 	if h.puppet and h.roll_t >= 0.0:
@@ -120,25 +120,8 @@ static func pose(h: Hero, delta: float) -> void:
 		h.rig.rotation.x = -0.5 * sin(PI * s)
 		h.rig.position.y = 0.2 - 0.25 * sin(PI * s)
 		return
-	if h.is_dragon() and str(h.rig.get_meta("dragon", "")) == "wyvern":
-		# the Storm Wyvern flies it (jj): a crouch, a leap up on its beating wings, a glide over and a landing that
-		# drops into its legs; Dragon.pose beats the wings and tucks the legs by the rig's "fly" meta
-		var up := sin(PI * smoothstep(0.08, 0.92, s))
-		var crouch := smoothstep(0.0, 0.08, s) * (1.0 - smoothstep(0.08, 0.16, s)) + smoothstep(0.88, 0.96, s) * (1.0 - smoothstep(0.96, 1.0, s))
-		h.rig.rotation.x = 0.18 * sin(PI * s) - 0.1 * up * (1.0 - s)
-		h.rig.position = Vector3(0, FLY_H * up - 0.22 * crouch, 0)
-		h.rig.set_meta("fly", s)
-		if not h.has_meta("fly_dust") and s > 0.05:
-			h.set_meta("fly_dust", 1)
-			_wing_gust(h, 1.0)
-		if s > 0.92 and int(h.get_meta("fly_dust", 0)) == 1:
-			h.set_meta("fly_dust", 2)
-			_wing_gust(h, 1.4)
-		return
 	if h.is_dragon():
-		# a dragon is far too long to tumble: it lunges low, nose down, and rises out of it
-		h.rig.rotation.x = -0.12 * sin(PI * s)
-		h.rig.position = Vector3(0, -0.15 * sin(PI * s), 0)
+		DragonFlight.roll(h, s)       # far too long to tumble: it flies it, or lunges low (game/systems/dragons/)
 		return
 	var a := -TAU * smoothstep(0.05, 0.9, s)
 	var p := Vector3(0, PIVOT, 0)
@@ -146,22 +129,6 @@ static func pose(h: Hero, delta: float) -> void:
 	off.y -= 0.12 * sin(PI * s)       # tucked low
 	h.rig.rotation.x = a
 	h.rig.position = Basis(Vector3.UP, yaw) * off
-
-const FLY_H := 2.3          # metres the Storm Wyvern rises on its flight (in place of the roll)
-
-## The wyvern's wings throwing the dust up (taking off, k 1; landing, k 1.4): a ring of dust and torn grass blown out,
-## the grass flattened, a thump.
-static func _wing_gust(h: Hero, k: float) -> void:
-	var root: Node3D = h.game.world.fx_root
-	var g := h.global_position
-	ElementalFx._dust(root, g + Vector3(0, 0.15, 0), Color(0.5, 0.45, 0.38), 1.1 * k, 0.45, {"amount": int(6 * k),
-		"life": 0.9, "explosive": 1.0, "shape": "ring", "r": 0.8, "r_in": 0.4, "dir": Vector3.UP, "spread": 15.0,
-		"vel": [0.2, 0.5], "radial": [3.0 * k, 5.0 * k], "damping": [2.5, 3.5], "scale": [0.8, 1.2], "grow": [0.6, 1.8]})
-	GrassField.impulse(g, 3.5 * k, 0.8, 0.45)
-	SkillFx.snd(h, "wyvern_flap", -2.0 if k > 1.2 else -4.0, 0.9 if k > 1.2 else 1.0)
-	if k > 1.2:
-		SkillFx.snd(h, "wyvern_step", -1.0, 0.8)
-		SkillFx.shake(h, 0.12)
 
 ## Death (or anything else) mid-roll: the body is set straight.
 static func cancel(h: Hero) -> void:

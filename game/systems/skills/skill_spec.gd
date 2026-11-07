@@ -56,14 +56,17 @@ static func apply_timing(h: Hero, id: String) -> void:
 static func uncancellable(h: Hero) -> bool:
 	return h.atk_t >= 0.0 and not h.impact_done and h.atk_skill != "" and of(h.atk_skill).get("cancel", true) == false
 
-## The foes in the skill's area. opts (talents): "r_add" metres, "angle_add" degrees.
+## The foes in the skill's area. opts (talents): "r_add" metres, "angle_add" degrees; (rules that run elsewhere than
+## the cast, ServerRules) "d" the way it was aimed in place of the hero's, "ok" a Callable passing only the foes it may
+## strike.
 static func targets(h: Hero, id: String, opts := {}) -> Array:
 	var d := of(id)
 	var ar: Dictionary = d.get("area", {})
 	var shape := str(ar.get("shape", "single"))
 	var r := float(ar.get("r", d.get("range", 2.5))) + float(opts.get("r_add", 0.0))
-	var fwd := h.aim_dir()
+	var fwd: Vector3 = opts.get("d", h.aim_dir())
 	var c := h.global_position
+	var ok: Callable = opts.get("ok", Callable())
 	if shape == "circle" and str(ar.get("at", "self")) == "aim":
 		c = h.atk_aim
 	var cos_half := cos(deg_to_rad((float(ar.get("angle", 90.0)) + float(opts.get("angle_add", 0.0))) * 0.5))
@@ -74,7 +77,7 @@ static func targets(h: Hero, id: String, opts := {}) -> Array:
 		var to: Vector3 = e.global_position - c
 		to.y = 0
 		var gap := to.length() - float(e.radius)
-		if gap > r:
+		if gap > r or (ok.is_valid() and not ok.call(e)):
 			continue
 		match shape:
 			"wedge":
@@ -113,7 +116,8 @@ static func expected(h: Hero, id: String, extra := 0.0) -> float:
 
 ## One foe struck: its damage (the weapon's % and/or the spell's own, plus `extra`, a class's own part such as the
 ## Demon's magma), in its type's colour, and its damage over time. opts: "knock", "dot_secs" (a multiplier, talents),
-## "mult" (on everything this blow deals and its burn: a bonus on this one foe, e.g. the Demon's Brand).
+## "mult" (on everything this blow deals and its burn: a bonus on this one foe, e.g. the Demon's Brand), "dot": false
+## (none: the skill sends its own to a player, PvpStatus).
 static func strike(h: Hero, id: String, e, extra := 0.0, opts := {}) -> void:
 	if not is_instance_valid(e) or e.dead:
 		return
@@ -126,7 +130,7 @@ static func strike(h: Hero, id: String, e, extra := 0.0, opts := {}) -> void:
 	if is_instance_valid(e):
 		e.dmg_tint = Color(0, 0, 0, 0)
 	var dt: Dictionary = d.get("dot", {})
-	if dt.is_empty() or not is_instance_valid(e) or e.dead:
+	if dt.is_empty() or not opts.get("dot", true) or not is_instance_valid(e) or e.dead:
 		return
 	var secs := float(dt.get("secs", 3.0))
 	var last := secs * float(opts.get("dot_secs", 1.0))

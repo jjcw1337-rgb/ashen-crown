@@ -45,7 +45,7 @@ static func impact_at(style: String) -> float:
 		"pd_transfuse": return 0.45
 		"pd_crank": return 0.97
 		"cast": return 0.55
-		"dive": return DragonSkills.DIVE_FLY.y     # the Storm Wyvern's Thunder Dive (a run skill): down on its foes
+		"dive": return 0.8       # a dive comes down on its foes (the Storm Wyvern's Thunder Dive lands its blow here)
 		"claw": return 0.45
 		"slam": return 0.58
 		"bite": return 0.5
@@ -121,7 +121,7 @@ static func kick(D: Dictionary, key: String, impulse: float) -> void:
 ## st: time, phase, move, atk (-1 or 0..1), style, block (0..1), hit (0..1)
 static func pose(rig: Node3D, st: Dictionary) -> void:
 	if rig.has_meta("dragon"):
-		Dragon.pose(rig, st)      # the dragon classes pose their own skeleton (scripts/dragon.gd)
+		Dragon.pose(rig, st)      # the dragon classes pose their own skeleton (game/systems/dragons/dragon.gd)
 		return
 	var J: Dictionary = rig.get_meta("j")
 	if rig.has_meta("crawler"):

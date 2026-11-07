@@ -445,7 +445,7 @@ SPEC += [
          prompt="a thrown glass alchemy flask shattering on the ground with a magical burst" + DRY),
     dict(name="banshee_wail", src="eleven", n=4, dur=1.8, hit=0, label="a banshee's terrifying scream",
          prompt="a ghostly banshee wraith letting out a piercing terrifying scream that echoes and warps, chilling and unearthly" + DRY),
-    # the dragons' run skills (DragonRunFx, 2026-11-06)
+    # the dragons' run skills (their looks in game/heroes/serpent/ and wyvern/skills/, 2026-11-06)
     dict(name="ice_tomb_seal", src="eleven", n=4, dur=1.2, hit=0, label="ice sealing a foe in",
          prompt="thick glacier ice rapidly freezing and cracking closed around something, crystalline crunching and a deep cold creak" + DRY),
     dict(name="wyvern_dive", src="eleven", n=4, dur=1.4, hit=0.9, label="a dragon diving down with a thunderclap",

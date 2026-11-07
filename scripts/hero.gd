@@ -226,7 +226,7 @@ func is_doug() -> bool:
 func is_plague() -> bool:
 	return cls == "plague"
 
-## The dragon classes (Obsidian Wyrm, Frost Serpent, Storm Wyvern; scripts/dragon.gd).
+## The dragon classes (Obsidian Wyrm, Frost Serpent, Storm Wyvern; their shared body game/systems/dragons/dragon.gd).
 func is_dragon() -> bool:
 	return Dragon.is_dragon(cls)
 
@@ -1502,8 +1502,6 @@ func _face(d: Vector3) -> void:
 		rig.rotation.y = atan2(-d.x, -d.z)
 
 func reach() -> float:
-	if is_dragon():
-		return Dragon.reach(cls)
 	var r := ClassSkills.reach(self)
 	return r if r > 0.0 else 1.7
 
