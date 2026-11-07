@@ -109,15 +109,7 @@ var roll_dir := Vector3.FORWARD
 var roll_cd := 0.0
 var dm := {}                 # Demon: the skills' state (DemonSkills: the charge, lava on the ground, fissures, boulders, the grip, the wrath)
 var phased := false          # (the Underworld's grade in game.gd reads it; no skill sets it now)
-var drain_t := -1.0          # Warlock: Drain Life channel time (-1 = not channelling)
-var drain_tick := 0.0
-var drain_main = null        # the enemy the beam is latched onto (the beams themselves are fxs["drain"], WarlockFx)
-var drain_heal := 0.0        # healing gathered since the last "+N" number
-var drain_heal_t := 0.0
-var drain_victims: Array = []  # Drain Life's victims this frame: the main one, then its forks (WarlockSkills)
-var covenant_t := 0.0        # Warlock: Fel Covenant (Drain Life forks further and heals double)
-var wl := {}                 # Warlock: his three directions' state (WarlockHex: curses, fears, crows, the feast, the shield)
-var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, left}] (flown by WarlockFx.update, burst here)
+var channel_t := -1.0        # a held channel (the Warlock's Drain Life): seconds held, -1 when none (ClassSkills.channel)
 ## A hero's skills that are objects (Skill, docs/content/skills.md), by skill id: made by his class's script
 var kit: Dictionary = {}
 ## The archer (archer.gd): arrows in flight (drawn: ArcherArrowFx), the spirit beasts
@@ -127,7 +119,6 @@ var beasts: Array = []
 var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
 var mark = null             # the enemy the archer is shooting at: his beast goes for it first
 var mark_t := 0.0
-var blights: Array = []      # plague pools on the ground, their ticks: [{pos, t, tick, r}] (the pool itself is a WarlockFx effect)
 var buff_t := 0.0
 var heal_pool := 0.0
 var mana_pool := 0.0
@@ -852,8 +843,8 @@ func refresh_gear() -> void:
 		carry.configure(cls)
 		_carry_in_hand = not (carry.t >= float(carry.p["grab"]))
 		gear_nodes.append(weapon_node)
-		if is_warlock() and rig.has_meta("spirit"):
-			weapon_node.visible = false      # the void spirit fights with her hands (the weapon's stats still count)
+		if rig.has_meta("bare_hands"):
+			weapon_node.visible = false      # a body that fights with its hands (the Warlock's void spirit): the weapon's stats still count
 		if w.get("rarity", 0) == 3 and Models.palette(w)["glow"] != null and weapon_node.visible:
 			var fl := Props.fire(weapon_node, Vector3(0, 0, -0.5), 0.35, Models.palette(w)["glow"], false, false, false, "weapon")
 			gear_nodes.append(fl)
@@ -952,7 +943,7 @@ func _carry_weapon(delta: float) -> void:
 			weapon_node.reparent(dest, true)
 		_set_hilt(not in_hand and store == "hilt")
 	# hidden in the scabbard; on the back it stays in view
-	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy) and not (is_warlock() and rig.has_meta("spirit"))   # the plague doctor puts his cane away to throw
+	weapon_node.visible = (in_hand or store != "hilt") and not (pd != null and pd.hands_busy) and not rig.has_meta("bare_hands")   # the plague doctor puts his cane away to throw
 	# ease into the hold (identity in the hand; the back mount's own rest)
 	var k := 1.0 - exp(-delta * 16.0)
 	weapon_node.transform = weapon_node.transform.interpolate_with(Transform3D.IDENTITY, k)
@@ -1004,7 +995,7 @@ static func _hidden_mat() -> StandardMaterial3D:
 func cmd_move(p: Vector3, direct := false) -> void:
 	if dead or charge_t >= 0.0:
 		return
-	end_drain()
+	end_channel()
 	target = null
 	_set_goal(p, direct)
 
@@ -1111,7 +1102,7 @@ func free_attack(aim: Vector3) -> void:
 func swipe_attack(aim: Vector3, keep_target := false) -> void:
 	Hero.striker = self          # (whoever acts now strikes: a sandbox stand-in never takes its own hero's blows)
 	break_invis()
-	if dead or charge_t >= 0.0 or drain_t >= 0.0 or daze_t > 0.0:
+	if dead or charge_t >= 0.0 or channel_t >= 0.0 or daze_t > 0.0:
 		return
 	if ClassSkills.attack(self, aim, keep_target):
 		return
@@ -1193,7 +1184,7 @@ func _face_smooth(d: Vector3, delta: float) -> void:
 func cmd_target(t) -> void:
 	if dead or charge_t >= 0.0:
 		return
-	end_drain()
+	end_channel()
 	target = t
 	if is_instance_valid(t):
 		_set_goal(t.global_position, false)
@@ -1225,7 +1216,7 @@ func cmd_wasd(dir: Vector3) -> void:
 	if dir.length() < 0.1:
 		wasd_heading = Vector3.ZERO
 	if dir.length() > 0.1:
-		end_drain()
+		end_channel()
 		if not (is_instance_valid(target) and target is Enemy):
 			target = null
 		path = PackedVector3Array()
@@ -1244,7 +1235,7 @@ func _set_goal(p: Vector3, direct: bool) -> void:
 ## Could this skill be cast right now (level, cooldown, mana, not mid-skill)? Used for held buttons.
 func skill_ready(id: String) -> bool:
 	var sk := Data.skill_def(id)
-	if sk.is_empty() or dead or charge_t >= 0.0 or drain_t >= 0.0:
+	if sk.is_empty() or dead or charge_t >= 0.0 or channel_t >= 0.0:
 		return false
 	if atk_t >= 0.0 and atk_skill != "":
 		return false
@@ -1254,7 +1245,7 @@ func arena_waiting() -> bool:
 	return not puppet and game != null and game.arena_mode and game.arena_state.get("phase", "waiting") != "fight"
 
 func can_act() -> bool:
-	return not arena_waiting() and not dead and atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0
+	return not arena_waiting() and not dead and atk_t < 0.0 and charge_t < 0.0 and channel_t < 0.0
 
 func use_skill(id: String, aim: Vector3) -> bool:
 	if arena_waiting(): return false
@@ -1293,7 +1284,7 @@ func _use_skill(id: String, aim: Vector3) -> bool:
 	if not ClassSkills.can_cast(self, id, aim):
 		return false
 	# cancel a basic swing (or a Drain Life channel) so the skill fires right away
-	end_drain()
+	end_channel()
 	atk_t = -1.0
 	impact_done = true
 	mana -= skill_cost(id)
@@ -1581,8 +1572,7 @@ func take_hit(dmg: float, from: Vector3, kind: String = "melee", element: String
 	if is_demon():
 		dmg = DemonSkills.absorb(self, dmg)      # Wrath of the Pit's Crucible
 	dmg = maxf(1.0, dmg)
-	if not wl.is_empty():
-		dmg = WarlockHex.absorb(self, dmg)       # the Warlock's shield (Blood Ward, the Soul Feast)
+	dmg = ClassSkills.absorb(self, dmg)      # a class's own ward (the Warlock's shield: Blood Ward, the Soul Feast)
 	if ward > 0.0:
 		var soak := minf(ward, dmg)
 		ward -= soak
@@ -1816,8 +1806,8 @@ func _process_body(delta: float) -> void:
 	else:
 		if atk_t >= 0.0:
 			_update_attack(delta)
-		if drain_t >= 0.0:
-			WarlockSkills.update_drain(self, delta)
+		if channel_t >= 0.0:
+			ClassSkills.channel(self, delta)       # a held channel (Drain Life)
 		# pursue target (an attack already in progress keeps its rhythm)
 		if target != null and (not is_instance_valid(target) or target.is_queued_for_deletion()):
 			target = null
@@ -1884,7 +1874,7 @@ func _process_body(delta: float) -> void:
 			_face_smooth(atk_dir, delta)
 		elif block_amt > 0.5 and charge_t < 0.0:
 			_face_smooth(cursor - global_position, delta)
-		elif charge_t < 0.0 and drain_t < 0.0:
+		elif charge_t < 0.0 and channel_t < 0.0:
 			_face(vel)
 		move_amt = move_toward(move_amt, stride, delta * 6.0)
 		# super speed glides: the legs only go a little faster
@@ -1893,7 +1883,7 @@ func _process_body(delta: float) -> void:
 		_snow_step()
 	else:
 		move_amt = move_toward(move_amt, 0.0, delta * 6.0)
-		if atk_t < 0.0 and charge_t < 0.0 and drain_t < 0.0 and block_amt > 0.5:
+		if atk_t < 0.0 and charge_t < 0.0 and channel_t < 0.0 and block_amt > 0.5:
 			# standing with the guard up: the shield turns to the pointer
 			_face_smooth(cursor - global_position, delta)
 	if charge_t < 0.0:
@@ -1913,7 +1903,7 @@ func _process_body(delta: float) -> void:
 		st["atk"] = 0.45
 		st["style"] = "thrust"
 		st["move"] = 1.0
-	elif drain_t >= 0.0:
+	elif channel_t >= 0.0:
 		# both hands thrust out, holding the beam
 		st["atk"] = 0.6
 		st["style"] = "cast"
@@ -1930,7 +1920,6 @@ func _process_body(delta: float) -> void:
 	last_pose = st
 	_hover()
 	Dodge.pose(self, delta)
-	WarlockSkills.drain_victims_changed(self)
 	SkillFx.update(self, delta)
 	_breathe(delta)
 	_apply_shield_pose()
@@ -1942,10 +1931,6 @@ func _process_body(delta: float) -> void:
 func _hover() -> void:
 	if is_demon():
 		Demon.animate(rig, anim_time, move_amt, self)
-		return
-	if is_warlock():
-		Warlock.animate(rig, anim_time, move_amt, 1.0 if covenant_t > 0.0 or (puppet and net_buff) else 0.0,
-			phase, float(last_pose.get("atk", -1.0)) < 0.0 and drain_t < 0.0)
 		return
 	if not is_wraith() or dead or _floats():
 		return
@@ -2193,19 +2178,10 @@ func _impact_body() -> void:
 					hit_any = true
 	stats_changed.emit()
 
-# ---------------------------------------------------------------- class skills kept on the hero
-## Called from other scripts and tests; the skills themselves live in WarlockSkills.
-func end_drain() -> void:
-	WarlockSkills.end_drain(self)
-
-func _drain_victims() -> Array:
-	return WarlockSkills.drain_victims(self)
-
-func _blight_burst(p: Vector3) -> void:
-	WarlockSkills.blight_burst(self, p)
-
-func _clear_warlock() -> void:
-	WarlockSkills.clear(self)
+# ---------------------------------------------------------------- a held channel
+## The channel lets go (a move, a click, another skill, a dodge): its class's script ends it (ClassSkills.end_channel).
+func end_channel() -> void:
+	ClassSkills.end_channel(self)
 
 static var _trail_sh: Shader
 

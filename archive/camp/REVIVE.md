@@ -14,7 +14,7 @@ imports nor exports it.
 |---|---|
 | `forest_camp.gd`, `vendor_court.gd`, `smith_forge.gd`, `camp_guard.gd`, `camp_social.gd`, `camp_ravens.gd`, `raven.gd`, `camp_island.gd`, `waypoint_grand.gd`, `README.md` | the camp as it was in `game/maps/camp/` (its README says what each is) |
 | `props/` | the camp's, the island's and the waypoint's models (`camp/`, `island/`, `waypoint/`) |
-| `tests/`, `tools/` | the camp's tests and shots, and every project tool that only tested what is here (`title_test`, `char_test`, `home_game_flow_test`, `bonfire_test`, `temper_test`, `coals_test`, `daynight_test`, `npc_reach_test`, the `*_shot(s)` and clips, `steam_host_probe`, `space_textures.py`, `blender/` (the waypoint's, the guards', the island's, the raven's and the keepers' Blender scripts, the stash chest's assembly)) |
+| `tests/`, `tools/` | the camp's tests and shots, and every project tool that only tested what is here (`title_test`, `char_test`, `home_game_flow_test`, `bonfire_test`, `temper_test`, `coals_test`, `daynight_test`, `npc_reach_test`, `anvil_test`, the `*_shot(s)` and clips, `steam_host_probe`, `space_textures.py`, `blender/` (the waypoint's, the guards', the island's, the raven's and the keepers' Blender scripts, the stash chest's assembly)) |
 | `scripts/` | the screens and systems: `title_home.gd` (TitleHome), `class_stage.gd` and `class_cathedral.gd` (the New Character carousel, whole; the live `scripts/class_stage.gd` keeps only its constants), `vendor_ui.gd`, `auction_ui.gd`, `furnace.gd`, `furnace_ui.gd`, `harvest.gd`, `wood.gd`, `quests.gd`, `waypoint_panel.gd`, `day_night.gd`, `day_clock.gd`, `birds.gd`, `brazier_coals.gd`, `steam_link.gd`, `shared_stash.gd` (SharedStash), `inter_keepers.gd` (Inter as it was, with the keepers' animation, patrols and CampSocial's talk) |
 | `assets/models/` | the keepers (`npc/`: grisold, hedda, maeve, roth, tarrow, the auctioneer) and the guards (`guards/`) |
 | `assets/textures/` | the island's space sky (`space/`), the waypoint's rune rings, the waypoint window's banners (`wp_act1`, `wp_town`, `wp_sigil`, `wp_bg_crypt`), the auction's elixirs |
@@ -86,17 +86,17 @@ assets to their `assets/` paths) and put back the hooks. The commit that archive
   `any_panel_open`, `title_idle`, `refresh`, `_process` and `warm_windows`.
 - `scripts/inter.gd`: the keepers (`archive/camp/scripts/inter_keepers.gd`: `model`, `anim`, `clips`, patrols,
   `walk_to`, `social`, the smith's strikes, the old procedural keepers' `rig`, the flowers' and waypoints' animation).
-- `scripts/title_stage.gd`: `cards` and `_place_cards`, and `_frame`'s default `TitleHome.mid()`.
+- `game/ui/lobby/lobby_stage.gd` (TitleStage): `cards` and `_place_cards`, and `_frame`'s default `TitleHome.mid()`.
 - `scripts/class_stage.gd`: the carousel (whole in `scripts/class_stage.gd` here), `EMBLEMS`, `PICK_SOUND`.
-- the lobby (`mp_lobby_view.gd`, `lobby_client.gd`): the LAN row (`lan_row`), friends' worlds through Steam,
+- `game/ui/lobby/` (`mp_lobby_view.gd`, `lobby_client.gd`): the LAN row (`lan_row`), friends' worlds through Steam,
   the title's character back on the stage, the quest tracker's visibility.
 - `scripts/cloud_saves.gd`: the stash's sync (`STASH`, `_sync_stash`, `push_stash`); its collection is left in each
-  account. `scripts/lobby_stakes.gd` stamped items with `SharedStash.stamp`.
+  account. `game/ui/lobby/lobby_stakes.gd` stamped items with `SharedStash.stamp`.
 - `game/systems/data/data.gd`: `ACTS`' `town` name, `WAYPOINT_GROUPS`, `WAYPOINT_ACTIVITIES`, `WAYPOINT_ACTS`,
   `WAYPOINT_ZONES`, `waypoint_*`, `check_waypoints`, the Battlegrounds card's `name`/`kind`/`art`/`lines`, `VENDORS`,
   `CHOP_POWER`, `DEFAULT_CHOP`, `CHOP_PROFILES`, `chop_profile`.
 - `game/systems/bodies/models.gd`: a resource's model (`Wood.item_model`).
-- `scripts/kpi.gd`: the `camp` scenario; the zones' preload lists: `"0:town"`.
+- `scripts/kpi.gd`: the `camp` scenario; `game/systems/loading/zone_preload_data.gd`: `"0:town"`.
 - Sound: `game/systems/audio/sfx_bank.gd`, `sfx.gd`'s `LOOPS` (`night_forest`, `music_town`), `tools/audio/spec.py`,
   `build_sfx.py`'s `STEREO`/`AMB`, `assets/audio/CREDITS.md(.json)`.
 - Tests: `tools/nightly/gate.sh` ran `title_test`, `char_test`, `camp_life_test`, `vendor_test`, `guard_test`; the

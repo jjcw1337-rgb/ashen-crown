@@ -184,7 +184,7 @@ func _ready() -> void:
 	hero.leveled.connect(_on_level)
 	ui.bind_hero(hero)
 	if not args.has("--server"):
-		lobby_client = load("res://scripts/lobby_client.gd").new()
+		lobby_client = load("res://game/ui/lobby/lobby_client.gd").new()
 		add_child(lobby_client)
 		lobby_client.setup(self)
 	if BuildEnv.cloud() and not args.has("--server") and shot_path == "" and not args.has("--kpi"):
@@ -1639,7 +1639,7 @@ func save_game() -> void:
 	var raid_admitted: bool = bg_mode and (lobby_client == null or lobby_client.match_id == "" or lobby_client.admitted)
 	var d := {"hero": hero.to_save(), "in_raid": raid_admitted, "act": cur_act, "boss": boss_killed,
 		"difficulty": 0, "name": char_name, "played": int(Time.get_unix_time_from_system() * 1000.0)}
-	var old_lobby_save: Dictionary = load("res://scripts/lobby_stakes.gd").read(save_path())
+	var old_lobby_save: Dictionary = load("res://game/ui/lobby/lobby_stakes.gd").read(save_path())
 	d["lobby_receipts"] = old_lobby_save.get("lobby_receipts", [])
 	d["lobby_locked"] = old_lobby_save.get("lobby_locked", [])
 	DirAccess.make_dir_recursive_absolute(char_dir)
@@ -1857,12 +1857,14 @@ func exit_to_title(save_current := true) -> void:
 
 ## The tools/ harness (a SceneTree script) still gets a world behind the title (the Arena's hall; it was the camp
 ## until Enter World was archived): ~170 test scripts wait for a world at boot. `-- --real-boot` gives a tool the
-## real start (tools/boot_flow_test.gd).
+## real start (game/systems/loading/tests/boot_flow_test.gd).
 func _harness_world() -> bool:
 	return get_tree().get_script() != null and not OS.get_cmdline_user_args().has("--real-boot")
 
 ## Leave the current zone with nothing in its place (back to the title). load_zone does the same before it builds.
 func unload_world() -> void:
+	if ui.chat != null:
+		ui.chat.clear()      # (a match's chat ends with it)
 	if world == null:
 		return
 	if hero != null:
@@ -2974,6 +2976,8 @@ var roll_sprint := false
 ## The movement keys as a flat direction on the ground (W = up the screen).
 func wasd_dir() -> Vector3:
 	var v := Vector3.ZERO
+	if ui.chat != null and ui.chat.typing:
+		return v      # (typing a chat line: the keys spell, the hero stands)
 	if Input.is_key_pressed(KEY_W): v.z -= 1
 	if Input.is_key_pressed(KEY_S): v.z += 1
 	if Input.is_key_pressed(KEY_A): v.x -= 1

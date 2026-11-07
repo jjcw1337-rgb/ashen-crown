@@ -1,12 +1,12 @@
 extends SceneTree
 ## Screenshots of the Verdant Reach (BgForest) from the game camera: a starting glade, a camp of each region, the
-## two bosses' grounds, the stream's bridge and the middle, and ForestLife's places (a shrine, the mushroom woods' heart). `-- outdir` (needs a display).
+## three bosses' grounds, the stream's bridge and the middle, and ForestLife's places (a shrine, the mushroom woods' heart). `-- outdir` (needs a display).
 var g
 var out := "user://forest_shots"
 
 func _initialize():
-	var a := OS.get_cmdline_user_args()
-	if a.size() > 0:
+	var a: Array = Array(OS.get_cmdline_user_args()).filter(func(x): return not str(x).begins_with("res://") and not str(x).begins_with("--"))      # (run through tools/_late.gd too)
+	if not a.is_empty() and a[0] != "keyart":
 		out = a[0]
 	DirAccess.make_dir_recursive_absolute(out)
 	g = (load("res://main.tscn") as PackedScene).instantiate()
@@ -56,7 +56,7 @@ func _run() -> void:
 		await shot("shrine", spots[0] + Vector2(0, 3))
 	await shot("meadow", Vector2(30, 30))
 	# (the bosses last: their intro cards hold the screen a while)
-	for id in ["sporefall", "shadeleaf", "sundered", "nightwhisper", "brookside", "barrow", "heartwood", "rootknot", "rimewood", "frostfang", "grotto"]:
+	for id in ["sporefall", "shadeleaf", "sundered", "nightwhisper", "brookside", "barrow", "heartwood", "rootknot", "rimewood", "frostfang", "grotto", "gilded_hoard"]:
 		for c in F.CAMPS:
 			if c["id"] == id:
 				await shot("camp_" + c["id"], c["at"] + Vector2(0, float(c["r"]) * 0.8))

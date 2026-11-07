@@ -56,7 +56,6 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | drain_tick | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a small pulse of life sucked out of a body, soft wet suction, close mic, dry, isolated sound effect, no music |
 | drip | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | water dripping slowly in a stone dungeon, soft drips and quiet cave air, steady, no music |
 | drop | 4 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | dropLeather.ogg |
-| dwarf_burp | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a loud long drunken belch from a burly dwarf, comedic, close mic, dry, isolated sound effect, no music |
 | eclipse_bloom | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a dark nature spirit erupting: a deep void whoosh and boom with leaves and vines lashing and a ghostly choir, close mic, dry, isolated sound effect, no music |
 | eclipse_storm | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a swirling magical whirlwind of leaves and spirit wisps, rustling leaves, whistling wind and soft ghostly whispers, steady, close mic, dry, isolated sound effect, no music |
 | equip | 4 | Kenney rpg-audio (kenney.nl) | CC0 1.0 | beltHandle1.ogg |
@@ -106,8 +105,6 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | portal | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a magic town portal opening, soft swirling whoosh with a warm shimmer, close mic, dry, isolated sound effect, no music |
 | portcullis | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavy iron portcullis gate being hauled up by chains, rattling chains and grinding iron, ending in a clank, close mic, dry, isolated sound effect, no music |
 | potion | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | drinking a potion from a glass vial, cork pop and two quick gulps, close mic, dry, isolated sound effect, no music |
-| raptor_bite | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a raptor's toothed jaws snapping shut on prey, a fast hard bite with a crunch, close mic, dry, isolated sound effect, no music |
-| raptor_call | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a velociraptor's shrill hunting screech followed by fast clicking barks, a predator calling its pack, close mic, dry, isolated sound effect, no music |
 | reap_swing | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a ghostly scythe swung in a wide arc, cold airy spectral whoosh, close mic, dry, isolated sound effect, no music |
 | reckoning | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a curse of judgement sealed: a deep ominous bell-like toll with a choir of whispers, close mic, dry, isolated sound effect, no music |
 | relic_ting | 3 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | picking up a rare magical gem in a dark fantasy game, one bright clear crystal ting with a shimmering glassy ring that fades, close mic, dry, isolated sound effect, no music |
@@ -139,8 +136,6 @@ Kenney sounds are CC0 (kenney.nl). ElevenLabs sounds were generated on a paid El
 | totem_rise | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a heavy carved wooden totem bursting up out of the earth, roots tearing and creaking wood, a low magical hum, close mic, dry, isolated sound effect, no music |
 | totem_wail | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | an eerie spirit totem flaring: a short haunting ghostly wail with a whispering magical swell, close mic, dry, isolated sound effect, no music |
 | trex_roar | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a gigantic tyrannosaurus rex roar, a deep rumbling bellow rising to a terrifying scream, heavy breath and rattling throat, close mic, dry, isolated sound effect, no music |
-| trex_stomp | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a giant dinosaur footstep, one massive deep thud that shakes the ground, earth and pebbles rattling, close mic, dry, isolated sound effect, no music |
-| trike_bellow | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a triceratops' deep honking bellow, a huge horned herbivore giving an angry warning call, close mic, dry, isolated sound effect, no music |
 | troll_cast | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a jungle troll shaman's guttural hissing chant ending in a wet spit of poison, close mic, dry, isolated sound effect, no music |
 | void_wisp | 2 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a glowing spirit wisp zipping past, airy magical whoosh with a bright shimmering tail, close mic, dry, isolated sound effect, no music |
 | wail | 1 | ElevenLabs Sound Effects | ElevenLabs paid plan, commercial use | a terrifying ghost woman screaming, a long piercing shriek, close mic, dry, isolated sound effect, no music |

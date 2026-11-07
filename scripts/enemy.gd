@@ -639,22 +639,12 @@ func special_fx(ev: String) -> void:
 			# (scaled by its body: the bear is radius 1; the tyrant's jaws reach far further)
 			Fx.telegraph(game.world.fx_root, global_position - rig.global_transform.basis.z * 1.6 * radius, 1.9 * radius, atk_dur * Anim.impact_at("bear_maul"), Color(0.6, 1.0, 0.4))
 		"bear_roar":
-			# each roarer its own voice
-			if kind == "trex":
-				Sfx.play_at("trex_roar", global_position + Vector3(0, 4.0, 0), 2.0, randf_range(0.95, 1.02))
-			elif kind in ["trike", "trike_baby"]:
-				Sfx.play_at("trike_bellow", global_position + Vector3(0, 2.0, 0), 0.0, 1.6 if kind == "trike_baby" else randf_range(0.95, 1.05))
-			else:
-				Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
+			Bear.sound("bear_roar", global_position + Vector3(0, 2.0, 0))
 			Fx.burst(game.world.fx_root, global_position + Vector3(0, 2.4, 0) - rig.global_transform.basis.z * 0.9, Color(0.75, 0.8, 0.75, 0.35), 18, 1.6, 0.35, 0.9, false, 0.4, 35.0, -rig.global_transform.basis.z)
 			if game.hero.global_position.distance_to(global_position) < 16.0:
 				game.add_shake(0.25)
 		"bear_maul":
-			if kind == "trex":
-				Sfx.play_at("raptor_bite", global_position, 3.0, 0.55)       # (the raptor's snap, an octave down: his jaws)
-				Sfx.play_at("trex_stomp", global_position, 0.0, 0.8)
-			else:
-				Bear.sound("bear_maul", global_position)
+			Bear.sound("bear_maul", global_position)
 			var paws := global_position - rig.global_transform.basis.z * 1.6 * radius
 			ElementalFx.ground_slam(game, game.world.fx_root, paws, 1.3 + radius)
 			if game.hero.global_position.distance_to(global_position) < 10.0:
@@ -783,8 +773,6 @@ func _process(delta: float) -> void:
 	else:
 		if not aggro and f_calm <= 0.0 and dist < def.get("aggro", 12.0) and not hero_dead and game.world.los(global_position, hero.global_position):
 			aggro = true
-			if kind == "raptor":
-				Sfx.play_at("raptor_call", global_position + Vector3(0, 1.0, 0), -2.0, randf_range(0.92, 1.1))
 			if boss:
 				game.on_boss_aggro(self)
 			for e in game.enemies_near(global_position, 8.0):
@@ -884,10 +872,6 @@ static func build_rig(kind: String, variant := 1) -> Node3D:
 		return Lion.build()
 	if d.get("mesh", "") == "bear" and Bear.ok():
 		return Bear.build()
-	if Theropod.ok(str(d.get("mesh", ""))):
-		return Theropod.build(str(d["mesh"]))
-	if Trike.ok(str(d.get("mesh", ""))):
-		return Trike.build(str(d["mesh"]))
 	if d.get("mesh", "") == "sloth":
 		return Sloth.build(str(d.get("variant", "")), look.get("skin", Color(0.52, 0.56, 0.47)))
 	if d.has("prop"):
@@ -921,10 +905,6 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 		Feral.pose(r, st, height)
 	elif r.has_meta("lion"):
 		Lion.pose(r, st, height)
-	elif r.has_meta("dino"):
-		Theropod.pose(r, st, height)
-	elif r.has_meta("trike"):
-		Trike.pose(r, st, height)
 	elif r.has_meta("bear"):
 		Bear.pose(r, st, height)
 	elif r.has_meta("sloth"):
@@ -947,15 +927,10 @@ static func pose_rig(r: Node3D, st: Dictionary, height: float) -> void:
 ## little if you're close.
 func _footstep() -> void:
 	var side := 1.0 if int(floorf(phase / PI)) % 2 == 0 else -1.0
-	var big := kind == "trex"          # (the Tyrant: the ground shakes under every step, and you hear it coming)
-	var foot := global_position + rig.global_transform.basis.x * side * (0.35 * (radius if big else 1.0))
-	Fx.burst(game.world.fx_root, foot + Vector3(0, 0.08, 0), Color(0.38, 0.33, 0.28, 0.6), 18 if big else 8, 2.4 if big else 1.2, 0.35 if big else 0.2, 0.8 if big else 0.6, false, -1.0, 70.0)
+	var foot := global_position + rig.global_transform.basis.x * side * 0.35
+	Fx.burst(game.world.fx_root, foot + Vector3(0, 0.08, 0), Color(0.38, 0.33, 0.28, 0.6), 8, 1.2, 0.2, 0.6, false, -1.0, 70.0)
 	var d: float = game.hero.global_position.distance_to(global_position)
-	if big:
-		Sfx.play_at("trex_stomp", foot, -3.0, randf_range(0.9, 1.05))
-		if d < 22.0:
-			game.add_shake(0.18 * (1.0 - d / 22.0) + 0.04)
-	elif d < 7.0:
+	if d < 7.0:
 		game.add_shake(0.06)
 
 ## The radius it collides with props and walls at: a boss's real bulk (so a 3.5 m King Grubb

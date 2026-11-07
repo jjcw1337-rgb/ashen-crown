@@ -655,7 +655,25 @@ func cl_gold(amount: int) -> void:
 
 ## Host: a monster struck a partner's knight; that player's game works out blocking.
 func hit_player(pid: int, dmg: float, from: Vector3, kind: String, element: String) -> void:
+	if server:
+		var log: Array = _blows_sent.get(pid, [])
+		log.append([Time.get_ticks_msec(), dmg])
+		_blows_sent[pid] = log.slice(-8)
 	rpc_id(pid, "cl_take_hit", dmg, from, kind, element)
+
+## Server: the blows it sent each player lately ([msec, damage]), so a server-run hero's game can only claim a blow it
+## really took (RunTalents' thorns: ServerRules.received "run" "struck").
+var _blows_sent := {}
+
+## Server: was `pid` sent a blow of at least `dmg` in the last 1.5 s? (It's used up.)
+func took_blow(pid: int, dmg: float) -> bool:
+	var log: Array = _blows_sent.get(pid, [])
+	var now := Time.get_ticks_msec()
+	for i in log.size():
+		if now - int(log[i][0]) <= 1500 and float(log[i][1]) >= dmg - 0.5:
+			log.remove_at(i)
+			return true
+	return false
 
 @rpc("authority", "call_remote", "reliable")
 func cl_take_hit(dmg: float, from: Vector3, kind: String, element: String) -> void:
@@ -878,8 +896,9 @@ func cl_dealt(at: Vector3, amount: float, crit: bool) -> void:
 	if not loading and game.world != null and amount > 0.0:
 		Fx.number(game.world.fx_root, at + Vector3(0, 2.2, 0), str(int(amount)) + ("!" if crit else ""), Color(1.0, 0.85, 0.4), crit)
 
-## Server: what a player's own blows did to them here (life leeched, a rite's buff, a cooldown back, Hunger), for
-## their game, which keeps their life, cooldowns and run (Hero.gain_life, RunTalents._tell_owner).
+## Server: what a player's own blows did to them here (life leeched, a rite's buff, a cooldown back, Hunger, what a
+## skill's rules gave them: "give", Skill.give), for their game, which keeps their life, cooldowns and run
+## (Hero.gain_life, RunTalents._tell_owner, ServerRules.got).
 func tell_self(h: Hero, d: Dictionary) -> void:
 	if server and active and int(h.peer_id) > 0 and multiplayer.get_peers().has(int(h.peer_id)):
 		rpc_id(int(h.peer_id), "cl_self", d)
@@ -890,6 +909,8 @@ func cl_self(d: Dictionary) -> void:
 	if loading or h == null or h.dead:
 		return
 	h.gain_life(float(d.get("life", 0.0)))
+	if d.get("give") is Array and (d["give"] as Array).size() == 3 and d["give"][2] is Dictionary:
+		ServerRules.got(game, str(d["give"][0]), str(d["give"][1]), d["give"][2])
 	if d.has("cd"):
 		h.cds[str(d["cd"])] = 0.0
 	if h.run != null:
@@ -1315,7 +1336,7 @@ func cl_arena_reset(at: Vector3) -> void:
 	game.hero.shove = Vector3.ZERO
 	game.hero.atk_t = -1
 	game.hero.charge_t = -1
-	game.hero.drain_t = -1
+	game.hero.channel_t = -1
 	game.hero.direct_dir = Vector3.ZERO
 	game.hero.life=game.hero.max_life
 	game.hero.mana=game.hero.max_mana
@@ -1332,3 +1353,51 @@ func cl_arena_state(data: Dictionary) -> void:
 @rpc("authority", "call_remote", "reliable")
 func cl_match_end(reason: String) -> void:
 	if game.lobby_client!=null:game.lobby_client.finished(reason)
+
+# ---------------------------------------------------------------- chat (game/ui/chat/chat_box.gd)
+const CHAT_MAX := 160            # characters a line may have (the server cuts the rest)
+const CHAT_RATE := 5             # lines a player may send in CHAT_WINDOW seconds
+const CHAT_WINDOW := 8.0
+var _chat_sent := {}             # server: peer id -> the times (msec) of its last lines
+
+## A line typed in the chat box: to the server, which checks it and passes it on.
+func send_chat(text: String, team: bool) -> void:
+	if active and not server:
+		rpc_id(1, "sv_chat", text.substr(0, CHAT_MAX), team)
+
+## Server: a player's line. Its name is the server's own record of them; the text is cut to CHAT_MAX, a flood past
+## CHAT_RATE in CHAT_WINDOW s is dropped; a team line goes to the sender's team only (Battlegrounds.team_of: a duo's
+## pair, an Arena team), every other line to everyone in the match.
+@rpc("any_peer", "call_remote", "reliable")
+func sv_chat(text: String, team: bool) -> void:
+	if not server:
+		return
+	var pid := multiplayer.get_remote_sender_id()
+	if not players.has(pid):
+		return
+	var t := text.strip_edges().substr(0, CHAT_MAX)
+	if t == "":
+		return
+	var now := Time.get_ticks_msec()
+	var sent: Array = (_chat_sent.get(pid, []) as Array).filter(func(x): return now - int(x) < int(CHAT_WINDOW * 1000.0))
+	if sent.size() >= CHAT_RATE:
+		rpc_id(pid, "cl_chat", "", "You're sending messages too fast.", false)
+		return
+	sent.append(now)
+	_chat_sent[pid] = sent
+	var who := _name_of(pid)
+	var mine: int = game.bg.team_of(pid) if game.bg != null and game.bg.has_method("team_of") else -pid
+	for other in players.keys():
+		if team and (game.bg == null or not game.bg.has_method("team_of") or int(game.bg.team_of(int(other))) != mine):
+			continue
+		rpc_id(int(other), "cl_chat", who, t, team)
+
+@rpc("authority", "call_remote", "reliable")
+func cl_chat(who: String, text: String, team: bool) -> void:
+	if game.ui.chat == null:
+		return
+	if who == "":
+		game.ui.message(text, Color(1.0, 0.6, 0.4))
+	else:
+		game.ui.chat.add(who, text, team)
+
