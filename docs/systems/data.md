@@ -6,6 +6,8 @@
 - Only entries with `"status": "live"` reach the game.
 - A skill's own numbers are its `k` (Fire Arrow: `{"dmg": 130, "burn_s": 3, …}`), which its `Skill` object reads
   with `val(key, default)`. A rite's numbers are its `k` too.
+- A skill's `aoe` marks an area at the pointer (click to cast) and names its radius key in `k`
+  ([skills](../content/skills.md)).
 
 ## How the game reads it
 

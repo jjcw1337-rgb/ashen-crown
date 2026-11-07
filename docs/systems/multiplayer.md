@@ -59,8 +59,8 @@ learns who a player is only from a ticket. The server keeps a copy of each playe
 1. **One network layer.** `Net` (`scripts/net.gd`) drives everything through Godot's `MultiplayerPeer`. ENet and
    Steam differ only in the peer plugged in, so never write transport-specific game code.
 2. **The host or match server owns the world** (monsters, loot, the match). Players send what they do and draw what
-   they're told. Each player's game still works out its own hero's damage, except heroes whose skills run on the
-   server (the Archer so far: [combat](combat.md)).
+   they're told. In a match every hero's skills and swings run on the server ([combat](combat.md)); in Enter World
+   co-op each player's game still works out its own hero's damage.
 3. **Everything a skill shows is an fx event** ([effects](effects.md)), so other players see it with no new RPC.
 4. **Server code never needs pixels, mesh surfaces or animated bones.** Match servers run the stripped "Linux
    Server" export. Guard anything that reads an image or a mesh, and keep collision as footprints in code.
