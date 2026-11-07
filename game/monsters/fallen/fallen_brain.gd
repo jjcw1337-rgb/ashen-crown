@@ -22,11 +22,11 @@ static func path(en: Enemy, sp: String) -> void:
 			var land := p0 + dir * clampf(to.length() - reach - 0.15, 0.0, 4.5)
 			en.atk_path = [[0.3, 0.5, p0, land], [0.5, 0.62, land, land + dir * 0.45]]
 		"stalk_hook":
-			var side := Vector3(-dir.z, 0, dir.x) * en.fv_side
+			var side := Vector3(-dir.z, 0, dir.x) * float(en.mem["side"])
 			var p1 := p0 + side * 1.5
 			var from_h := (p1 - hp)
 			from_h.y = 0
-			var app := from_h.normalized().rotated(Vector3.UP, en.fv_side * 0.7) if from_h.length() > 0.05 else -dir
+			var app := from_h.normalized().rotated(Vector3.UP, float(en.mem["side"]) * 0.7) if from_h.length() > 0.05 else -dir
 			var p2 := hp + app * (reach + 0.3)
 			var out := (p2 - hp)
 			out.y = 0
@@ -64,17 +64,17 @@ static func reaver(en: Enemy, delta: float, hero: Node3D, to: Vector3, dist: flo
 		return Vector3.ZERO
 	if dist < en.radius + hero.radius + 0.2:
 		return Vector3.ZERO
-	en.rv_spd = move_toward(en.rv_spd, en.speed, delta * 1.8)
-	return en.go_to(delta, hero.global_position, en.rv_spd)
+	en.mem["rv_spd"] = move_toward(float(en.mem["rv_spd"]), en.speed, delta * 1.8)
+	return en.go_to(delta, hero.global_position, float(en.mem["rv_spd"]))
 
 ## The Stalker: circles 4-6 m out on a side it picks (switching now and then), weaving as it goes, edging in
 ## on an arc; when ready it shifts, darts in at an angle and hooks, then pulls out and circles again.
 static func stalker(en: Enemy, delta: float, hero: Node3D, to: Vector3, dist: float) -> Vector3:
-	en.fv_flip -= delta
-	if en.fv_flip <= 0.0:
-		en.fv_flip = randf_range(1.0, 2.0)
+	en.mem["flip"] -= delta
+	if float(en.mem["flip"]) <= 0.0:
+		en.mem["flip"] = randf_range(1.0, 2.0)
 		if randf() < 0.45:
-			en.fv_side = -en.fv_side
+			en.mem["side"] = -float(en.mem["side"])
 	en.f_t -= delta
 	var reach: float = en.radius + hero.radius
 	if en.cooldown <= 0.0 and en.f_t <= 0.0 and dist < 6.0 and dist > reach + 0.3 and en.game.world.los(en.global_position, hero.global_position):
@@ -84,13 +84,13 @@ static func stalker(en: Enemy, delta: float, hero: Node3D, to: Vector3, dist: fl
 	var from_h := en.global_position - hero.global_position
 	from_h.y = 0
 	var base := atan2(from_h.z, from_h.x)
-	var want := base + en.fv_side * 0.55
+	var want := base + float(en.mem["side"]) * 0.55
 	var tgt: Vector3 = hero.global_position + Vector3(cos(want), 0, sin(want)) * ring
 	var v := en.go_to(delta, tgt, en.speed)
-	# the weave: a smooth sideways sway over the arc (its side flips with fv_side, so it reads as intent)
-	en.fv_weave += delta * 2.6
+	# the weave: a smooth sideways sway over the arc (its side flips with mem["side"], so it reads as intent)
+	en.mem["weave"] += delta * 2.6
 	var side := Vector3(-to.z, 0, to.x).normalized() if to.length() > 0.05 else Vector3.ZERO
-	return v + side * sin(en.fv_weave) * en.speed * 0.3 * en.fv_side
+	return v + side * sin(float(en.mem["weave"])) * en.speed * 0.3 * float(en.mem["side"])
 
 # ---------------------------------------------------------------- their moves (Monsters.begin_move ... finish_move)
 ## Each signature attack moves the body along its own path (no snapping into range).
@@ -149,8 +149,8 @@ static func finish(en: Enemy) -> void:
 			en.cooldown = randf_range(1.1, 1.5)
 			en.f_state = "rest"
 			en.f_t = 1.0
-			en.rv_spd = en.speed * 0.3
+			en.mem["rv_spd"] = en.speed * 0.3
 		"stalk_hook":
 			en.cooldown = randf_range(1.6, 2.2)
 			en.f_t = 1.0
-			en.fv_side = -en.fv_side if randf() < 0.5 else en.fv_side
+			en.mem["side"] = -float(en.mem["side"]) if randf() < 0.5 else float(en.mem["side"])

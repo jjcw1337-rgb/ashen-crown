@@ -238,7 +238,9 @@ func fx(skill: String, ev: String, data := {}) -> void:
 	d["s"] = skill
 	d["e"] = ev
 	SkillFx.play(self, d)
-	if not puppet and game != null and game.net != null:
+	if bot and game != null and game.net != null and game.net.server:
+		game.net.server_fx(self, d)      # (a match's bot: every game plays it on its copy, MatchBots)
+	elif not puppet and game != null and game.net != null:
 		game.net.skill_fx(d)
 	elif puppet and game != null and game.net != null and game.net.server and ServerRules.on(self):
 		game.net.server_fx(self, d)      # (what a player's skills did on the server: every game shows it)
@@ -736,7 +738,7 @@ func pvp_scaled() -> bool:
 
 ## The raid's rules for movement and regeneration: in a raid, and in the admins' sandbox (which plays like one).
 func raid_rules() -> bool:
-	return game != null and (game.bg_mode or game.arena_mode or game.sandbox != null)
+	return game != null and (game.bg_mode or game.arena_mode or game.sandbox != null or (bot and game.net.server))
 
 func total_str() -> int: return str_ + stats.get("str", 0)
 func total_dex() -> int: return dex + stats.get("dex", 0)
@@ -1949,6 +1951,7 @@ func _process_body(delta: float) -> void:
 		_carry_weapon(delta)
 		ClassSkills.pose(self, st, delta)   # (a class's own idle: now and then the plague doctor peers at a vial)
 	if Enemy.server_nopose:
+		last_pose = st      # (no body to pose on the server, but a match's bot sends its pose: Net._hero_packet)
 		return
 	Anim.pose(rig, st)
 	ClassSkills.posed(self, st)

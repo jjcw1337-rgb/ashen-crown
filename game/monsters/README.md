@@ -5,35 +5,49 @@ One folder per monster, holding everything that is only that monster's. Its stat
 
 | In the folder | What |
 |---|---|
-| its model (`<kind>.glb`) | the Meshy model (`game/systems/bodies/meshy_monster.gd` MeshyMonster.MODELS points at it, built on MeshyRig) or its own body's files |
-| `<monster>.gd` or `<monster>_brain.gd` | its brain if it has its own: its rules, no drawing (a boss's extends BossBrain; the others are static functions on the Enemy, called from Enemy._think_combat) |
+| `monster.gd` | **its card** (every folder has one, like a hero's class script): the kinds it is, its Meshy models' rigs (`RIGS`), its personality, and any of its own hooks (below) |
+| its models (`<mesh>.glb`) | the Meshy models (built on `MeshyRig` by `game/systems/bodies/meshy_monster.gd` from the card's `RIGS`), or its own body's files |
+| `<monster>.gd`, `<monster>_brain.gd` | its own body and brain: its rules, no drawing (a boss's extends `BossBrain`; a family's brain is static functions on the Enemy) |
 | `<monster>_fx.gd` | its look: what its fx events draw and play on every game |
-| `tests/` | its own tests, if it has any |
+| `sounds/` | the sounds only it makes (`tools/audio/build_sfx.py` finds every `game/**/sounds/`) |
+| `tests/`, `tools/` | its own tests and tools |
 
-**The registry** (`monsters.gd`, `Monsters`) is the one place that knows what each kind is made of. `Enemy`
-(`game/monsters/enemy.gd`: life, statuses, movement, the shared melee and ranged fighting) asks it and names no monster:
+**The registry** (`monsters.gd`, `Monsters`) lists the cards (`CARDS`) and names no monster. `Enemy`
+(`game/monsters/enemy.gd`: life, statuses, movement, the shared melee and ranged fighting) asks it, it asks the kind's card,
+and whatever the card leaves out is the shared way. What a card can declare (all but `KINDS` optional):
 
-| `Monsters.` | What it answers |
+| On the card | What |
 |---|---|
-| `build_rig(kind)`, `pose_rig`, `model_paths(kind)` | its body, how it's posed each frame, and the model files a zone loads ahead |
-| `personality(kind)` | how the body carries itself (Anim's gait, idle and swing) |
-| `on_setup(e)`, `on_placed(e)` | a family's own start (a Feral's place in the pack, a Sloth's dress) and King Grubb's fight |
-| `brain_for(e)` | a boss's brain (BossBrain) |
-| `combat(e, ...)` | its own way of fighting (the def's `ai`), or null for the shared melee and ranged |
-| `fx(e, event)` | its own fx events (`sloth*`, `bb_*`), drawn on every game |
+| `KINDS` | the `Data.ENEMIES` kinds it is |
+| `RIGS` | its Meshy models' rigs by the def's `mesh` (`tools/blender/act1/layout_to_gd.py <folder> <mesh> layout.json` writes them) |
+| `PERSONALITY` | its Anim personality (a name, or `{kind: name, "*": default}`; else `"warrior"`) |
+| `MOVES` + `begin` / `during` / `impact` / `finish` | the special moves it plays itself |
+| `FALL := "side"` or `fall(e, f, delta)` | how its body goes down |
+| `build_rig` / `pose_rig` / `model_paths` | a body of its own (else its Meshy rig, a code-built skeleton or figure) |
+| `brain(e)` | a boss's brain |
+| `combat`, `idle` | its own fighting and its own idle |
+| `on_setup`, `on_placed` | its own start: once its body is built, once it stands where it lives |
+| `fx(e, ev) -> bool` | draws its own fx events |
+| `rest_overlay`, `net_lift`, `heavy_steps` | its body's resting overlay, a client's height for it, a ground-shaking walk |
 
-**Adding a monster:** a folder here with its model; a `Data.ENEMIES` entry (its stats, `look`, `mesh`, `ai`); its
-rig in `MeshyMonster.MODELS` (a Meshy humanoid) or its own body script; then a line in `Monsters` for anything of its
-own (a brain, a boss brain, fx). Put it in a camp (a map's `CAMPS` row). Check it rigged and moving with
-`game/monsters/tools/monster_lineup.gd` (`-- out.png kind ...`, through `tools/_late.gd`: idle, walk, run and attack
-frames on the game's own rig).
+**Adding a monster:**
+1. Make a folder with its models and a `monster.gd` card. Copy the plainest one (`zombie/monster.gd`) and add only the
+   hooks it needs.
+2. Add a line in `Monsters.CARDS`.
+3. Give it a `Data.ENEMIES` entry (its stats, `look`, `mesh`, `ai`; the numbers move to the codex later).
+4. Put it in a camp: a row of a map's `CAMPS`.
+5. Run `game/monsters/tests/every_monster_test.gd` (through `tools/_late.gd`; it's in the gate). It spawns every carded
+   kind in the Sandbox, which must build its body, animate, fight and die. The Sandbox panel can also spawn any monster
+   ("Spawn").
+6. Check it rigged and moving with `game/monsters/tools/monster_lineup.gd` (`-- out.png [kind ...]`, through
+   `tools/_late.gd`). It shows idle, walk, run and attack frames on the game's own rig.
 
 Rules never draw: a brain sends `Enemy._fx(event)` before a move lands, and the `_fx` script draws it on every
 player's game (the stripped server has no meshes).
 
 **Bosses** extend `BossBrain` (`boss_brain.gd`, shared by every boss): they name their moves (seconds, impact,
 pose), pick one, start it (cooldown and warning) and land it; the loop, targeting and move playback are shared.
-`Enemy.setup` gives a kind its brain. A boss can stand in any camp: a camp row's `boss` is its kind
+Its card's `brain(e)` gives a kind its brain. A boss can stand in any camp: a camp row's `boss` is its kind
 (game/maps/verdant_reach/verdant_reach.gd `CAMPS`).
 
 | Monster | Kind | What |
@@ -50,5 +64,7 @@ pose), pick one, start it (cooldown and warning) and land it; the loop, targetin
 | `bandit/`, `gladiator/`, `champion/` | | models |
 | `tools/` | | `monster_lineup.gd`: the contact sheet of every kind, rigged and moving |
 
-The `spider` is code-built (Models.crawler) and `spirit_beast` is the Archer's wolf, whose model is the Archer's
+| `spider/` | `spider` | The spider: code-built (Models.crawler), a card only |
+
+`lion/`'s card also covers `spirit_beast`, the Archer's wolf on the same body; its model is the Archer's
 (`assets/models/monsters/wolf.glb`, to move with the Archer's companion).

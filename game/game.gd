@@ -250,9 +250,6 @@ var _under_rect: ColorRect
 var _soul_field: GPUParticles3D
 var _env_saved := {}
 
-func set_underworld(on: bool) -> void:
-	_under_target = 1.0 if on else 0.0
-
 func _end_underworld_now() -> void:
 	if hero and hero.phased and bg == null:
 		# (a dedicated server's own hero stays phased: it's how monsters ignore it)
@@ -876,7 +873,7 @@ func load_zone(act: int, zone: String, spawn: String, at = null) -> void:
 		return
 	_busy = true
 	net.broadcast_goto(act, zone, spawn, at)
-	loading_lbl.text = ("Descending into %s..." if zone == Battlegrounds.ZONE else "Entering %s...") % zone_title(act, zone)
+	loading_lbl.text = Maps.arrive(zone)
 	set_loading_art(zone)
 	loading.visible = true
 	# the zone's recorded files on the loader's threads (ResCache), while the old zone goes; the build waits for them
@@ -1588,14 +1585,6 @@ func _burst_seals(t: Inter) -> void:
 		tw.tween_property(gl, "light_energy", 5.0, 0.12)
 		tw.tween_property(gl, "light_energy", 0.0, 0.9)
 
-func _write_char(p: String, id: String, d: Dictionary) -> void:
-	var f := FileAccess.open(p, FileAccess.WRITE)
-	if f:
-		f.store_string(JSON.stringify(d))
-		f.close()
-	if cloud != null:
-		cloud.push(id, d)
-
 func save_game() -> void:
 	if arena_mode or sandbox != null: return # Practice and Arena use a temporary copy; only escrow settlement changes owned items.
 	if hero != null and hero.run != null:
@@ -1713,19 +1702,6 @@ static func _count_items(v) -> int:
 		if it is Dictionary and not (it as Dictionary).is_empty():
 			n += 1
 	return n
-
-func character_gear(id: String) -> Dictionary:
-	var path := char_dir + id + ".json"
-	if id == "" or not FileAccess.file_exists(path):
-		return {}
-	var d := read_save(path, false)
-	if d.is_empty():
-		return {}
-	var h: Dictionary = d.get("hero", {}) if d.get("hero") is Dictionary else {}
-	var g: Dictionary = (h.get("equipment", {}) as Dictionary).duplicate(true) if h.get("equipment") is Dictionary else {}
-	g["_cls"] = str(h.get("cls", "knight"))
-	g["_helm"] = bool(h.get("show_helm", true))
-	return g
 
 ## The save from before characters becomes the first character (once; the old file stays for older builds).
 func _adopt_old_save() -> void:
@@ -2970,9 +2946,6 @@ func dodge_roll() -> void:
 func set_click_move(on: bool) -> void:
 	click_move = on
 	_save_setting("controls", "click_move", on)
-
-func cast_slot(i: int) -> void:
-	cast_skill(hero.bound(Hero.BIND_KEYS[i]))
 
 ## Is this bar slot's button (mouse button or hotkey) being held right now?
 func slot_held(slot: String) -> bool:

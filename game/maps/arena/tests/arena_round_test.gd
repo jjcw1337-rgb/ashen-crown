@@ -16,6 +16,7 @@ class Transport extends RefCounted:
  var players:={}
  func rpc(_method,_data):pass
  func rpc_id(_pid,_method,_at):pass
+ func is_bot(_pid):return false
 class Instance extends RefCounted:
  var members:={}
  var begun:=true

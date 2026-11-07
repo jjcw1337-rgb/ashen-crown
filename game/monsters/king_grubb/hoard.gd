@@ -295,27 +295,6 @@ func priority_target() -> Enemy:
 				best = e
 	return best if best != null else boss
 
-## Where a sensible player would step right now, or null: out of a bomb's circle, else onto
-## the nearest pile during a scramble (the balance bot uses this).
-func move_hint(from: Vector3) -> Variant:
-	for b in bombs:
-		var away: Vector3 = from - b
-		away.y = 0.0
-		if away.length() < BOMB_R + 0.6:
-			if away.length() < 0.1:
-				away = Vector3(1, 0, 0)
-			return b + away.normalized() * (BOMB_R + 1.5)
-	if state == "spill":
-		var best: Variant = null
-		var bd := 14.0
-		for id in piles.keys():
-			var d := _flat(from, piles[id]["pos"])
-			if d < bd:
-				bd = d
-				best = piles[id]["pos"]
-		return best
-	return null
-
 ## He died: his goblins flee down their holes, the piles go, and his hoard bursts open.
 func on_death() -> void:
 	var g = boss.game

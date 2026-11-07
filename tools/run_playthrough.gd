@@ -27,7 +27,7 @@ func _initialize():
 		theme = a[2]       # a build theme to chase (RunTalents.THEMES), or "random" for a player who picks blindly
 	g = (load("res://main.tscn") as PackedScene).instantiate()
 	get_root().add_child(g)
-	CA = load("res://game/maps/verdant_reach/camps.gd")
+	CA = load("res://game/systems/world/camps.gd")
 	RB = load("res://game/items/run_build.gd")
 	SV = load("res://game/systems/saves/survivors.gd")
 	_run()

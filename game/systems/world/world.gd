@@ -56,8 +56,6 @@ func _init() -> void:
 	fx_root = Models.N(self, "FX")
 
 # ---------------------------------------------------------------- queries
-func in_bounds(x: float, z: float) -> bool:
-	return bounds.has_point(Vector2(x, z))
 
 ## Where things stand: the ground, or a bridge's deck over it (decks).
 func height_at(x: float, z: float) -> float:
@@ -280,14 +278,6 @@ func add_circle(p: Vector3, r: float) -> void:
 func add_box(p: Vector3, half: Vector2, yaw: float) -> void:
 	obstacles.append([Vector2(p.x, p.z), -1.0, half, yaw])
 	_bucket(obstacles.size() - 1, Vector2(p.x, p.z), half.length())
-
-## The index of the circle footprint centred at `c` (within 5 cm), or -1.
-func obstacle_at(c: Vector2) -> int:
-	for i in _near(c):
-		var o: Array = obstacles[i]
-		if float(o[1]) > 0.0 and (o[0] as Vector2).distance_to(c) < 0.05:
-			return i
-	return -1
 
 ## Registers a prop's own footprint (see Props.footprint) where the prop stands.
 func solid(node: Node3D) -> Node3D:
@@ -571,93 +561,6 @@ func terrain_patch(r: Rect2, step: float, tcol: Dictionary, nm := "Terrain", flo
 	# Godot culls clockwise as front; flip if our winding is inverted
 	mi.set_meta("terrain", true)
 	return mi
-
-## Grass, wildflowers and ferns use their own random numbers so a denser graphics setting
-## never shifts anything gameplay-related (co-op players can use different settings).
-func _scatter_grass(count: int, colors: Dictionary, height: float, outside := true) -> void:
-	# The living 3D grass (grass.gd): species and biomes, wind and touch; Act I's forest in its own colours, any other
-	# zone in its own
-	if oak_forest or living_grass:
-		var a := bounds.grow(MARGIN * 0.6 if outside else 0.0)
-		_grass_dry.seed = int(bounds.size.x * 31.0) + count
-		_grass_dry.frequency = 0.035
-		Grass.scatter(props_root, a, self, Grass.ACT1 if oak_forest else colors, detail, int(bounds.size.x * 1000.0) + count)
-		return
-	var rng := RandomNumberGenerator.new()
-	rng.seed = int(bounds.size.x * 1000.0) + count
-	count = int(count * GRASS_DENSITY[clampi(detail, 0, 3)])
-	var xf := []
-	var area := bounds.grow(MARGIN * 0.6 if outside else 0.0)
-	var tries := count * 3
-	var n2 := FastNoiseLite.new()
-	n2.seed = rng.randi()
-	n2.frequency = 0.08
-	while xf.size() < count and tries > 0:
-		tries -= 1
-		var x := rng.randf_range(area.position.x, area.end.x)
-		var z := rng.randf_range(area.position.y, area.end.y)
-		var dm := dirt_at(x, z) + cobble_at(x, z)
-		if dm > 0.55 or rng.randf() < dm * 1.6:
-			continue
-		if n2.get_noise_2d(x, z) < -0.35 and rng.randf() < 0.7:
-			continue
-		if bounds.grow(-1.2).has_point(Vector2(x, z)) and is_blocked(x, z):
-			continue
-		var y := height_at(x, z)
-		var s := rng.randf_range(0.7, 1.35) * (1.0 - dm * 0.6)
-		xf.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.3), s)), Vector3(x, y - 0.02, z)))
-	# Act I: grass painted for the camera (Flora.GRASS_TOP: nine kinds of clump, from lush tufts to
-	# dandelions), a clump on every spot and a smaller one beside most, over the blade grass on every
-	# other spot, so the ground reads as one grassy carpet. The older upright photo cards are the fallback.
-	if oak_forest and Flora.grass_top_ok():
-		var gp := []
-		for k in Flora.GRASS_TOP.size():
-			gp.append([])
-		for i in xf.size():
-			var o: Vector3 = (xf[i] as Transform3D).origin
-			var sc := (xf[i] as Transform3D).basis.get_scale()
-			# no yaw: the cards must face the camera; mirrored at random instead
-			var fl := -1.0 if rng.randf() < 0.5 else 1.0
-			gp[Flora.grass_top_kind(rng) - 1].append(Transform3D(Basis.from_scale(Vector3(sc.x * fl, sc.y, sc.x)), o))
-			if rng.randf() < 0.7:
-				var o2 := o + Vector3(rng.randf_range(-0.7, 0.7), 0, rng.randf_range(-0.7, 0.7))
-				o2.y = height_at(o2.x, o2.z) - 0.02
-				var s2 := sc.x * rng.randf_range(0.6, 0.9)
-				gp[Flora.grass_top_kind(rng) - 1].append(Transform3D(Basis.from_scale(Vector3(s2 * -fl, s2, s2)), o2))
-		for k in gp.size():
-			for mmi in mm_chunked(Flora.grass_top(k + 1, colors), gp[k], detail >= 3, 20.0, 60.0):
-				mmi.add_to_group("grass")
-		var keep := []
-		for i in range(0, xf.size(), 2):
-			keep.append(xf[i])
-		xf = keep
-	elif oak_forest and Flora.grass_tex_ok():
-		var cparts := [[], [], [], [], [], []]
-		var keep := []
-		for i in xf.size():
-			if i % 2 == 0:
-				keep.append(xf[i])
-			var r := rng.randf()
-			var k := 0 if r < 0.68 else (1 if r < 0.88 else 2)
-			cparts[k * 2 + (i % 2)].append(xf[i])
-		for ci in cparts.size():
-			var cm := Flora.grass_cards(int(ci / 2.0) + 1, ci % 2, colors)
-			for mmi in mm_chunked(cm, cparts[ci], detail >= 3, 20.0, 60.0):
-				mmi.add_to_group("grass")
-		xf = keep
-	# five clump shapes; about one in fourteen carries wildflowers
-	var m := Flora.grass_mat(colors)
-	var h := height * 1.1
-	var clumps := [Flora.grass_clump(1, 16, h), Flora.grass_clump(2, 18, h * 1.1), Flora.grass_clump(3, 14, h * 0.9), Flora.grass_clump(4, 15, h, 2), Flora.grass_clump(5, 15, h, 3)]
-	var parts := [[], [], [], [], []]
-	for i in xf.size():
-		var k := i % 3
-		if rng.randf() < 0.07:
-			k = 3 + (i % 2)
-		parts[k].append(xf[i])
-	for k in parts.size():
-		for mmi in mm_chunked(clumps[k], parts[k], detail >= 3, 20.0, 60.0, m):
-			mmi.add_to_group("grass")
 
 ## Grass (grass.gd) asks the zone three things about a spot. How much grass can grow (0 bare .. 1 full):
 ## none on the road or under solid things, thinning toward the edges of paths.

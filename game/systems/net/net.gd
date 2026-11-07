@@ -206,6 +206,20 @@ func _add_player(pid: int, nm: String, gear: Dictionary) -> void:
 	h.apply_net_gear(gear)
 	_rebuild_party_ui()
 
+## A match's bot player (MatchBots): in `players` like a person, but there's no peer to send to; what would go to
+## its game goes to its hero on the server instead.
+func is_bot(pid: int) -> bool:
+	return bool(players.get(pid, {}).get("bot", false))
+
+## Server: each bot's state to every game, as a player's own game sends its (pl_state, which carries the sender).
+@rpc("authority", "call_remote", "unreliable_ordered")
+func cl_bot_state(pid: int, p: PackedFloat32Array) -> void:
+	if not players.has(pid) or loading:
+		return
+	var h = players[pid]["hero"]
+	if is_instance_valid(h):
+		h.apply_net_state(p)
+
 func _remove_player(pid: int) -> void:
 	if not players.has(pid):
 		return
@@ -249,6 +263,10 @@ func _process(delta: float) -> void:
 		return
 	if not server:
 		rpc("pl_state", _hero_packet(game.hero))
+	else:
+		for pid in players:
+			if is_bot(pid) and is_instance_valid(players[pid]["hero"]):
+				rpc("cl_bot_state", pid, _hero_packet(players[pid]["hero"]))
 	if is_host:
 		var arr := PackedFloat32Array()
 		for id in enemies.keys():
@@ -341,7 +359,8 @@ func sv_hello(nm: String, gear: Dictionary, _lvl: int, queue_ticket := "", chara
 	var roster := [] if server else [[1, my_name, game.hero.net_gear()]]
 	for op in players:
 		roster.append([op, players[op]["name"], players[op]["hero"].net_gear()])
-		rpc_id(op, "cl_player_join", pid, nm, gear)
+		if not is_bot(op):
+			rpc_id(op, "cl_player_join", pid, nm, gear)
 	_add_player(pid, nm, gear)
 	if players.has(pid) and is_instance_valid(players[pid]["hero"]):
 		players[pid]["hero"].level = clampi(_lvl, 1, 99)      # (the raid's PvP class balance is by level, Data.pvp_scale)
@@ -617,7 +636,8 @@ func cl_xp(xp: int, lvl: int) -> void:
 
 ## Host: gold straight into a partner's purse (a pile of King Grubb's gold they stepped on).
 func give_gold(pid: int, amount: int) -> void:
-	rpc_id(pid, "cl_gold", amount)
+	if not is_bot(pid):
+		rpc_id(pid, "cl_gold", amount)
 
 @rpc("authority", "call_remote", "reliable")
 func cl_gold(amount: int) -> void:
@@ -630,6 +650,9 @@ func hit_player(pid: int, dmg: float, from: Vector3, kind: String, element: Stri
 		var log: Array = _blows_sent.get(pid, [])
 		log.append([Time.get_ticks_msec(), dmg])
 		_blows_sent[pid] = log.slice(-8)
+	if is_bot(pid):
+		MatchBots.take_hit(players[pid]["hero"], dmg, from, kind, element)
+		return
 	rpc_id(pid, "cl_take_hit", dmg, from, kind, element)
 
 ## Server: the blows it sent each player lately ([msec, damage]), so a server-run hero's game can only claim a blow it
@@ -715,7 +738,8 @@ func sv_pickup(id: int) -> void:
 	if game.hovered == g:
 		game.hovered = null
 	g.queue_free()
-	rpc_id(pid, "cl_grant", it, pos)
+	if not is_bot(pid):
+		rpc_id(pid, "cl_grant", it, pos)
 
 ## Host: an item left the ground (picked up by anyone).
 func item_gone(g: GroundItem) -> void:
@@ -911,7 +935,8 @@ func sv_pvp_obj_hit(owner_pid: int, oid: int, from: Vector3) -> void:
 		game.bg.pvp_obj_hit(multiplayer.get_remote_sender_id(), owner_pid, oid, from)
 
 func obj_hit_player(owner_pid: int, oid: int, attacker: int) -> void:
-	rpc_id(owner_pid, "cl_pvp_obj_hit", oid, attacker)
+	if not is_bot(owner_pid):
+		rpc_id(owner_pid, "cl_pvp_obj_hit", oid, attacker)
 
 @rpc("authority", "call_remote", "reliable")
 func cl_pvp_obj_hit(oid: int, attacker: int) -> void:
@@ -1074,7 +1099,7 @@ func sv_inter(idx: int) -> void:
 	game.use_inter_remote(t)
 	var pid := multiplayer.get_remote_sender_id()
 	for op in players:
-		if op != pid:
+		if op != pid and not is_bot(op):
 			rpc_id(op, "cl_inter", idx)
 
 @rpc("authority", "call_remote", "reliable")
@@ -1369,7 +1394,7 @@ func sv_chat(text: String, team: bool) -> void:
 	var who := _name_of(pid)
 	var mine: int = game.bg.team_of(pid) if game.bg != null and game.bg.has_method("team_of") else -pid
 	for other in players.keys():
-		if team and (game.bg == null or not game.bg.has_method("team_of") or int(game.bg.team_of(int(other))) != mine):
+		if is_bot(int(other)) or (team and (game.bg == null or not game.bg.has_method("team_of") or int(game.bg.team_of(int(other))) != mine)):
 			continue
 		rpc_id(int(other), "cl_chat", who, t, team)
 

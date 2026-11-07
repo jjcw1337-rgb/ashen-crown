@@ -1,7 +1,8 @@
 # In-game chat (game/ui/chat/)
 
 A match's chat: Enter opens the line (bottom left), Enter sends, Escape closes; `/t` at the start sends to your
-team only (a Battlegrounds duo's pair, an Arena team). Lines fade after 12 s; the whole log shows while typing.
+team only (a Battlegrounds duo's pair, an Arena team). While it's open the line glows neon, its border and glow
+drifting green to blue under a TYPING tag, so it's plain your keys type, not cast. Lines fade after 12 s; the whole log shows while typing.
 
 | File | What |
 |---|---|

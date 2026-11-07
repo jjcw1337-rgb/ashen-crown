@@ -21,6 +21,17 @@ FULL = 'Servers are full right now. Your lobby stays open: press Start again in 
 class Rejected(Exception): pass
 OUTDATED = 'Your game (build %s) is out of date: update it in the itch app, then try again.'
 OTHER_BUILD = 'This match runs build %s and your game is build %s: everyone in a match needs the same build (update in the itch app).'
+# Standing test lobbies (jj, 2026-11-07: "it just shows games created missing 1 player, i join it and the game
+# starts"; "its just for me testing"): with --standing (staging), an admin's lobby list always has one of each of these
+# on the admin's own build, every seat but one a bot. Joining fills it and the match starts at once; the match server
+# plays the bot seats (game/systems/bots/MatchBots). Nobody but an admin sees or joins them.
+# (mode, team size, capacity, name)
+STANDING = [('battlegrounds', 1, 4, 'Test raid · solo'), ('battlegrounds', 2, 4, 'Test raid · duo'),
+            ('arena', 1, 2, 'Test arena · 1v1'), ('arena', 2, 4, 'Test arena · 2v2'), ('arena', 3, 6, 'Test arena · 3v3')]
+BOT_CLASSES = ['knight', 'archer', 'warlock', 'wraith', 'demon']
+BOT_NAMES = ['Kael', 'Brannoc', 'Ysolde', 'Mirelle', 'Corvin', 'Thessaly', 'Orrin', 'Vesna', 'Hadrik', 'Liora', 'Garrow', 'Ilsa', 'Torvald', 'Selka', 'Rook']
+STANDING_IDLE = 6 * 3600     # an unused standing lobby (an old build's) closes after this long
+ADMIN_ONLY = 'Test lobbies are for admins.'
 
 class Lobbies:
     def __init__(self, path, launch, stop, slots=1, clock=time.time):
@@ -30,6 +41,7 @@ class Lobbies:
         self.receipts={key:dict(user=uid,**json.loads(data)) for key,uid,data in self.db.execute('SELECT id,user,data FROM receipts')}
         self.lock = threading.RLock(); self.launch = launch; self.stop = stop
         self.slots = slots; self.clock = clock; self.rooms = {}
+        self.standing = False    # (--standing: staging's test lobbies, STANDING)
         # Which game builds have a match server here (Service: the deployed server builds); tests leave it open.
         self.has_build = lambda rev: True
         for key, data in self.db.execute('SELECT id,data FROM state'):
@@ -78,15 +90,16 @@ class Lobbies:
         if uid in r['members'] and not r['members'][uid].get('departed',False) and r['state'] in ('starting','playing'):
             out['address'] = r.get('address','') if r.get('listening',False) else ''; out['ticket'] = r['members'][uid].get('ticket','')
         return out
-    def call(self, uid, op, p):
+    def call(self, uid, op, p, admin=False):
         with self.lock:
             self.sweep()
+            if op == 'list' and admin and self.standing: self.ensure_standing(str(p.get('version','dev')))
             if op=='receipts': return {'receipts':[v for v in self.receipts.values() if v['user']==uid and not v['acked']]}
             if op=='ack':
                 receipt=self.receipts.get(str(p.get('receipt','')),{})
                 if receipt.get('user')!=uid: raise Rejected('Unknown reward receipt.')
                 receipt['acked']=True;self.persist();return {'ok':True}
-            if op == 'list': return {'lobbies':[self.public(r,uid) for r in self.rooms.values() if r['state'] in ('waiting','starting','playing') and not (uid in r['members'] and r['members'][uid].get('departed',False))], 'slots':self.slots}
+            if op == 'list': return {'lobbies':[self.public(r,uid) for r in self.rooms.values() if r['state'] in ('waiting','starting','playing') and not (uid in r['members'] and r['members'][uid].get('departed',False)) and (admin or not r.get('standing'))], 'slots':self.slots}
             if op == 'create':
                 mode = p.get('mode'); team = p.get('team_size',1)
                 if mode not in LIVE_MODES or type(team) is not int or team not in (1,2,3): raise Rejected('Choose a supported mode and team size.')
@@ -104,7 +117,13 @@ class Lobbies:
                 self.rooms[rid]=r; self.add(r,uid,p)
             else:
                 r=self.room(str(p.get('id','')))
-                if op == 'join': self.add(r,uid,p)
+                if op == 'join':
+                    if r.get('standing') and not admin: raise Rejected(ADMIN_ONLY)
+                    self.add(r,uid,p)
+                    # a standing lobby is one seat short: the person who fills it starts it
+                    if r.get('standing') and sum(not m.get('departed',False) for m in r['members'].values())>=r['capacity']:
+                        for m in r['members'].values(): m['ready']=True
+                        self.begin(r)
                 elif op == 'get':
                     if uid in r['members']: r['members'][uid]['seen']=self.clock()
                 elif op == 'leave':
@@ -155,17 +174,38 @@ class Lobbies:
                     if r['wager'] and not all(m.get('stake') for m in r['members'].values()): raise Rejected('Everyone must commit an item.')
                     if not all(m['ready'] for m in r['members'].values()): raise Rejected('Everyone must be ready.')
                     if r['mode']=='arena' and any(sum(m['team']==t for m in r['members'].values())!=r['team_size'] for t in (0,1)): raise Rejected('Fill both teams before starting.')
-                    busy=sum(x['state'] in ('starting','playing') for x in self.rooms.values())
-                    if busy>=self.slots: raise Rejected(FULL)
-                    r['state']='starting'; r['started']=self.clock(); r['worker_key']=secrets.token_hex(32)
-                    for m in r['members'].values(): m['ticket']=secrets.token_hex(32); m['redeemed']=False; m['issued']=self.clock()
-                    try: r['address']=self.launch(r)
-                    except Exception as exc:
-                        r['state']='waiting'; r['reason']=str(exc) if isinstance(exc,Rejected) else 'The match could not start. Try again.'
-                        self.persist(); raise Rejected(r['reason'])
+                    self.begin(r)
                 else: raise Rejected('Unknown lobby action.')
                 if r['state']=='waiting': r['touched']=self.clock()
             self.persist(); return {'lobby':self.public(r,uid)}
+    def begin(self,r):
+        # the match server starts: tickets for the people, the room's manifest to a fresh process (Service.launch)
+        busy=sum(x['state'] in ('starting','playing') for x in self.rooms.values())
+        if busy>=self.slots: raise Rejected(FULL)
+        r['state']='starting'; r['started']=self.clock(); r['worker_key']=secrets.token_hex(32)
+        for m in r['members'].values(): m['ticket']=secrets.token_hex(32); m['redeemed']=False; m['issued']=self.clock()
+        try: r['address']=self.launch(r)
+        except Exception as exc:
+            r['state']='waiting'; r['reason']=str(exc) if isinstance(exc,Rejected) else 'The match could not start. Try again.'
+            self.persist(); raise Rejected(r['reason'])
+    def ensure_standing(self,rev):
+        # one waiting standing lobby of each kind on this build; a joined one is replaced by a fresh one
+        for mode,team,cap,name in STANDING:
+            key='%s:%d' % (mode,team)
+            mine=[r for r in self.rooms.values() if r.get('standing')==key and r.get('version')==rev and r['state']=='waiting']
+            if mine:
+                for r in mine: r['touched']=self.clock()
+                continue
+            if rev!='dev' and not self.has_build(rev): continue
+            rid=secrets.token_hex(8)
+            r=dict(id=rid,name=name,mode=mode,team_size=team,capacity=cap,state='waiting',owner='',members={},created=self.clock(),touched=self.clock(),reason='',wager=False,version=rev,standing=key)
+            for i in range(cap-1):
+                n=len(self.rooms)*7+i
+                cls=BOT_CLASSES[(i+len(self.rooms))%len(BOT_CLASSES)]
+                r['members']['bot:%s:%d'%(rid,i)]={'name':'Bot %s'%BOT_NAMES[n%len(BOT_NAMES)],'character':'run_'+cls,'team':self.open_team(r),'ready':True,'seen':self.clock(),'bot':True}
+            r['owner']=next(iter(r['members']))
+            self.rooms[rid]=r
+        self.persist()
     def teams(self,r):
         # Arena: two teams of team_size. Battlegrounds duo: pairs (capacity / 2 of them). Solo: everyone alone.
         if r['mode']=='arena': return 2
@@ -224,7 +264,10 @@ class Lobbies:
         now=self.clock()
         for r in self.rooms.values():
             if r['state']=='waiting':
+                if r.get('standing') and all(m.get('bot') for m in r['members'].values()) and now-r.get('touched',now)>STANDING_IDLE:
+                    r['state']='closed'; continue
                 for uid in list(r['members']):
+                    if r['members'][uid].get('bot'): continue
                     if now-r['members'][uid]['seen']>90:
                         if r['members'][uid].get('stake'): self.receipt(r,uid,[r['members'][uid]['stake']])
                         del r['members'][uid]
@@ -245,6 +288,7 @@ class Service:
         self.version=revision.read_text().strip() if revision.exists() else "dev"
         if not args.dev and self.version=="dev": raise RuntimeError("Deploy an imported release with DEPLOYED_REV before starting the public lobby service.")
         self.model=Lobbies(str(self.root/'lobbies.sqlite'),self.launch,self.stop,args.slots)
+        self.model.standing=bool(args.standing);self._admins={}
         self.model.has_build=lambda rev: self.binary_for(rev) is not None
     def binary_for(self,rev):
         # the server builds sit side by side (update.sh keeps the newest three: <server>/<rev>/AshenCrown.x86_64)
@@ -289,6 +333,18 @@ class Service:
                 try: proc.wait(timeout=5)
                 except subprocess.TimeoutExpired: proc.kill()
             threading.Thread(target=force,daemon=True).start()
+    def admin(self,header):
+        # (the Nakama module's admin_status, as the game asks it with the player's own session; cached a minute)
+        if self.args.dev: return header.startswith('Bearer dev-admin')
+        now=time.time();key=hashlib.sha256(header.encode()).hexdigest()
+        hit=self._admins.get(key)
+        if hit and now-hit[1]<60: return hit[0]
+        req=urllib.request.Request(self.args.nakama.rstrip('/')+'/v2/rpc/admin_status?unwrap',data=b'{}',headers={'Authorization':header,'Content-Type':'application/json'},method='POST')
+        try:
+            with urllib.request.urlopen(req,timeout=5) as response: ok=bool(json.load(response).get('admin',False))
+        except Exception: ok=False
+        self._admins[key]=(ok,now)
+        return ok
     def user(self,header):
         if self.args.dev:
             if not header.startswith('Bearer dev-') or len(header)>100: raise Rejected('Local test identity required.')
@@ -322,14 +378,16 @@ class Handler(BaseHTTPRequestHandler):
             elif self.path=='/lobbies':
                 # A lobby keeps its creator's build (version) and runs that build's match server; a game on another
                 # build can't join it, and one whose build has no server here is told to update (Lobbies.call).
-                result=svc.model.call(svc.user(self.headers.get('Authorization','')),str(p.get('op','')),p)
+                header=self.headers.get('Authorization','');op=str(p.get('op',''))
+                uid=svc.user(header)
+                result=svc.model.call(uid,op,p,admin=op in ('list','join') and svc.admin(header))
             else: raise Rejected('Unknown endpoint.')
         except (Rejected,ValueError,KeyError,TypeError) as e: status=400;result={'error':str(e)}
         except Exception: status=500;result={'error':'Lobby service unavailable.'}
         data=json.dumps(result).encode();self.send_response(status);self.send_header('Content-Type','application/json');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--state',default='/var/lib/ashen-lobbies');ap.add_argument('--game',required=True);ap.add_argument('--godot',default='godot');ap.add_argument('--bind',default='127.0.0.1');ap.add_argument('--proxy-bind',default='');ap.add_argument('--port',type=int,default=7352);ap.add_argument('--public-host',default='127.0.0.1');ap.add_argument('--first-port',type=int,default=24600);ap.add_argument('--ports',type=int,default=16);ap.add_argument('--slots',type=int,default=32);ap.add_argument('--min-free-mb',type=int,default=300);ap.add_argument('--cpu-budget',type=float,default=0.9);ap.add_argument('--reserve-cpu',type=float,default=0.3);ap.add_argument('--server-binary',default='');ap.add_argument('--nakama',default='http://127.0.0.1:7350');ap.add_argument('--dev',action='store_true');args=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--state',default='/var/lib/ashen-lobbies');ap.add_argument('--game',required=True);ap.add_argument('--godot',default='godot');ap.add_argument('--bind',default='127.0.0.1');ap.add_argument('--proxy-bind',default='');ap.add_argument('--port',type=int,default=7352);ap.add_argument('--public-host',default='127.0.0.1');ap.add_argument('--first-port',type=int,default=24600);ap.add_argument('--ports',type=int,default=16);ap.add_argument('--slots',type=int,default=32);ap.add_argument('--min-free-mb',type=int,default=300);ap.add_argument('--cpu-budget',type=float,default=0.9);ap.add_argument('--reserve-cpu',type=float,default=0.3);ap.add_argument('--server-binary',default='');ap.add_argument('--nakama',default='http://127.0.0.1:7350');ap.add_argument('--dev',action='store_true');ap.add_argument('--standing',action='store_true',help="staging: admins' standing test lobbies (STANDING)");args=ap.parse_args()
     if args.dev and (args.bind!='127.0.0.1' or args.proxy_bind): ap.error('Development identities are loopback-only.')
     svc=Service(args);server=ThreadingHTTPServer((args.bind,args.port),Handler);server.service=svc
     if args.proxy_bind:

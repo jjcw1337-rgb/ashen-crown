@@ -156,10 +156,3 @@ static func lathe(profile: Array, seg: int = 20, key: String = "") -> Mesh:
 		_cache[key] = m
 	return m
 
-## A curved horn/tentacle made of shrinking cylinders along a bezier.
-static func horn_points(length: float, curve: float, steps: int) -> Array:
-	var pts := []
-	for i in steps + 1:
-		var t := float(i) / steps
-		pts.append(Vector3(0, t * length, -curve * t * t * length))
-	return pts

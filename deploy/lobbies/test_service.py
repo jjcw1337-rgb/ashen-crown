@@ -10,6 +10,38 @@ class LobbyTests(unittest.TestCase):
  def launch(self,r):self.started.append(r['id']);return '127.0.0.1:24600'
  def create(self,uid='a',mode='arena',size=1):return self.m.call(uid,'create',{'mode':mode,'team_size':size,'character':'hero','player':uid})['lobby']
  def act(self,uid,r,op,**kw):return self.m.call(uid,op,dict(id=r['id'],character='hero',**kw))
+ # standing test lobbies (--standing, staging): admins only, every seat but one a bot, the joiner starts it
+ def standing(self):
+  self.m.standing=True
+  return {r['name']:r for r in self.m.call('admin','list',{'version':'v1'},admin=True)['lobbies']}
+ def test_standing_lobbies_are_listed_for_admins_only(self):
+  rooms=self.standing()
+  self.assertEqual(len(rooms),5)
+  for r in rooms.values():
+   self.assertEqual(r['joined'],r['capacity']-1);self.assertTrue(r['joinable'])
+   self.assertTrue(all(m.get('bot') for m in r['members'].values()))
+  self.assertEqual([r for r in self.m.call('player','list',{'version':'v1'})['lobbies']],[])
+  with self.assertRaises(Rejected):self.m.call('player','join',{'id':rooms['Test arena · 1v1']['id'],'character':'hero','version':'v1'})
+  self.assertEqual(len(self.standing()),5)      # (listing again doesn't make more)
+ def test_standing_lobby_starts_when_an_admin_joins_and_is_replaced(self):
+  rooms=self.standing();r=rooms['Test arena · 2v2']
+  out=self.m.call('admin','join',{'id':r['id'],'character':'survivor_1','player':'jj','version':'v1'},admin=True)['lobby']
+  self.assertEqual(out['state'],'starting');self.assertEqual(self.started,[r['id']])
+  live=self.m.rooms[r['id']]
+  self.assertEqual(sorted(sum(m['team']==t for m in live['members'].values()) for t in (0,1)),[2,2])
+  self.assertTrue(live['members']['admin'].get('ticket'))
+  again=self.standing()
+  self.assertNotEqual(again['Test arena · 2v2']['id'],r['id'])      # (a fresh one is waiting for the next test)
+ def test_standing_duo_pairs_the_admin_with_a_bot(self):
+  r=self.standing()['Test raid · duo']
+  self.m.call('admin','join',{'id':r['id'],'character':'run_knight','player':'jj','version':'v1'},admin=True)
+  live=self.m.rooms[r['id']];mine=live['members']['admin']['team']
+  self.assertEqual(sum(m['team']==mine for m in live['members'].values()),2)
+ def test_standing_bots_are_never_swept_and_other_builds_get_their_own(self):
+  rooms=self.standing();self.now+=600;self.m.sweep()
+  self.assertTrue(all(self.m.rooms[r['id']]['state']=='waiting' for r in rooms.values()))
+  self.m.call('admin2','list',{'version':'v2'},admin=True)
+  self.assertEqual(sum(1 for x in self.m.rooms.values() if x.get('standing') and x['state']=='waiting'),10)
  def test_sandbox_starts_with_one_player_and_no_stakes(self):
   r=self.create(mode='sandbox');self.assertEqual(r['capacity'],6);self.assertEqual(self.started,[])
   with self.assertRaises(Rejected):self.act('a',r,'start')

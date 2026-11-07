@@ -92,7 +92,8 @@ commit for the exact lines):
 `monsters/`: the dinosaurs (`theropod.gd`: the raptor and Gorehide the Tyrant on a 25-bone skeleton; `trike.gd`: the
 mother triceratops and her baby), the Drunken Dwarf's model, their models and the Blender rig scripts, `dino_sheet.gd`,
 and `sounds/` (raptor_call, raptor_bite, trex_stomp, trike_bellow, dwarf_burp, with `CREDITS_dinosaurs.json`). To
-bring them back: their `Data.ENEMIES` entries (raptor, trex, trike, trike_baby, dwarf; see git history), the dwarf's
-`MeshyMonster.MODELS` entry, `Enemy.build_rig` / `pose_rig`'s Theropod and Trike branches, the roar, maul and
+bring them back: their `Data.ENEMIES` entries (raptor, trex, trike, trike_baby, dwarf; see git history), a card per
+folder in `game/monsters/` (`monster.gd`, listed in `Monsters.CARDS`: the dwarf's rig from the old `MeshyMonster.MODELS`
+in its `RIGS`, the dinosaurs' bodies as its `build_rig` / `pose_rig`, the old Theropod and Trike branches), the roar, maul and
 footstep sounds in `Enemy` (the Tyrant's stomp and screen shake), the raptor's call on aggro, and `SfxBank`'s entries.
 

@@ -19,7 +19,7 @@ class HttpAdmissionTests(unittest.TestCase):
                 raise Rejected('Sign in first.')
             return header.removeprefix('Bearer ')
         self.server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
-        self.server.service = SimpleNamespace(args=SimpleNamespace(dev=False), version='server-old', user=user, model=self.model)
+        self.server.service = SimpleNamespace(args=SimpleNamespace(dev=False), version='server-old', user=user, admin=lambda header: False, model=self.model)
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
     def tearDown(self):

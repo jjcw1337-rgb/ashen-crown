@@ -8,6 +8,7 @@ extends RefCounted
 ##   const MUSIC := {"song": "", "amb": "none", "db": -6.0}   Sfx.play_music's song key ("music_<song>" in the bank,
 ##                                       "" for none), the ambience bed under it ("none": silence) and the song's level
 ##   const LOADING_ART := ""             a painting behind the loading screen's words ("" for black)
+##   const ARRIVE := "Entering %s..."    the loading screen's line on the way in (%s: its title)
 ##   static func build(w: World)         builds the zone on `w`
 ##   static func title(zone) -> String   the zone's name on screen
 ##   static func light(g: Node, zone)    its sky, sun, fog and grade, over the indoor or outdoor base (client only)
@@ -50,6 +51,10 @@ static func music(zone: String) -> Dictionary:
 	var d: Dictionary = {"song": "", "amb": "none", "db": -6.0}
 	d.merge(_const(zone, "MUSIC", {}), true)
 	return d
+
+## The loading screen's line on the way into `zone`.
+static func arrive(zone: String) -> String:
+	return str(_const(zone, "ARRIVE", "Entering %s...")) % title(zone)
 
 static func loading_art(zone: String) -> String:
 	var p := str(_const(zone, "LOADING_ART", ""))

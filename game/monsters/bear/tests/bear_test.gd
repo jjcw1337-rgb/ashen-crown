@@ -55,7 +55,7 @@ func _run() -> void:
 	# idle: the hero far away; it wanders inside its ground and rears up to roar
 	_place(b.home + Vector3(0, 0, 45))
 	g.hero.set_process(false)
-	b.b_idle_t = 2.0
+	b.mem["idle_t"] = 2.0
 	var far := 0.0
 	var moved := 0.0
 	var roared := false
@@ -70,8 +70,8 @@ func _run() -> void:
 		if b.special == "bear_roar":
 			roared = true
 		# its roar timer, brought forward while it stands still (in play it's every 14-26 s)
-		if not roared and b.move_amt < 0.3 and b.b_idle_t > 0.5 and t > 3.0:
-			b.b_idle_t = 0.05
+		if not roared and b.move_amt < 0.3 and float(b.mem["idle_t"]) > 0.5 and t > 3.0:
+			b.mem["idle_t"] = 0.05
 	check(moved > 1.0 and far < 13.0, "wanders its ground: walked %.1f m, at most %.1f m from home" % [moved, far])
 	check(roared, "rears up and roars while wandering")
 	# a hero comes near: it roars once, charges, mauls
@@ -104,7 +104,7 @@ func _run() -> void:
 		t += 0.05
 		if b.aggro and not noticed:
 			noticed = true
-			roar_first = b.special == "bear_roar" or b.b_roared
+			roar_first = b.special == "bear_roar" or bool(b.mem["roared"])
 		var m: bool = b.special == "bear_maul"
 		if m and not was_maul:
 			mauls += 1
@@ -127,7 +127,7 @@ func _run() -> void:
 	b.global_position = Vector3(away.x, g.world.height_at(away.x, away.z), away.z)
 	_place(away + Vector3(2.0, 0, 0))
 	b.aggro = true
-	b.b_roared = true
+	b.mem["roared"] = true
 	var gave_up := false
 	var dmax: float = b.global_position.distance_to(b.home)
 	t = 0.0

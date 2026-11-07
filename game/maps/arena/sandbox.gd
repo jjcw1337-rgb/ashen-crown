@@ -296,6 +296,12 @@ func clear_monsters() -> void:
 		if e is Enemy and e.sandbox_hero == null:
 			e.queue_free()
 
+## Every monster kind with a card (game/monsters/), by its name: the Sandbox's "any monster" list.
+static func any_monsters() -> Array:
+	var ks: Array = Monsters.kinds().filter(func(k) -> bool: return Data.ENEMIES.has(k))
+	ks.sort_custom(func(a, b) -> bool: return str(Data.ENEMIES[a].get("name", a)) < str(Data.ENEMIES[b].get("name", b)))
+	return ks
+
 func spawn_pack(kind: String, n: int, champ := false) -> void:
 	if online: return
 	var lvl: int = game.hero.level
@@ -397,6 +403,24 @@ func _build_panel() -> void:
 			spawn_pack(kind, n, champ))
 		grid.add_child(pb)
 	vb.add_child(grid)
+	# any monster with a card (Monsters.kinds): one of it, a boss alone, to try every monster in the game
+	var row_any := HBoxContainer.new()
+	row_any.add_theme_constant_override("separation", 6)
+	var pick := OptionButton.new()
+	pick.custom_minimum_size = Vector2(226, 32)
+	pick.focus_mode = Control.FOCUS_NONE
+	pick.add_theme_font_size_override("font_size", 13)
+	for k in any_monsters():
+		pick.add_item(str(Data.ENEMIES[k].get("name", k)))
+		pick.set_item_metadata(pick.item_count - 1, k)
+	row_any.add_child(pick)
+	var sb: Button = ui._iron_button("Spawn", 94, 32, 13)
+	sb.pressed.connect(func():
+		sb.release_focus()
+		if pick.selected >= 0:
+			spawn_pack(str(pick.get_item_metadata(pick.selected)), 1))
+	row_any.add_child(sb)
+	vb.add_child(row_any)
 	var row2 := HBoxContainer.new()
 	row2.add_theme_constant_override("separation", 6)
 	var cm: Button = ui._iron_button("Clear monsters", 160, 32, 13)

@@ -542,21 +542,6 @@ const GRASS_TOP := [[0.85, 22], [0.75, 14], [0.8, 8], [0.8, 9], [0.85, 12], [0.8
 ## the camera looks down at about 46 degrees (Game.CAM_OFFSET), so the cards lean back by 44
 const GRASS_TOP_LEAN := 44.0
 
-static func grass_top_ok() -> bool:
-	return ResourceLoader.exists(GRASS_TOP_TEX % GRASS_TOP.size())
-
-## A random clump kind (1-based), by the weights in GRASS_TOP.
-static func grass_top_kind(rng: RandomNumberGenerator) -> int:
-	var total := 0
-	for g in GRASS_TOP:
-		total += int(g[1])
-	var r := rng.randi() % total
-	for i in GRASS_TOP.size():
-		r -= int(GRASS_TOP[i][1])
-		if r < 0:
-			return i + 1
-	return 1
-
 static func grass_top(k: int, colors: Dictionary) -> ArrayMesh:
 	return _camera_card("gtop%d" % k, GRASS_TOP_TEX % k, GRASS_TOP[k - 1][0], colors.get("dry_col", Color(0.42, 0.38, 0.18)), 0.0)
 
@@ -586,9 +571,6 @@ static func _camera_card(key: String, tex: String, w: float, dry: Color, glow: f
 	m.surface_set_material(0, mat)
 	_cache[key] = m
 	return m
-
-static func grass_tex_ok() -> bool:
-	return ResourceLoader.exists(GRASS_TEX % 1)
 
 static func grass_cards(k: int, seed_v: int, colors: Dictionary) -> ArrayMesh:
 	var key := "gcard%d_%d" % [k, seed_v]
