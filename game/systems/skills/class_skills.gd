@@ -237,6 +237,7 @@ static func trail_color(cls: String, skill: String) -> Color:
 		"archer": return Archer.HUNTER
 		"plague": return Plague.TOXIC
 		"doug": return Doug.ACCENT
+		"necromancer": return Necromancer.ACCENT
 		"wraith": return WraithFx.SPIRIT
 		"demon": return DemonFx.EMBER
 		"warlock": return Warlock.FEL

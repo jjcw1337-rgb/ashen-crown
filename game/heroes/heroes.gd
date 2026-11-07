@@ -14,6 +14,7 @@ const HEROES := {
 	"archer": ["res://game/heroes/archer/archer.gd", "res://game/heroes/archer/archer_fx.gd"],
 	"plague": ["res://game/heroes/plague/plague.gd", "res://game/heroes/plague/plague_fx.gd"],
 	"doug": ["res://game/heroes/doug/doug.gd", "res://game/heroes/doug/doug_fx.gd"],
+	"necromancer": ["res://game/heroes/necromancer/necromancer.gd", "res://game/heroes/necromancer/necromancer_fx.gd"],
 	"wyrm": ["res://game/heroes/wyrm/wyrm.gd", ""],
 	"serpent": ["res://game/heroes/serpent/serpent.gd", "res://game/heroes/serpent/serpent_fx.gd"],
 	"wyvern": ["res://game/heroes/wyvern/wyvern.gd", "res://game/heroes/wyvern/wyvern_fx.gd"],

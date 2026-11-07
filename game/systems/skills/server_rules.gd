@@ -9,7 +9,7 @@ extends RefCounted
 ## blowing, a mark landing) comes from the server to everyone. Single player and Enter World co-op are unchanged.
 
 ## The classes whose skills run on the server: every hero (a new one joins once its skills work this way).
-const CLASSES := ["archer", "warlock", "plague", "doug", "wraith", "demon", "knight", "wyrm", "serpent", "wyvern"]
+const CLASSES := ["archer", "warlock", "plague", "doug", "necromancer", "wraith", "demon", "knight", "wyrm", "serpent", "wyvern"]
 
 ## Tests: what the server made from players' skills, and what it refused; what a player's game took from its skills'
 ## rules on the server (Skill.give: life back, mana).
