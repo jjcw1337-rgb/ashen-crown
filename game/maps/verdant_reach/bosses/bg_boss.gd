@@ -31,6 +31,7 @@ var aim := Vector3.ZERO
 var aim_dir := Vector3.FORWARD
 var marks: Array = []          # avalanche circles (positions)
 var _pulse := 0.0
+var _had_maker := false        # a mushroom: a hermit of its pack was seen (see _shroom)
 
 const MOVES := {
 	# move: [seconds, impact at (0..1), style]
@@ -267,8 +268,9 @@ func _land(tgt: Hero) -> void:
 			for h in _heroes_in(at, 4.5):
 				h.take_hit(e._roll() * 1.3, at, "sweep", "poison")
 
+## His own mushrooms (his camp's and the ones he sprouted: his pack), never another camp's.
 func _shrooms() -> Array:
-	return e.game.world.enemies_root.get_children().filter(func(x) -> bool: return x is Enemy and not x.dead and x.kind == "spore_shroom")
+	return e.game.world.enemies_root.get_children().filter(func(x) -> bool: return x is Enemy and not x.dead and x.kind == "spore_shroom" and x.pack_id == e.pack_id)
 
 func _sprout(p: Vector3) -> void:
 	var s: Enemy = e.game.spawn_enemy("spore_shroom", p, e.level, false, "", e.pack_id)
@@ -282,9 +284,12 @@ func _shroom(delta: float) -> Vector3:
 	if _pulse <= 0.0:
 		_pulse = 1.5
 		# its maker gone, it withers: only Mossbeard's own (his camp's, or sprouted by him, same pack). A mushroom of a camp
-		# with no hermit (Sporefall Dell, Rootknot Hollow) is just a monster: it withered 1.5 s after the map loaded
+		# with no hermit (Sporefall Dell, Rootknot Hollow) is just a monster. `_had_maker` remembers he was there: once he
+		# is dead his body leaves the tree, and "no hermit in the pack" must not read as "never had one"
 		var kin: Array = e.game.world.enemies_root.get_children().filter(func(x) -> bool: return x is Enemy and x.kind == "hermit" and x.pack_id == e.pack_id)
-		var maker: bool = kin.is_empty() or kin.any(func(x) -> bool: return not x.dead and x.global_position.distance_to(e.global_position) < 40.0)
+		if not kin.is_empty():
+			_had_maker = true
+		var maker: bool = (not _had_maker) or kin.any(func(x) -> bool: return not x.dead and x.global_position.distance_to(e.global_position) < 40.0)
 		if not maker:
 			e.take_damage(99999.0, 0.0, e.global_position, 0.0, false)
 			return Vector3.ZERO

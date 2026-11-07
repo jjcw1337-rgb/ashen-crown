@@ -93,7 +93,9 @@ func _run() -> void:
 	her.take_damage(99999.0, 0.0, her.global_position, 0.0, false)
 	await secs(3.5)
 	check(not g.chest_sealed(gold[0]), "he fell: the chest's seal is broken")
-	check(g.world.enemies_root.get_children().filter(func(e): return e.kind == "spore_shroom" and not e.dead).is_empty(), "and his mushrooms withered")
+	var pack: int = her.pack_id
+	check(g.world.enemies_root.get_children().filter(func(e): return e.kind == "spore_shroom" and not e.dead and e.pack_id == pack).is_empty(), "and his mushrooms withered")
+	check(g.world.enemies_root.get_children().any(func(e): return e.kind == "spore_shroom" and not e.dead and e.pack_id != pack), "another camp's mushrooms stay (they were never his)")
 	await secs(1.0)
 	check(not g.ui.victory_panel.visible, "no story ending (no Act I Complete / Begin A2 screen)")
 	check(g.world.interactables.filter(func(t): return t.kind == "portal" and t.has_meta("boss")).is_empty(), "and no portal to town: the Extraction Portals are the way out")
