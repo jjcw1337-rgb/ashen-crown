@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://b2126agorqlnc"
-path="res://.godot/imported/trex_roar_1.wav-9bc483480fadabfba441788c9fd66d12.sample"
+path="res://.godot/imported/trex_roar_1.wav-1afcd58266a6b99d1b3f1a1cdc15c3ba.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/trex_roar_1.wav"
-dest_files=["res://.godot/imported/trex_roar_1.wav-9bc483480fadabfba441788c9fd66d12.sample"]
+source_file="res://game/monsters/hrimgar/sounds/trex_roar_1.wav"
+dest_files=["res://.godot/imported/trex_roar_1.wav-1afcd58266a6b99d1b3f1a1cdc15c3ba.sample"]
 
 [params]
 

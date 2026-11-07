@@ -24,5 +24,5 @@ func update(delta: float, _hero: Node3D, _to: Vector3, _dist: float, _gone: bool
 			return Vector3.ZERO
 		e._fx("bb_cloud")
 		for h in heroes_in(e.global_position, POISON_R):
-			h.take_hit(e._roll(), e.global_position, "burn", "poison")
+			h.take_hit(e.roll(), e.global_position, "burn", "poison")
 	return Vector3.ZERO

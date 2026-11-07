@@ -97,7 +97,7 @@ const ENEMIES := {
 	"bear": {"mesh": "bear", "name": "Forsaken Bear", "rig": "crawler", "life": 130, "dmg": [9, 16], "speed": 3.0, "range": 2.4, "xp": 60,
 		"ai": "bear", "atk": "bear_maul", "atk_time": 1.5, "armor": 8, "radius": 1.0, "aggro": 12.0, "blood": Color(0.35, 0.05, 0.03),
 		"look": {"skin": Color(0.16, 0.15, 0.14), "shell": Color(0.1, 0.1, 0.09), "legs": 4, "size": 1.6, "eyes": Color(0.45, 1.0, 0.4)}},
-	"troll_shaman": {"mesh": "troll_shaman", "faction": "troll", "name": "Troll Beast-Tamer", "rig": "humanoid", "life": 70, "dmg": [7, 12], "speed": 3.4, "range": 10.0, "xp": 48,
+	"troll_shaman": {"mesh": "troll_shaman", "cast_sound": "troll_cast", "faction": "troll", "name": "Troll Beast-Tamer", "rig": "humanoid", "life": 70, "dmg": [7, 12], "speed": 3.4, "range": 10.0, "xp": 48,
 		"ai": "ranged", "atk": "cast", "atk_time": 1.3, "armor": 5, "radius": 0.5, "proj": "poison", "blood": Color(0.25, 0.4, 0.3),
 		"look": {"height": 2.3, "eyes": Color(1.0, 0.6, 0.15)}},
 	# the Battlegrounds' bosses (Blaine's overhaul): Meshy, rigged by rig_monster.py;
@@ -111,7 +111,7 @@ const ENEMIES := {
 	"hermit": {"mesh": "hermit", "class_unique": true, "name": "Old Mossbeard", "rig": "humanoid", "life": 900, "dmg": [14, 22], "speed": 3.0, "range": 9.0, "xp": 1100,
 		"ai": "ranged", "atk": "cast", "atk_time": 1.4, "armor": 10, "radius": 0.6, "boss": true, "aggro": 14.0, "proj": "poison", "blood": Color(0.35, 0.55, 0.2),
 		"look": {"height": 0.82, "eyes": Color(0.5, 1.0, 0.4)}},         # 1.5 m, hunched
-	"lion": {"mesh": "lion", "name": "Arena Lion", "rig": "crawler", "life": 30, "dmg": [4, 8], "speed": 5.0, "range": 1.9, "xp": 16,
+	"lion": {"mesh": "lion", "lunge_sound": "lion_roar", "name": "Arena Lion", "rig": "crawler", "life": 30, "dmg": [4, 8], "speed": 5.0, "range": 1.9, "xp": 16,
 		"ai": "feral", "atk": "feral_swipe", "atk_time": 0.95, "armor": 3, "radius": 0.8, "aggro": 30.0, "blood": Color(0.5, 0.02, 0.02),
 		"look": {"skin": Color(0.55, 0.4, 0.22), "shell": Color(0.3, 0.2, 0.1), "legs": 4, "size": 1.2, "eyes": Color(1.0, 0.75, 0.2)}},
 	"gladiator": {"mesh": "gladiator", "name": "Gladiator", "rig": "humanoid", "life": 44, "dmg": [5, 10], "speed": 4.0, "range": 1.7, "xp": 22,

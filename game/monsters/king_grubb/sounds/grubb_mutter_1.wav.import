@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://blduvsmrvpfeu"
-path="res://.godot/imported/grubb_mutter_1.wav-3a9068ee62cec1c1223fd11617131b1b.sample"
+path="res://.godot/imported/grubb_mutter_1.wav-2c7b98e2a55fb2222d2cd64b6fcc5cc3.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/grubb_mutter_1.wav"
-dest_files=["res://.godot/imported/grubb_mutter_1.wav-3a9068ee62cec1c1223fd11617131b1b.sample"]
+source_file="res://game/monsters/king_grubb/sounds/grubb_mutter_1.wav"
+dest_files=["res://.godot/imported/grubb_mutter_1.wav-2c7b98e2a55fb2222d2cd64b6fcc5cc3.sample"]
 
 [params]
 

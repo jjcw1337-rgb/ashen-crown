@@ -277,7 +277,7 @@ func _boom(p: Vector3) -> void:
 		return
 	for h in boss.game.all_heroes():
 		if not h.dead and _flat(h.global_position, p) < BOMB_R:
-			h.take_hit(boss._roll() * 1.3, p, "nova", "fire")
+			h.take_hit(boss.roll() * 1.3, p, "nova", "fire")
 	# his own goblins get caught in it too
 	for e in boss.game.enemies_near(p, BOMB_R):
 		if e != boss and not e.dead and e.hoard == self:
@@ -487,3 +487,24 @@ func _shout_fx(text: String) -> void:
 	tw.tween_interval(1.8)
 	tw.tween_property(shout_lbl, "modulate:a", 0.0, 0.5)
 	Sfx.play("cackle", -3.0, randf_range(0.86, 0.94))
+
+# ---------------------------------------------------------------- his moves (Monsters.begin_move ... impact)
+## A lobbed bomb, scooping gold, staggering, cackling.
+static func begin(e: Enemy, sp: String) -> void:
+	e.atk_style = "lob" if sp == "bomb" else sp
+	e.begin_attack(sp)
+
+## The bomb is aimed until just before it leaves his hand.
+static func during(e: Enemy, a: float, hero: Node3D) -> void:
+	if e.special == "bomb" and a < Anim.impact_at(e.atk_style) * 0.8:
+		e._face(hero.global_position - e.global_position)
+
+static func impact(e: Enemy, hero: Node3D, _dist: float) -> void:
+	if e.hoard == null:
+		return
+	match e.special:
+		"bomb": e.hoard.throw_bomb(hero.global_position)
+		"scoop": e.hoard.scooped(e)
+
+static func finish(_e: Enemy) -> void:
+	pass

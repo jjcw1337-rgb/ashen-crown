@@ -78,7 +78,7 @@ func land(_tgt: Hero) -> void:
 		"bb_snare":
 			e._fx("bb_snare:%.1f,%.1f" % [aim.x, aim.z])
 			for h in heroes_in(aim, 2.0):
-				h.take_hit(e._roll() * 0.9, aim, "root", "poison")
+				h.take_hit(e.roll() * 0.9, aim, "root", "poison")
 		"bb_step":
 			var ss := _shrooms()
 			if not ss.is_empty():
@@ -89,7 +89,7 @@ func land(_tgt: Hero) -> void:
 		"bb_burst":
 			e._fx("bb_burst")
 			for h in heroes_in(at, 4.5):
-				h.take_hit(e._roll() * 1.3, at, "sweep", "poison")
+				h.take_hit(e.roll() * 1.3, at, "sweep", "poison")
 
 ## His own mushrooms (his camp's and the ones he sprouted: his pack), never another camp's.
 func _shrooms() -> Array:

@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://bcmgl7dyuudhk"
-path="res://.godot/imported/thunder_strike_1.wav-9f02556511cfe805515fb8abd959a46a.sample"
+path="res://.godot/imported/thunder_strike_1.wav-a68dc145fd50777b11fcb5b92b526791.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/thunder_strike_1.wav"
-dest_files=["res://.godot/imported/thunder_strike_1.wav-9f02556511cfe805515fb8abd959a46a.sample"]
+source_file="res://game/monsters/hollow_sloth/sounds/thunder_strike_1.wav"
+dest_files=["res://.godot/imported/thunder_strike_1.wav-a68dc145fd50777b11fcb5b92b526791.sample"]
 
 [params]
 

@@ -218,30 +218,30 @@ func _land(_hero: Node3D, _dist: float) -> void:
 				var to: Vector3 = h.global_position - e.global_position
 				to.y = 0
 				if not h.dead and to.length() < e.radius + 2.6 and (to.length() < 1.2 or fwd.dot(to.normalized()) > -0.25):
-					h.take_hit(e._roll() * 1.1, e.global_position, "chill" if el == "cold" else "sweep", el)
+					h.take_hit(e.roll() * 1.1, e.global_position, "chill" if el == "cold" else "sweep", el)
 					hit.append(h)
 			match element:
 				"fire":
 					# the claws leave a trail of burning ground across the arc
 					for k in 3:
 						var a := (float(k) - 1.0) * 0.7
-						_hazard(e.global_position + fwd.rotated(Vector3.UP, a) * (e.radius + 1.4), 1.3, 4.0, e._roll() * 0.18)
+						_hazard(e.global_position + fwd.rotated(Vector3.UP, a) * (e.radius + 1.4), 1.3, 4.0, e.roll() * 0.18)
 				"lightning":
 					# it jumps from each hero struck to the others near them
 					for h in hit:
 						for o in e.game.all_heroes():
 							if o != h and not o.dead and not hit.has(o) and o.global_position.distance_to(h.global_position) < 6.0:
 								e._fx("sloth_chain:%.2f,%.2f,%.2f,%.2f" % [h.global_position.x, h.global_position.z, o.global_position.x, o.global_position.z])
-								o.take_hit(e._roll() * 0.6, h.global_position, "melee", "lightning")
+								o.take_hit(e.roll() * 0.6, h.global_position, "melee", "lightning")
 		"sloth_slam":
 			e._fx("sloth_slam")
 			var at := e.global_position + fwd * 1.6
 			for h in e.game.all_heroes():
 				if not h.dead and h.global_position.distance_to(at) < 5.0:
-					h.take_hit(e._roll() * 1.4, at, "freeze" if el == "cold" else "quake", el)
+					h.take_hit(e.roll() * 1.4, at, "freeze" if el == "cold" else "quake", el)
 			match element:
 				"fire":
-					_hazard(at, 4.0, 3.5, e._roll() * 0.22)
+					_hazard(at, 4.0, 3.5, e.roll() * 0.22)
 				"lightning":
 					# bolts called down round it: one on each hero near, the rest at random, a moment apart
 					var spots: Array = []
@@ -259,9 +259,9 @@ func _land(_hero: Node3D, _dist: float) -> void:
 			e._fx("sloth_land")
 			for h in e.game.all_heroes():
 				if not h.dead and h.global_position.distance_to(e.global_position) < e.radius + (2.4 if el == "cold" else 1.6):
-					h.take_hit(e._roll() * 1.3, e.global_position, {"cold": "chill", "lightning": "shock"}.get(el, "sweep"), el)
+					h.take_hit(e.roll() * 1.3, e.global_position, {"cold": "chill", "lightning": "shock"}.get(el, "sweep"), el)
 			if element == "fire":
-				_hazard(e.global_position, 2.4, 3.0, e._roll() * 0.2)
+				_hazard(e.global_position, 2.4, 3.0, e.roll() * 0.2)
 
 ## Burning ground (host): it hurts any hero standing in it every half second until it dies down.
 func _hazard(at: Vector3, r: float, dur: float, dmg: float) -> void:
@@ -289,7 +289,7 @@ func _tick_hazards(delta: float) -> void:
 			e._fx("sloth_strike:%.2f,%.2f" % [p.x, p.z])
 			for h in e.game.all_heroes():
 				if not h.dead and Vector2(h.global_position.x - p.x, h.global_position.z - p.z).length() < 1.7:
-					h.take_hit(e._roll() * 0.9, p, "shock", "lightning")
+					h.take_hit(e.roll() * 0.9, p, "shock", "lightning")
 
 ## It has seen (or felt) a hero: up on its hind legs, a long stare, the roar, and down to come for them.
 func _notice(angry: bool) -> void:

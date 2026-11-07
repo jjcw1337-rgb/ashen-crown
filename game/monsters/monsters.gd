@@ -9,7 +9,11 @@ extends RefCounted
 ##   brain_for                            a boss's brain (BossBrain): Hrimgar, Mossbeard, his mushrooms
 ##   combat                               a monster's own way of fighting (its def's "ai"): the Feral, the Fallen,
 ##                                        the bear; null for the shared melee and ranged
+##   moves_of, begin/during/impact/       a family's own special moves (the Feral's lunge, the Fallen's three, the
+##   finish_move                          bear's roar and maul, King Grubb's bomb and scoop), on its brain
 ##   fx                                   its own fx events ("sloth*", "bb_*"), drawn on every game
+##   idle, fall, rest_overlay, net_lift,  its own idle, how it goes down, its body's resting overlay, a client's
+##   heavy_steps                          height for it, a boss's ground-shaking walk
 ## Adding a monster: its folder (game/monsters/README.md), its Data.ENEMIES entry, and a line here for whatever of
 ## the above it has of its own.
 
@@ -43,6 +47,42 @@ static func personality(kind: String) -> String:
 		"grabber", "goblin_guard": return "goblin"
 	return "warrior"
 
+## Its own idle while it hasn't noticed anyone (Enemy, out of combat), or null for the shared wander.
+static func idle(e: Enemy, delta: float) -> Variant:
+	if str(e.def.get("ai", "")) == "bear":
+		return BearBrain.idle(e, delta)
+	return null
+
+## The overlay its body wears between hit flashes (the Feral's rim light), or null.
+static func rest_overlay(e: Enemy) -> Material:
+	return Feral.rim_mat() if e.rig.has_meta("feral") else null
+
+## How far above the ground a client draws it (a perched Feral up its tree; Enemy._net_follow).
+static func net_lift(e: Enemy) -> float:
+	return Feral.perch_pose(e.rig, e.atk_style, e.net_atk) if e.rig.has_meta("feral") else 0.0
+
+## A boss that shakes the ground as it walks (King Grubb's goblin body).
+static func heavy_steps(e: Enemy) -> bool:
+	return e.boss and e.rig.has_meta("goblin")
+
+## Its body going down, f: 0 -> 1 over the first 0.6 s (Enemy's death): a crawler flips, the four-legged roll onto
+## their side, a goblin's knees buckle and he topples onto his belly (a boss shakes the ground), the rest fall back.
+static func fall(e: Enemy, f: float, delta: float) -> void:
+	var rig := e.rig
+	if rig.has_meta("crawler"):
+		rig.rotation.z = f * PI
+		rig.position.y = f * 0.4 * e.height
+	elif rig.has_meta("feral") or rig.has_meta("lion") or rig.has_meta("bear") or rig.has_meta("sloth"):
+		rig.rotation.x = 0.0
+		rig.rotation.z = f * f * 1.35
+	elif rig.has_meta("goblin"):
+		rig.rotation.x = -Anim.kf(e.dead_t, [[0.0, 0.0], [0.5, 0.08], [1.1, 1.3], [1.25, 1.18], [1.4, 1.28]])
+		if e.dead_t > 1.1 and e.dead_t - delta <= 1.1 and e.boss:
+			e.game.add_shake(0.5)
+			Fx.burst(e.game.world.fx_root, e.global_position - rig.global_transform.basis.z * 1.5, Color(0.4, 0.35, 0.3, 0.8), 40, 4.0, 0.3, 0.9, false, -3.0, 80.0)
+	else:
+		rig.rotation.x = f * f * 1.45
+
 ## A boss's brain, or null.
 static func brain_for(e: Enemy) -> BossBrain:
 	match e.kind:
@@ -61,8 +101,47 @@ static func combat(e: Enemy, delta: float, hero: Node3D, to: Vector3, dist: floa
 		"bear": return BearBrain.combat(e, delta, hero, to, dist)
 	return null
 
+## The family whose move `sp` is (Enemy.special): its brain script has static begin(e, sp), during(e, a, hero),
+## impact(e, hero, dist) and finish(e). Null for the shared moves Enemy plays itself (slam, summon, nova, volley).
+static func moves_of(sp: String) -> Script:
+	match sp:
+		"feral_lunge": return FeralBrain
+		"skirm_lunge", "reaver_cleave", "stalk_hook": return FallenBrain
+		"bear_roar", "bear_maul": return BearBrain
+		"bomb", "scoop", "burst", "cackle": return Hoard
+	return null
+
+static func begin_move(e: Enemy, sp: String) -> void:
+	var m := moves_of(sp)
+	if m != null:
+		m.call("begin", e, sp)
+
+static func during_move(e: Enemy, a: float, hero: Node3D) -> void:
+	var m := moves_of(e.special)
+	if m != null:
+		m.call("during", e, a, hero)
+
+## True if the move was a family's (it landed it itself).
+static func impact_move(e: Enemy, hero: Node3D, dist: float) -> bool:
+	var m := moves_of(e.special)
+	if m == null:
+		return false
+	m.call("impact", e, hero, dist)
+	return true
+
+static func finish_move(e: Enemy) -> void:
+	var m := moves_of(e.special)
+	if m != null:
+		m.call("finish", e)
+
 ## A monster's own fx event, drawn on every game (Enemy.special_fx): true if it was one.
 static func fx(e: Enemy, ev: String) -> bool:
+	if ev.begins_with("bear_"):
+		BearFx.fx(e, ev)
+		return true
+	if ev == "reaver_tele":
+		FallenFx.fx(e, ev)
+		return true
 	if ev.begins_with("sloth"):
 		Sloth.fx(e, ev)
 		return true

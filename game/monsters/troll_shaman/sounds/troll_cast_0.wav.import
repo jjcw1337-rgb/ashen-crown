@@ -3,12 +3,12 @@
 importer="wav"
 type="AudioStreamWAV"
 uid="uid://bi2q537cqfue6"
-path="res://.godot/imported/troll_cast_0.wav-e61d4e69e14ef438d454d93ecf41bdf9.sample"
+path="res://.godot/imported/troll_cast_0.wav-2f9e6f271f49cd6b1205c1911ef577b2.sample"
 
 [deps]
 
-source_file="res://assets/audio/sfx/troll_cast_0.wav"
-dest_files=["res://.godot/imported/troll_cast_0.wav-e61d4e69e14ef438d454d93ecf41bdf9.sample"]
+source_file="res://game/monsters/troll_shaman/sounds/troll_cast_0.wav"
+dest_files=["res://.godot/imported/troll_cast_0.wav-2f9e6f271f49cd6b1205c1911ef577b2.sample"]
 
 [params]
 

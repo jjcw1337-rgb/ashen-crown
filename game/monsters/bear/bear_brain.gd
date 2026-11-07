@@ -43,3 +43,36 @@ static func combat(en: Enemy, delta: float, hero: Node3D, to: Vector3, dist: flo
 			en._begin_special("bear_maul")
 		return Vector3.ZERO
 	return en.go_to(delta, hero.global_position, en.speed * 1.5)
+
+# ---------------------------------------------------------------- its moves (Monsters.begin_move ... finish_move)
+## Rear up and roar; rear and slam both forepaws down.
+static func begin(en: Enemy, sp: String) -> void:
+	en.atk_style = sp
+	en.atk_dur = Bear.ROAR_T if sp == "bear_roar" else Bear.MAUL_T
+	en.begin_attack(sp)
+	if sp == "bear_maul":
+		en._fx("bear_tele")
+
+## The maul tracks its target until just before the paws come down.
+static func during(en: Enemy, a: float, hero: Node3D) -> void:
+	if en.special == "bear_maul" and a < Anim.impact_at(en.atk_style) * 0.8:
+		en._face(hero.global_position - en.global_position)
+
+static func impact(en: Enemy, _hero: Node3D, _dist: float) -> void:
+	if en.special == "bear_roar":
+		en._fx("bear_roar")
+		return
+	# both forepaws come down in front: everyone in a 3 m arc ahead is hit and knocked back
+	en._fx("bear_maul")
+	var fwd := -en.rig.global_transform.basis.z
+	for h in en.game.all_heroes():
+		if h.dead:
+			continue
+		var to_h: Vector3 = h.global_position - en.global_position
+		to_h.y = 0
+		if to_h.length() < 1.3 + en.radius * 2.2 and fwd.dot(to_h.normalized()) > 0.2:
+			h.take_hit(en.roll(), en.global_position, "maul")
+
+static func finish(en: Enemy) -> void:
+	if en.special == "bear_maul":
+		en.cooldown = randf_range(0.9, 1.4)      # a heavy blow: a real opening after it
