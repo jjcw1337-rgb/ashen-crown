@@ -3663,7 +3663,7 @@ func _process(delta: float) -> void:
 		Battlegrounds.sync_proxies(self)
 	if (arena_mode or bg_mode) and net.active and not net.server:
 		ServerRules.client_tick(self, delta)      # (the build the server's copy of this player deals its skills with)
-	elif net.server and bg != null:
+	elif net != null and net.server and bg != null:
 		Battlegrounds.sync_proxies(self)      # (the server's own stand-ins: what players' skills run here strike)
 	if bg_mode:
 		Battlegrounds.sync_proxies(self)

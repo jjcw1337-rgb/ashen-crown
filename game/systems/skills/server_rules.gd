@@ -46,6 +46,18 @@ static func received(game, pid: int, id: String, kind: String, data: Dictionary)
 			refused_count += 1
 			print("[RULES] refused %s's run %s" % [h.peer_id, kind])
 		return
+	if id == "attack" and kind == "swing":
+		# a weapon swing (Hero._send_swing): its copy here strikes with its own positions
+		Hero.striker = h
+		var tg = null
+		var ids = data.get("t", [])
+		if (ids is PackedInt64Array or ids is Array) and ids.size() > 0:
+			tg = foe_of(game, int(ids[0]))
+		if h.server_swing(str(data.get("style", "")), data.get("fwd", Vector3.ZERO) if data.get("fwd") is Vector3 else Vector3.ZERO, tg):
+			made_count += 1
+		else:
+			refused_count += 1
+		return
 	if id != "attack" and str(Data.skill_def(id).get("cls", "")) != str(h.cls):
 		return
 	var m = ClassSkills.of(h.cls)

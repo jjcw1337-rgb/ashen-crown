@@ -1250,17 +1250,44 @@ func _swipe_lunge(a0: float, a1: float) -> void:
 	global_position = game.world.move(global_position, fwd.normalized() * d)
 
 func _swipe_impact() -> void:
-	var fwd := aim_dir()
-	var fin := atk_style == "swipe3"
+	if not decides():
+		_send_swing(null)
+		return
+	_swipe_blows(atk_style, aim_dir())
+
+## A weapon swing whose blows the match server decides (this hero's skills run there: ServerRules): its game sends
+## the swing, and the server's copy of it strikes with its own positions (server_swing).
+func _send_swing(tg) -> void:
+	var ids: PackedInt64Array = SkillFx.encode(game.net, {"t": [tg] if is_instance_valid(tg) else []})["t"]
+	game.net.send_skill_make("attack", "swing", {"style": atk_style, "fwd": aim_dir(), "t": ids})
+
+## Match server: a player's swing, struck by its copy here (ServerRules.received "attack" "swing"). False when it
+## doesn't add up (a style it can't swing, faster than it swings).
+func server_swing(style: String, fwd: Vector3, tg) -> bool:
+	var now := Time.get_ticks_msec()
+	if style.length() > 16 or now - _last_swing_ms < 150:
+		return false
+	_last_swing_ms = now
+	fwd = (fwd * Vector3(1, 0, 1)).normalized() if fwd.length() > 0.01 else facing()
+	if style.begins_with("swipe"):
+		_swipe_blows(style, fwd)
+	else:
+		_plain_blow(tg, fwd)
+	return true
+
+var _last_swing_ms := 0
+
+func _swipe_blows(style: String, fwd: Vector3) -> void:
+	var fin := style == "swipe3"
 	var rng := reach() + (1.0 if fin else 0.55)
 	var arc := 181.0 if fin else 70.0
-	var mult := 1.0 if atk_style == "swipe1" else (1.15 if atk_style == "swipe2" else 1.7)
+	var mult := 1.0 if style == "swipe1" else (1.15 if style == "swipe2" else 1.7)
 	var any := false
 	var struck := []
 	for e in game.enemies_near(global_position, rng + 1.5):
 		var to: Vector3 = e.global_position - global_position
 		to.y = 0
-		if to.length() - e.radius > rng:
+		if to.length() - e.radius > rng or ServerRules.friend(self, e):
 			continue
 		if to.length() < 0.5 or fwd.dot(to.normalized()) > cos(deg_to_rad(arc)):
 			_hit_enemy(e, mult, 0.9 if fin else 0.2)
@@ -1268,7 +1295,7 @@ func _swipe_impact() -> void:
 			any = true
 			struck.append(e)
 	if pd != null:
-		pd.cane_blow(atk_style, struck)      # the plague doctor's blows each leave something of his own
+		pd.cane_blow(style, struck)      # the plague doctor's blows each leave something of his own
 	if fin:
 		fx("attack", "finisher", {"r": rng, "x": any})
 		if any and _mine():
@@ -2265,30 +2292,35 @@ func _impact_body() -> void:
 			if atk_style.begins_with("swipe"):
 				_swipe_impact()
 				return
-			var hit_any := false
-			var tg = atk_target
-			if is_instance_valid(tg) and tg is Enemy and not tg.dead:
-				var d := Vector2(tg.global_position.x - global_position.x, tg.global_position.z - global_position.z).length()
-				if d <= reach() + tg.radius + 0.7:
-					_hit_enemy(tg, 1.0, 0.15)
-					fx("attack", "hit", {"p": tg.global_position + Vector3(0, 1.1 * tg.height, 0)})
-					hit_any = true
-			if not hit_any:
-				# free swing: strike the nearest foe in a frontal arc
-				var best = null
-				var bd := 99.0
-				for e in game.enemies_near(global_position, reach() + 1.6):
-					var to: Vector3 = e.global_position - global_position
-					to.y = 0
-					var dd: float = to.length() - e.radius
-					if dd <= reach() + 0.4 and (to.length() < 0.4 or fwd.dot(to.normalized()) > cos(deg_to_rad(60.0))) and dd < bd:
-						bd = dd
-						best = e
-				if best != null:
-					_hit_enemy(best, 1.0, 0.15)
-					fx("attack", "hit", {"p": best.global_position + Vector3(0, 1.1 * best.height, 0)})
-					hit_any = true
+			if not decides():
+				_send_swing(atk_target)
+			else:
+				_plain_blow(atk_target, fwd)
 	stats_changed.emit()
+
+## A plain weapon blow: on the foe it was swung at if it's still in reach, else the nearest foe in a frontal arc.
+func _plain_blow(tg, fwd: Vector3) -> void:
+	if is_instance_valid(tg) and tg is Enemy and not tg.dead and not ServerRules.friend(self, tg):
+		var d := Vector2(tg.global_position.x - global_position.x, tg.global_position.z - global_position.z).length()
+		if d <= reach() + tg.radius + 0.7:
+			_hit_enemy(tg, 1.0, 0.15)
+			fx("attack", "hit", {"p": tg.global_position + Vector3(0, 1.1 * tg.height, 0)})
+			return
+	# free swing: strike the nearest foe in a frontal arc
+	var best = null
+	var bd := 99.0
+	for e in game.enemies_near(global_position, reach() + 1.6):
+		if ServerRules.friend(self, e):
+			continue
+		var to: Vector3 = e.global_position - global_position
+		to.y = 0
+		var dd: float = to.length() - e.radius
+		if dd <= reach() + 0.4 and (to.length() < 0.4 or fwd.dot(to.normalized()) > cos(deg_to_rad(60.0))) and dd < bd:
+			bd = dd
+			best = e
+	if best != null:
+		_hit_enemy(best, 1.0, 0.15)
+		fx("attack", "hit", {"p": best.global_position + Vector3(0, 1.1 * best.height, 0)})
 
 # ---------------------------------------------------------------- a held channel
 ## The channel lets go (a move, a click, another skill, a dodge): its class's script ends it (ClassSkills.end_channel).

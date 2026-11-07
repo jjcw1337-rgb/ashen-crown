@@ -80,7 +80,7 @@ func _server() -> void:
 	check(await until(func(): return g.net.players.size() == 2, 60.0), "both players are in the crypt")
 	check(await until(func(): return g.bg.last_hit.size() > 0, 60.0), "a player struck another (through the server)")
 	if OS.get_cmdline_user_args().has("archer"):
-		check(await until(func(): return ServerRules.made_count >= 3, 30.0), "the Archer's skills ran here: the server made his arrow, his sigil and his flask's burst (%d)" % ServerRules.made_count)
+		check(await until(func(): return ServerRules.made_count >= 4, 30.0), "the Archer's skills ran here: the server made his arrow, his sigil, his flask's burst and his weapon swing (%d)" % ServerRules.made_count)
 		var arch = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "archer")
 		check(not arch.is_empty() and arch[0].decides() and await until(func(): return arch[0].beasts.any(func(w): return is_instance_valid(w) and w._deals()), 10.0), "his wolf runs here too, the one that bites, and his rites fire here (Hero.decides)")
 		# thorns: a server-run hero's game can only claim a blow the server sent it, once
@@ -158,6 +158,13 @@ func _player() -> void:
 			check(Archer.skill(g.hero, "snare").sigils.is_empty() and Archer.skill(g.hero, "pierce").shots.is_empty(), "my game keeps no sigil or arrow of its own: the server's copy of me deals them")
 			check(not g.hero.decides() and not g.hero.beasts.is_empty() and not g.hero.beasts[0]._deals(), "and my wolf here is only seen (the server's bites)")
 			RunTalents.throw_flask(g.hero, "flask_fire", foe.global_position)      # (its burst is the server's too)
+			# a plain weapon swing at them: the server's copy of me strikes it (Hero._send_swing -> server_swing)
+			await secs(0.3)
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.0, 0, 0), 0.5)
+			await secs(0.6)
+			g.hero.atk_style = "swipe1"
+			g.hero.atk_dir = g.hero.dir_to(foe.global_position)
+			g.hero._swipe_impact()
 			await secs(1.7)
 		if warlock:
 			# Drain Life (above) lets go after its least time (no key held); then a curse and a fright from near them
