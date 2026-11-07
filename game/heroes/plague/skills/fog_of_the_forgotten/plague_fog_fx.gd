@@ -1,6 +1,6 @@
 class_name PlagueFogFx
 extends RefCounted
-## Fog of the Forgotten's look (the Plague Doctor's F; gameplay and the hiding rules in plague.gd).
+## Fog of the Forgotten's look (the Plague Doctor's F; its rules and who it hides: FogOfTheForgotten).
 ##
 ## Not a poison cloud: pale grey with a faint lavender, like smelling salts and incense, moving in slow curls. He
 ## dashes his censer down (the Meshy censer, game/heroes/plague/skills/fog_of_the_forgotten/censer.glb, held in his hand until then) and it

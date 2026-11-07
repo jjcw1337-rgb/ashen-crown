@@ -1,6 +1,6 @@
 class_name PlagueTransfusionFx
 extends RefCounted
-## Transfusion's look (the Plague Doctor's G; gameplay in plague.gd): his experimental apparatus.
+## Transfusion's look (the Plague Doctor's G; its rules: Transfusion, transfusion.gd): his experimental apparatus.
 ##
 ## The apparatus is the Meshy model game/heroes/plague/skills/transfusion/apparatus.glb (concept, image-to-3D, prep_prop.py: a riveted
 ## brass frame with two glass serum tanks, copper tubes, gauges, a harness and a needle on a hose), strapped to his

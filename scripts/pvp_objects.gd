@@ -6,14 +6,15 @@ extends RefCounted
 ## blows counting at most once per `GAP` seconds, so a poison tick or burning ground counts like a slow swing and the
 ## numbers never need balancing against anyone's damage.
 ##
-## The owner's game owns the count. On every other client the owner's ghost (`Plague.ghost`) shows the thing and puts
-## an invisible stand-in `Enemy` on it (`proxy`: `pvp_obj` = its id in the owner's game, `pvp_owner` = his peer id), so
-## any swing, arrow or spell that hits monsters hits it, and the pointer picks it with its name and blows left in the
-## target bar. A blow on a stand-in (`struck`, from `Enemy.take_damage`) goes `Net.sv_pvp_obj_hit` ->
-## `Battlegrounds.pvp_obj_hit` (the attacker alive, within `REACH` of the thing where the server's own ghost of the
-## owner has it, `where`, and his blows on it at most one per GAP, `allow`) -> `Net.cl_pvp_obj_hit` -> the owner's
-## `Plague.obj_hit`, which counts it and sends the blows left to everyone (`"obj|id|left"`): every game flinches it,
-## the stand-ins take the new count and the last one breaks it on every game at once. Co-op partners never get stand-ins (`Game.bg_mode` only), and the server never
+## The owner's game owns the count. On every other client the owner's copy shows the thing (his look, from his fx
+## events) and puts an invisible stand-in `Enemy` on it (`proxy`: `pvp_obj` = its id in the owner's game, `pvp_owner` =
+## his peer id), so any swing, arrow or spell that hits monsters hits it, and the pointer picks it with its name and
+## blows left in the target bar. A blow on a stand-in (`struck`, from `Enemy.take_damage`) goes `Net.sv_pvp_obj_hit` ->
+## `Battlegrounds.pvp_obj_hit` (the attacker alive, within `REACH` of the thing where the owner's rules have it on the
+## server, `where`: ClassSkills.obj_pos, and his blows on it at most one per GAP, `allow`) -> `Net.cl_pvp_obj_hit` ->
+## the owner's game (ClassSkills.obj_hit: Plague.obj_hit), which counts it and shows the blows left to everyone (an
+## "obj" fx event): every game flinches it, the stand-ins take the new count, and the last one breaks it on every game
+## at once and, through his skill's `make("break")`, in his rules. Co-op partners never get stand-ins (`Game.bg_mode` only), and the server never
 ## makes any. Stand-ins of a player who left or died are dropped by `Battlegrounds.sync_proxies` (`prune`).
 
 const HITS := {"bloom": 3, "vat": 3, "creature": 4}

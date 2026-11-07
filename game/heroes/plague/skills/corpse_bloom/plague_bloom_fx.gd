@@ -1,6 +1,6 @@
 class_name PlagueBloomFx
 extends RefCounted
-## Corpse Bloom's look (the Plague Doctor's R; gameplay in plague.gd): a corpse flower erupting from the ground.
+## Corpse Bloom's look (the Plague Doctor's R; its rules: CorpseBloom, corpse_bloom.gd): a corpse flower erupting from the ground.
 ##
 ## The organism is the Meshy model game/heroes/plague/skills/corpse_bloom/bloom.glb (concept, image-to-3D, tools/blender/prep_prop.py:
 ## swollen spore sacs in diseased petals over black roots). It grows out of the soil (squash and stretch, the petals

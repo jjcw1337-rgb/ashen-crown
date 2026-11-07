@@ -1,6 +1,6 @@
 class_name PlagueVialFx
 extends RefCounted
-## Pestilence Vial's look (the Plague Doctor's Q; gameplay in plague.gd): the glass vial with its liquid sloshing
+## Pestilence Vial's look (the Plague Doctor's Q; its rules: PestilenceVial, pestilence_vial.gd): the glass vial with its liquid sloshing
 ## inside, its tumbling flight, the landing ring, the shatter and the contaminated pool.
 ##
 ## The vial is game/heroes/plague/skills/pestilence_vial/vial.glb (built in code by game/heroes/plague/build/vial_build.py): its objects
@@ -10,7 +10,7 @@ extends RefCounted
 ## spin and stop. The shatter flings the real glass, cut by the same script into `vial_shards.glb`.
 ##
 ## Recipes: three mixtures rotate (`RECIPES`: green, amber, violet, the colours on his bandolier) so throws in a row
-## don't look the same. Everything here only draws; the damage is Plague's.
+## don't look the same. Everything here only draws; the damage is PestilenceVial's.
 
 const VIAL_GLB := "res://game/heroes/plague/skills/pestilence_vial/vial.glb"
 const SHARDS_GLB := "res://game/heroes/plague/skills/pestilence_vial/vial_shards.glb"

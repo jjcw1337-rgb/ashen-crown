@@ -1,6 +1,6 @@
 class_name PlagueSwarmFx
 extends RefCounted
-## Swarmcraft's look (the Plague Doctor's E; gameplay in plague.gd): a living swarm of plague flies.
+## Swarmcraft's look (the Plague Doctor's E; its rules: Swarmcraft, swarmcraft.gd): a living swarm of plague flies.
 ##
 ## The flies are one GPUParticles3D run by a particle shader (`SWARM_PROCESS`): each fly has its own orbit round the
 ## swarm's point (`target`), so the swarm stretches, twists and folds as it travels, thins at its edges (its
