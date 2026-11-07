@@ -35,15 +35,26 @@ The Archer is the example to copy. Most other heroes still keep every skill in o
   `update` and `hit` are the rules, and they only ever run where the hits are decided; whatever the rules show
   (a sigil blowing) the server sends to every game. A hero's class joins `ServerRules.CLASSES` once its skills work
   this way.
-- Every one of his skills has its folder now. His wolf (`companion/spirit_beast.gd`) is a summon with its own brain,
-  and each game runs its own copy; it isn't split into rules and look yet.
+- Every one of his skills has its folder now. His wolf (`companion/spirit_beast.gd`) is a summon with its own brain:
+  every game runs a copy so it's seen, and only the one where his hits are decided bites and can be hurt
+  (`SpiritBeast._deals`).
 
 ## Designing a skill
 
-- **Damage skills have no cooldown;** mana limits them. A skill with a cooldown carries a utility tag (`movement`,
-  `cc`, `buff`, `summon`…). `tools/skill_spec_test.gd` checks this and every data field.
+- **It builds toward a direction.** Each hero has a few directions, the build themes in `RunTalents.THEMES` (the
+  Archer: Flame, Frost, Storm and Hunt). Every skill feeds one of them, and its rites and gems make that direction
+  stronger, so a run grows into a build. Together, a direction's skills should make the hero play in a way nothing
+  else does: a Frost Archer and a Storm Archer should feel like different characters. A skill that serves no
+  direction doesn't belong on the hero.
+- **Good models.** Whatever a skill puts in the world (an arrow, a totem, a summon, a weapon) is a real model made
+  for it ([assets](../pipeline/assets.md)), never a stack of primitives, and its look meets the bar in
+  [effects](../systems/effects.md).
+- **It's cheap.** Every copy of the hero draws it, so four players casting costs four times as much. Free what's
+  done, share materials, keep lights and particles few, and measure it with `tools/skill_perf.sh <class> <skill>`
+  before it ships ([performance](../systems/performance_kpis.md)).
 - **Every skill has an answer** (its counterplay), and no button carries more than one hard crowd control.
 - **The wind-up is readable:** a heavy blow lands later in its animation than a quick one.
+- `tools/skill_spec_test.gd` checks every data field.
 
 ## Changing a skill
 

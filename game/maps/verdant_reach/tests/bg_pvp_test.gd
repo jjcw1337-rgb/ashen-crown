@@ -11,7 +11,8 @@ extends SceneTree
 ## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, and b checks it
 ## was Pied by it (the crowd control crossing to another player: DougSkills._cc -> Net.send_pvp_effect).
 ## With "archer" instead, a plays the Archer and drops Thunderstep's sigil on b, and b checks it was stunned for its
-## three seconds (Thunderstep -> PvpStatus "stagger" -> the server -> b).
+## three seconds (Thunderstep -> PvpStatus "stagger" -> the server -> b). His skills, his wolf and his rites run on
+## the server (ServerRules): the server checks it made them; a checks its own game holds none.
 
 var g
 var role := "a"
@@ -76,6 +77,8 @@ func _server() -> void:
 	check(await until(func(): return g.bg.last_hit.size() > 0, 60.0), "a player struck another (through the server)")
 	if OS.get_cmdline_user_args().has("archer"):
 		check(await until(func(): return ServerRules.made_count >= 2, 30.0), "the Archer's skills ran here: the server made his arrow and his sigil (%d)" % ServerRules.made_count)
+		var arch = g.net.players.values().map(func(p): return p["hero"]).filter(func(h): return is_instance_valid(h) and h.cls == "archer")
+		check(not arch.is_empty() and arch[0].decides() and await until(func(): return arch[0].beasts.any(func(w): return is_instance_valid(w) and w._deals()), 10.0), "his wolf runs here too, the one that bites, and his rites fire here (Hero.decides)")
 	check(await until(func(): return g.bg.died_items.size() > 0, 60.0), "and killed them: their body dropped its gear")
 	await until(func(): return g.net.players.is_empty(), 90.0)
 
@@ -130,6 +133,7 @@ func _player() -> void:
 			check(g.hero.use_skill("snare", foe.global_position), "Thunderstep beside them")
 			await secs(0.3)
 			check(Archer.skill(g.hero, "snare").sigils.is_empty() and Archer.skill(g.hero, "pierce").shots.is_empty(), "my game keeps no sigil or arrow of its own: the server's copy of me deals them")
+			check(not g.hero.decides() and not g.hero.beasts.is_empty() and not g.hero.beasts[0]._deals(), "and my wolf here is only seen (the server's bites)")
 			await secs(1.7)
 		var life_seen: Array = []
 		for i in 60:

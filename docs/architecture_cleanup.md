@@ -169,9 +169,9 @@ of three buckets:
 Each archived feature gets a short `REVIVE.md` listing the hooks it had in `game.gd`, `hero.gd`, `net.gd` and
 `ui.gd`, so it can be wired back in. Other features to keep this way need an admin's say-so: add them here.
 
-**Not cut yet: the starting camp** (Blaine: "we don't want to get rid of that quite yet"). That covers the camp and
-the World-Tree Island, its people (traders, guards, the smith, ravens), day and night, the waypoint, quests and
-Enter World. It stays live as it is until an admin decides.
+**The starting camp and Enter World go** (Blaine, 2026-11-06: "we are dropping the enter world... archive all the
+world stuff"). The game opens on the multiplayer page; the camp, the World-Tree Island, its people, the waypoint,
+quests and the character saves are archived.
 
 Order for each old system:
 1. Move what the live game borrows (below).
@@ -215,8 +215,12 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
   building blocks are `game/systems/fx/fire/flame_fx.gd` (FlameFx), the game clock `game/systems/game_clock.gd`, and
   his arrows' look `shared/arrow_fx.gd`. Left: the burn's look chosen by class in `RunTalents` and `Enemy.ignite` (with
   the statuses work); joining FlameFx and the older FireFx (torches, campfires).
-- [ ] 3. Reference recordings
-- [ ] 4. Damage and effect system
+- [ ] 3. Reference recordings: every hero's skills on still dummies (`tools/hero_reference.gd`,
+  `tools/references/<class>.json`). Left: the PvP pair through a real server, and a combat log.
+- [ ] 4. Damage and effect system. Done: the Archer's skills, wolf and rites run on the match server
+  (`game/systems/skills/server_rules.gd`, deployed to staging 2026-11-07). In progress: the Plague Doctor and the
+  Warlock. Left: the other heroes; then the server refuses damage a server-run hero's game sends (its consumables and
+  thorns go through the server first); then the gameplay core.
 - [ ] 5. One data source
 - [ ] 6. Real ids
 - [x] `concepts/` removed (2026-11-06)

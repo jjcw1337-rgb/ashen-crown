@@ -42,6 +42,11 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				var ring := Fx.aura(foe2, Archer.HUNTER, 18, 0.2, 0.09, 0.8, 0.4, 0.5, 30.0, Vector3(0, 2.4, 0))
 				ring.name = "hunted"
 				Fx._free_later(ring, float(ev.get("x", Skill.num("a_mark", "secs", 8.0))))
+				# every game's copy of his wolf goes for the marked one too (HuntersMark.made sent the one that bites)
+				if foe2 is Enemy:
+					for b in h.beasts:
+						if is_instance_valid(b) and not b.dead:
+							b.command("attack", foe2)
 			SkillFx.snd(h, "hunter_mark", -2.0)
 		["a_explosive", "blast"]:
 			# Blast Arrow's burst: the fire sim's fireball is ArrowFx.finish's; here the blast's own boom and ring, and
@@ -74,6 +79,11 @@ static func play(h: Hero, ev: Dictionary) -> bool:
 				hunter_mark(root, aim, 1.3, Archer.HUNTER)
 			SkillFx.snd(h, "lion_roar", -4.0, 1.25)
 			SkillFx.shake(h, 0.15)
+		["beast", "fade"]:
+			# the wolf that bites fell (on the match server, SpiritBeast.die): this game's copy of it falls too
+			for b in h.beasts.duplicate():
+				if is_instance_valid(b) and not b.dead and int(b.slot) == int(ev.get("n", 0)) and not b._deals():
+					b.die()
 		_:
 			return false
 	return true

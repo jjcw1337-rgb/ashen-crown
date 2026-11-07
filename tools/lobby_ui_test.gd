@@ -34,7 +34,7 @@ func run():
   g.ui.home._mp.pressed.emit()
   await wait_s(0.5)
   check(c.panel.visible and not g.ui.home.visible,"Multiplayer opens from post-intro home")
-  check(c.lan_row.visible,"LAN remains inside Multiplayer (Local network)")
+  check(not c.lan_row.visible,"no LAN on the multiplayer page (it hosted a character's world)")
   c.room={};c.rooms=[{"id":"l1","name":"Aldric's Battlegrounds","mode":"battlegrounds","team_size":1,"capacity":16,"state":"waiting","owner":"o1","members":{"o1":{"name":"Aldric"}},"joined":3,"joinable":true},
    {"id":"l2","name":"Mira's Arena","mode":"arena","team_size":2,"capacity":4,"state":"waiting","owner":"o2","members":{"o2":{"name":"Mira"}},"joined":1,"joinable":true,"wager":true},
    {"id":"l3","name":"Doug's Endless Waves","mode":"waves","team_size":1,"capacity":4,"state":"playing","owner":"o3","members":{"o3":{"name":"Doug"}},"joined":4,"joinable":false}]
