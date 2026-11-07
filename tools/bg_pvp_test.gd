@@ -10,6 +10,8 @@ extends SceneTree
 ## character is untouched by the fall. Fallen, b spectates a (the camera on a) until a leaves, then leaves the crypt.
 ## With "doug" after the port on both players' lines, a plays Doug: his first skill is the Cream Pie, and b checks it
 ## was Pied by it (the crowd control crossing to another player: DougSkills._cc -> Net.send_pvp_effect).
+## With "archer" instead, a plays the Archer and drops Thunderstep's sigil on b, and b checks it was stunned for its
+## three seconds (Thunderstep -> PvpStatus "stagger" -> the server -> b).
 
 var g
 var role := "a"
@@ -84,7 +86,8 @@ func _player() -> void:
 	for fn in DirAccess.get_files_at(g.char_dir):
 		DirAccess.remove_absolute(g.char_dir + fn)
 	var doug := OS.get_cmdline_user_args().has("doug")
-	g.hero.set_class(("doug" if doug else "knight") if role == "a" else "wraith")
+	var archer := OS.get_cmdline_user_args().has("archer")
+	g.hero.set_class(("doug" if doug else ("archer" if archer else "knight")) if role == "a" else "wraith")
 	g.hero.new_character()
 	g.hero.set_level(8)
 	g.char_id = g.new_char_id()
@@ -114,6 +117,15 @@ func _player() -> void:
 		g.hero.mana = g.hero.max_mana
 		var sk: String = str(g.hero.skill_list()[0]["id"])
 		check(g.hero.use_skill(sk, foe.global_position), "cast %s at them" % sk)
+		if archer:
+			# Thunderstep from beside them: the sigil drops where I stood, on them, as I flip away
+			await secs(1.0)
+			g.test_allskills = true
+			g.hero.mana = g.hero.max_mana
+			g.hero.cds.erase("snare")
+			g.hero.global_position = g.world.free_spot_near(foe.global_position + Vector3(1.0, 0, 0), 0.5)
+			check(g.hero.use_skill("snare", foe.global_position), "Thunderstep beside them")
+			await secs(2.0)
 		var life_seen: Array = []
 		for i in 60:
 			if not is_instance_valid(foe) or foe.dead:
@@ -151,6 +163,8 @@ func _player() -> void:
 		var l0: float = g.hero.max_life
 		if doug:
 			check(await until(func(): return g.hero.pied_t > 0.0, 60.0), "Doug's cream pie Pied me (through the server)")
+		if archer:
+			check(await until(func(): return g.hero.daze_t > 2.0, 60.0), "Thunderstep stunned me through the server (%.1f s)" % g.hero.daze_t)
 		check(await until(func(): return g.hero.life < l0 or g.hero.dead, 60.0), "I'm being hit by the other player")
 		check(await until(func(): return g.hero.dead, 60.0), "and I fell")
 		# fallen, I watch the one still alive (Game.spectate_*), until they leave too

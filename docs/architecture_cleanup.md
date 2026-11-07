@@ -209,8 +209,9 @@ Known borrowings (2026-11-06; check again with `git grep` before each cut):
 - [ ] 1. Folders: the Archer (`87bae1f`) and the Plague Doctor (`8550926`) are done. Next: the Wraith, Demon, Warlock,
   Doug, the dragons and the Knight. The Knight's body builder goes to `game/systems/bodies/`.
 - [ ] 2. The Archer, end to end. Done: the reference recording; `game/systems/skills/` (`Skill`, `Missile`,
-  `GroundZone`); his six arrow skills, Frost Volley and Arrow Storm in their own folders with their numbers in the
-  codex. Next: Thunderstep (a 3 s stun that also stuns players, Blaine 2026-11-07), Spirit Beast, Hunter's Mark,
+  `GroundZone`, `DelayedArea`); his six arrow skills, Frost Volley, Arrow Storm and Thunderstep (a 3 s stun that
+  also stuns players, Blaine 2026-11-07) in their own folders with their numbers in the codex. Next: Spirit Beast,
+  Hunter's Mark,
   the body and bow, the shared fire, frost and arc effects, then his places in `hero.gd` and the other shared files.
 - [ ] 3. Reference recordings
 - [ ] 4. Damage and effect system

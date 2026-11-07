@@ -10,8 +10,8 @@ extends RefCounted
 ##     later detonates: everything on it stunned and hurt, lightning chaining on into the nearest others;
 ##   Spirit Beast: a spectral beast (the lion's body, ghostly) that hunts with him for 30 s, and the
 ##     class's 12 s battle buff (+40% damage).
-## His skills that are objects (Hero.kit, skills/) keep their own state: arrows in flight, the rains. What is still
-## here lives on the hero (sigils in h.snares, beasts), updated
+## His skills that are objects (Hero.kit, skills/) keep their own state: arrows in flight, the rains, the sigils.
+## What is still here lives on the hero (his beasts, the mark), updated
 ## by `update` and cleared by `clear`. What is seen is raised by fx events (Hero.fx -> ArcherFx), so a
 ## partner's copy of him (Hero.puppet) shoots, rains, sets traps and runs his wolf too; only his own game
 ## deals the damage (Enemy.take_damage routes to the host in co-op).
@@ -20,13 +20,6 @@ extends RefCounted
 const RANGE := 13.0
 const ARROW_SPEED := 34.0
 const FLIGHT := RANGE + 5.0     # how far an arrow flies before it falls
-## Thunderstep: how far back he vaults, how long the flip takes, the sigil's reach, how long it charges, how far its
-## lightning leaps on
-const VAULT_DIST := 6.5
-const VAULT_T := 0.55
-const SIGIL_R := 3.2
-const SIGIL_ARM := 0.9
-const SIGIL_CHAIN := 8.0
 const HUNTER := Color(0.62, 0.85, 0.75)     # the class's colour: pale spirit-green
 
 ## The ranger (game/heroes/archer/body/archer_ranger.glb, game/heroes/archer/build/prep_ranger_mocap.py): the Meshy northern ranger
@@ -181,6 +174,7 @@ static func _make(h: Hero, id: String) -> Skill:
 		"a_stormshot": return StormShot.new(h, id)
 		"volley": return FrostVolley.new(h, id)
 		"a_barrage": return ArrowStorm.new(h, id)
+		"snare": return Thunderstep.new(h, id)
 	return null
 
 # ---------------------------------------------------------------- the bow
@@ -216,8 +210,6 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 		s.cast(aim)
 		return
 	match id:
-		"snare":
-			_vault(h, aim)
 		"beast":
 			h.atk_aim = aim
 			h._start_attack("cast", "beast")
@@ -232,10 +224,12 @@ static func cast(h: Hero, id: String, aim: Vector3) -> void:
 static func can_cast(_h: Hero, _id: String, _aim: Vector3) -> bool:
 	return true
 
-## Nothing of his roots him.
-## Mid-Thunderstep his feet are the vault's (Archer.update carries him).
+## One of his skills holds him in place (mid-Thunderstep his feet are the vault's).
 static func rooted(h: Hero) -> bool:
-	return h.has_meta("vault")
+	for sk in h.kit.values():
+		if sk.rooted():
+			return true
+	return false
 
 ## His wolf and arrows stay through death (the wolf rises again on its own, keep_companions).
 static func died(_h: Hero) -> void:
@@ -260,8 +254,6 @@ static func impact(h: Hero) -> bool:
 		s.impact()
 		return true
 	match h.atk_skill:
-		"snare":
-			pass        # (Thunderstep acts at the cast: the vault and the sigil)
 		"beast":
 			_command_beast(h, h.atk_aim)
 		"a_mark":
@@ -355,71 +347,6 @@ static func _arrow_mesh(kind: String, bare := false) -> Node3D:
 		Fx.aura(root, FIRE, 18, 0.5, 0.09, 0.35, 0.8, 0.06, 30.0, Vector3(0, 0, -0.3))
 	return root
 
-# ---------------------------------------------------------------- Thunderstep
-## The cast: he turns to the pointer and backflips away from it (as far as the ground lets him), driving a thunderstone
-## into a sigil where he stood. The flip, the sigil and the stone are the "vault" event's (ThunderstepFx), on every game.
-static func _vault(h: Hero, aim: Vector3) -> void:
-	var from: Vector3 = h.global_position
-	var away := (from - aim) * Vector3(1, 0, 1)
-	if away.length() < 0.5:
-		away = -h.facing()
-	away = away.normalized()
-	h._face(-away)
-	var to: Vector3 = h.game.world.move(from, away * VAULT_DIST, h.radius)
-	to.y = h.game.world.height_at(to.x, to.z)
-	h.atk_aim = aim
-	h._start_attack("cast", "snare")
-	h.atk_dur = VAULT_T
-	h.set_meta("vault", {"from": from, "to": to, "t": 0.0})
-	var g := Vector3(from.x, h.game.world.height_at(from.x, from.z), from.z)
-	h.snares.append({"pos": g, "t": SIGIL_ARM, "n": 1 + int(h.talent("snare_max"))})
-	h.fx("snare", "vault", {"p": g, "q": to})
-
-## The vault carrying him back along the ground (the flip itself is ThunderstepFx's pose).
-static func _update_vault(h: Hero, delta: float) -> void:
-	var v: Dictionary = h.get_meta("vault")
-	v["t"] = float(v["t"]) + delta
-	var s := clampf(float(v["t"]) / VAULT_T, 0.0, 1.0)
-	var e := 1.0 - pow(1.0 - s, 1.8)
-	var want: Vector3 = (v["from"] as Vector3).lerp(v["to"], e)
-	var np: Vector3 = h.game.world.move(h.global_position, (want - h.global_position) * Vector3(1, 0, 1), h.radius)
-	np.y = h.game.world.height_at(np.x, np.z)
-	h.global_position = np
-	if s >= 1.0 or h.dead:
-		h.remove_meta("vault")
-
-## The sigil detonates: everything on it stunned and hurt, the lightning leaping on into the nearest others outside it
-## (Forked Lightning: more of them); with Aftershock it strikes again, a little weaker.
-static func _detonate(h: Hero, s: Dictionary) -> void:
-	var pos: Vector3 = s["pos"]
-	var r := SIGIL_R * (1.3 if h.talent("snare_wide") > 0.0 else 1.0)
-	var first: bool = not s.has("struck")
-	var k := 1.0 if first else 0.6
-	var hold := (1.4 + h.talent("snare_dur")) * (1.0 if first else 0.5)
-	var caught: Array = []
-	for e in h.game.enemies_near(pos, r):
-		if not e.dead:
-			caught.append(e)
-	var arcs := 3 + int(h.talent("arc_count"))
-	var near: Array = h.game.enemies_near(pos, SIGIL_CHAIN).filter(func(e) -> bool: return not e.dead and not (e in caught))
-	near.sort_custom(func(a, b) -> bool: return a.global_position.distance_to(pos) < b.global_position.distance_to(pos))
-	var struck: Array = near.slice(0, arcs)
-	s["struck"] = true
-	s["n"] = int(s["n"]) - 1
-	var again: bool = int(s["n"]) > 0
-	# the blast and the chain, seen by everyone (the puppet's sigil detonates on this event)
-	h.fx("snare", "spring", {"p": pos, "r": r, "t": caught + struck, "n": caught.size(), "x": again})
-	for e in caught:
-		e.stun(hold)
-		h._hit_enemy(e, 1.6 * k, 0.0, "snare")
-	for e in struck:
-		h._hit_enemy(e, 0.8 * k, 0.0, "snare")
-		e.stun(0.5)
-	if again:
-		s["t"] = 0.8
-	else:
-		h.snares.erase(s)
-
 # ---------------------------------------------------------------- Spirit Beast
 ## The archer always has his Spirit Beast (two with Alpha): it rises beside him when he becomes an archer, a
 ## while after it falls, and with him in every zone (SpiritBeast follows him through portals itself).
@@ -483,19 +410,11 @@ static func _command_beast(h: Hero, aim: Vector3) -> void:
 # ---------------------------------------------------------------- every frame
 static func update(h: Hero, delta: float) -> void:
 	keep_companions(h, delta)
-	if h.has_meta("vault"):
-		_update_vault(h, delta)
-	# his skills that are objects (Hero.kit): arrows in flight, the rains; on his own game only, since a partner's
+	# his skills that are objects (Hero.kit): arrows in flight, the rains, the sigils; on his own game only, since a partner's
 	# copy of him only shows them
 	if not h.puppet:
 		for sk in h.kit.values():
 			sk.update(delta)
-	# Thunderstep's sigils charging (a partner's detonates on his word: the "spring" event)
-	if not h.puppet:
-		for s in h.snares.duplicate():
-			s["t"] = float(s["t"]) - delta
-			if float(s["t"]) <= 0.0:
-				_detonate(h, s)
 
 static func clear(h: Hero) -> void:
 	for sk in h.kit.values():
@@ -505,9 +424,6 @@ static func clear(h: Hero) -> void:
 	ArrowFx.end_draw(h)
 	FrostVolleyRainFx.clear(h)
 	FrostVolleyFx.clear(h)
-	h.snares.clear()
-	if h.has_meta("vault"):
-		h.remove_meta("vault")
 	ThunderstepFx.clear(h)
 	for b in h.beasts:
 		if is_instance_valid(b):

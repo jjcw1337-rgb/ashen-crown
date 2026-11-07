@@ -25,11 +25,11 @@ The Archer is the example to copy. Most other heroes still keep every skill in o
 - **One folder per skill:** `game/heroes/archer/skills/fire_arrow/fire_arrow.gd` is the rules, a `Skill` object
   (`game/systems/skills/skill.gd`) holding its own state and reading its numbers with `val("dmg", 130)`.
   `archer.gd` keeps a table of which object handles which skill id.
-- **Shared shapes** in `game/systems/skills/`: `Missile` (a projectile's flight and hits) and `GroundZone` (ground
-  that strikes at a beat). They are plain data, with no nodes, so a server could run them.
+- **Shared shapes** in `game/systems/skills/`: `Missile` (a projectile's flight and hits), `GroundZone` (ground
+  that strikes at a beat) and `DelayedArea` (a spot that goes off after a fuse). They are plain data, with no nodes, so a server could run them.
 - **The look keeps its own copy.** The rules send one event (an arrow's "loose"), and every game's look flies its own
   arrow from it with the same `Missile` step (`shared/arrow_flight_fx.gd`). The look never makes game state.
-- Thunderstep, Spirit Beast and Hunter's Mark are still in `archer.gd`.
+- Spirit Beast and Hunter's Mark are still in `archer.gd`.
 
 ## Designing a skill
 

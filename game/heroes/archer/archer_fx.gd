@@ -2,9 +2,7 @@ class_name ArcherFx
 extends RefCounted
 ## Visual effects for the archer's skills (SkillFx events; the gameplay is in archer.gd and skills/). His arrows
 ## are drawn and flown by ArcherArrowFx on every game, and hurt nothing: the hits are the skills' own (ArrowSkill).
-## Frost Volley's rain and Arrow Storm are drawn by their own looks (skills/), in step with the rules' beat.
-## Thunderstep's sigils are still raised here on his own game and on his puppet on every partner's (Hero.snares), and
-## Archer.update moves them on both: a puppet's sigils wait for the "spring" event instead of detonating themselves.
+## Frost Volley's rain, Arrow Storm and Thunderstep are drawn by their own looks (skills/), from their events.
 ##  the attack / Fire Arrow: "loose" {p: from, d: direction, k: "war"|"fire", x: it pierces}
 ##  Frost Volley: "cast" (the glacier arrow drawn, aimed high), "impact" {p: the ground, r: radius}: the flight up,
 ##    the storm and the rain's strikes (FrostVolleyRainFx, FrostVolleyFx)

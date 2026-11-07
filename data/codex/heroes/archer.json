@@ -70,7 +70,7 @@
 			"name": "Thunderstep",
 			"rarity": 0,
 			"direction": "Storm and Hunt",
-			"desc": "Backflip away from the pointer, driving a thunderstone into a gold storm sigil where you stood. A moment later it detonates: everything on it is stunned and hurt, and lightning leaps on into the 3 nearest others beyond it.",
+			"desc": "Backflip away from the pointer, driving a thunderstone into a gold storm sigil where you stood. A moment later it detonates: everything on it is stunned for 3 seconds and hurt, and lightning leaps on into the 3 nearest others beyond it.",
 			"mana": 12,
 			"cd": 7.0,
 			"range": 10.0,
@@ -78,7 +78,21 @@
 				"mobility",
 				"cc"
 			],
-			"lvl": 5
+			"lvl": 5,
+			"k": {
+				"dmg": 160,
+				"chain": 80,
+				"stun_s": 3,
+				"chain_stun_s": 0.5,
+				"radius": 3.2,
+				"arm": 0.9,
+				"chain_r": 8,
+				"arcs": 3,
+				"vault": 6.5,
+				"vault_s": 0.55,
+				"again": 0.8,
+				"again_k": 0.6
+			}
 		},
 		{
 			"id": "beast",

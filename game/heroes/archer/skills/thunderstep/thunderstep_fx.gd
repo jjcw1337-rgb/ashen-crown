@@ -2,7 +2,7 @@ class_name ThunderstepFx
 extends RefCounted
 ## Thunderstep's look (jj's pick in place of Storm Snare, 2026-11-04; its lightning gold, jj: "thunderstone should be
 ## yellow or gold"). Draws only: ArcherFx plays its events on the archer's game and on his puppet's alike; the vault's
-## travel, the stun and the damage are archer.gd's (Archer._vault, _detonate).
+## travel, the stun and the damage are Thunderstep's (thunderstep.gd).
 ##  - "vault" {p, q}: he backflips from p to q (`update` turns the rig over backwards round his middle and lifts it on an
 ##    arc, facing the way he came, on his own body and on his puppet), crackling: lightning off the ground where he
 ##    leaves it and along his path, gold sparks. Where he stood a gold storm sigil burns into the ground (the
@@ -64,7 +64,7 @@ static func _vault(h: Hero, p: Vector3, q: Vector3) -> void:
 
 ## The sigil burning into the ground at p, the thunderstone driven into it, the light rising with the charge.
 static func _sigil(h: Hero, root: Node3D, p: Vector3, tr: int) -> void:
-	var r := Archer.SIGIL_R
+	var r := Skill.num("snare", "radius", 3.2)
 	if _shader == null:
 		_shader = Shader.new()
 		_shader.code = SIGIL_SHADER
@@ -110,7 +110,7 @@ static func update(h: Hero, delta: float) -> void:
 	var ss: Array = h.fxs["sigils"]
 	for sg in ss.duplicate():
 		sg["t"] = float(sg["t"]) + delta
-		var k := clampf(float(sg["t"]) / Archer.SIGIL_ARM, 0.0, 1.0)
+		var k := clampf(float(sg["t"]) / Skill.num("snare", "arm", 0.9), 0.0, 1.0)
 		var m: ShaderMaterial = sg["mat"]
 		m.set_shader_parameter("charge", k)
 		m.set_shader_parameter("spin", float(sg["t"]) * 0.6)
@@ -127,19 +127,19 @@ static func update(h: Hero, delta: float) -> void:
 			var p: Vector3 = sg["p"]
 			var a := randf() * TAU
 			var a2 := a + randf_range(0.5, 1.4) * (1.0 if randf() < 0.5 else -1.0)
-			var rr := Archer.SIGIL_R * randf_range(0.55, 0.95)
+			var rr := Skill.num("snare", "radius", 3.2) * randf_range(0.55, 0.95)
 			var from := p + Vector3(cos(a) * rr, 0.08, sin(a) * rr)
 			var to := p + Vector3(cos(a2) * rr, 0.08, sin(a2) * rr) if randf() < 0.6 else p + Vector3(0, STONE_H * 0.8, 0)
 			ElementalFx.bolt(root, from, to, 0.12, 0.04 + 0.04 * k, tr, CORE, GOLD)
 		# a lost "spring" (a partner's): it burns out by itself
-		if float(sg["t"]) > Archer.SIGIL_ARM + 3.5:
+		if float(sg["t"]) > Skill.num("snare", "arm", 0.9) + 3.5:
 			_end_sigil(h, root, sg, false)
 
 ## The backflip: the rig turned over backwards round his middle and lifted on an arc, facing the way he came.
 static func _flip(h: Hero, delta: float) -> void:
 	var v: Dictionary = h.fxs["vault"]
 	v["t"] = float(v["t"]) + delta
-	var s := clampf(float(v["t"]) / Archer.VAULT_T, 0.0, 1.0)
+	var s := clampf(float(v["t"]) / Skill.num("snare", "vault_s", 0.55), 0.0, 1.0)
 	var yaw: float = v["yaw"]
 	if s >= 1.0 or h.dead:
 		h.fxs.erase("vault")
@@ -174,7 +174,7 @@ static func _spring(h: Hero, ev: Dictionary) -> void:
 	var w = h.game.world
 	var tr := InfernalFx.tier(h.game)
 	var p: Vector3 = ev["p"]
-	var r: float = float(ev.get("r", Archer.SIGIL_R))
+	var r: float = float(ev.get("r", Skill.num("snare", "radius", 3.2)))
 	var again: bool = bool(ev.get("x", false))
 	var foes: Array = ev.get("t", [])
 	var on: int = int(ev.get("n", foes.size()))
@@ -226,7 +226,7 @@ static func _spring(h: Hero, ev: Dictionary) -> void:
 		if is_instance_valid(best["disc"]):
 			InfernalFx.tween_param(best["disc"], m, "flash", 1.0, 0.0, 0.4)
 		if again:
-			best["t"] = Archer.SIGIL_ARM - 0.8       # it charges again for its next strike
+			best["t"] = Skill.num("snare", "arm", 0.9) - 0.8       # it charges again for its next strike
 		else:
 			_end_sigil(h, root, best, true)
 

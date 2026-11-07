@@ -9,8 +9,8 @@ extends RefCounted
 ##                   diminishing returns (DR) on hard crowd control; then Net.cl_pvp_status to the victim only
 ##   victim's game:  PvpStatus.apply(hero, kind, secs, data); PvpStatus.update(hero, delta) runs it from Hero._process
 ##
-## The Demon's and the Plague Doctor's skills send it (other classes' stuns stay PvE-only until each is reviewed for
-## PvP). What the victim's partners see: the Demon's come from his own fx events (DemonFx draws them on the victim's
+## The Demon's and the Plague Doctor's skills and the Archer's Thunderstep send it (other classes' stuns stay PvE-only
+## until each is reviewed for PvP). What the victim's partners see: the Demon's come from his own fx events (DemonFx draws them on the victim's
 ## puppet); the Plague Doctor's ride in the victim's state packet (PvpStatusFx, Net._flags).
 ##
 ## Kinds: "stagger" (no acting or moving), "knockup" (thrown up and down again, no acting), "pull" {p: where to, m: seconds of dragging}
@@ -24,7 +24,7 @@ extends RefCounted
 const HARD := ["stagger", "knockup", "pull", "fear", "snare"]
 const DR_WINDOW := 8.0
 const DR_IMMUNE := 3.0
-const MAX_SECS := 2.5          # no hard status the server passes lasts longer
+const MAX_SECS := 3.0          # no hard status the server passes lasts longer (Thunderstep's stun: 3 s, Blaine)
 const SOFT_MAX := 6.0          # nor a slow, burn or Brand
 const BURN_TICK := 0.5
 const FEAR_SPEED := 3.2

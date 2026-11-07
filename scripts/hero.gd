@@ -142,9 +142,8 @@ var wl := {}                 # Warlock: his three directions' state (WarlockHex:
 var bolts: Array = []        # Warlock's Blight Bolts in flight: [{node, dir, left}] (flown by WarlockFx.update, burst here)
 ## A hero's skills that are objects (Skill, docs/content/skills.md), by skill id: made by his class's script
 var kit: Dictionary = {}
-## The archer (archer.gd): arrows in flight (drawn: ArcherArrowFx), snares lying in wait, the spirit beasts
+## The archer (archer.gd): arrows in flight (drawn: ArcherArrowFx), the spirit beasts
 var arrows: Array = []
-var snares: Array = []
 var pd: Plague = null           # the plague doctor's flasks, clouds, traps, poison and infection (plague.gd)
 var beasts: Array = []
 var beast_down_t := 0.0     # after the Spirit Beast falls, seconds until it rises again beside him
