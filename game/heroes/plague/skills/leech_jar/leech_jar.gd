@@ -7,6 +7,11 @@ extends PestilenceVial
 
 const RECIPE := 2      # its colour among PlagueVialFx.RECIPES
 
+## The vial's throw, at the throw's own length (the vial's cast_s is the vial's).
+func cast(aim: Vector3) -> void:
+	hero.atk_aim = within_range(aim, 12.0)
+	hero._start_attack("pd_flask", id)
+
 func impact() -> void:
 	var from := hand()
 	var to := ground(hero.atk_aim)
