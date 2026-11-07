@@ -36,7 +36,10 @@ and whatever the card leaves out is the shared way. What a card can declare (all
 2. Add a line in `Monsters.CARDS`.
 3. Give it a `Data.ENEMIES` entry (its stats, `look`, `mesh`, `ai`; the numbers move to the codex later).
 4. Put it in a camp: a row of a map's `CAMPS`.
-5. Check it rigged and moving with `game/monsters/tools/monster_lineup.gd` (`-- out.png [kind ...]`, through
+5. Run `game/monsters/tests/every_monster_test.gd` (through `tools/_late.gd`; it's in the gate). It spawns every carded
+   kind in the Sandbox, which must build its body, animate, fight and die. The Sandbox panel can also spawn any monster
+   ("Spawn").
+6. Check it rigged and moving with `game/monsters/tools/monster_lineup.gd` (`-- out.png [kind ...]`, through
    `tools/_late.gd`). It shows idle, walk, run and attack frames on the game's own rig.
 
 Rules never draw: a brain sends `Enemy._fx(event)` before a move lands, and the `_fx` script draws it on every
