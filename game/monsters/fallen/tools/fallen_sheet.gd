@@ -1,7 +1,7 @@
 extends SceneTree
 ## Contact sheet of the three Fallen (meshy_monster.gd bodies, Anim's gaits and signature attacks): for each,
 ## a row of its run and a row of its attack, from the side or three-quarter view. Needs a display.
-##   godot --path . -s tools/fallen_sheet.gd -- out.png [side|34]
+##   godot --path . -s game/monsters/fallen/tools/fallen_sheet.gd -- out.png [side|34]
 const CELL := 240
 const KINDS := ["fallen_skirmisher", "fallen_reaver", "fallen_stalker"]
 

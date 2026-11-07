@@ -4,7 +4,7 @@
 #     [--blend out.blend] [--debug prefix]
 # The rest is the bear's notes:
 # The Forsaken Bear (Act I): Meshy's raw image-to-3D (concept 2, "corrupted ancient", standing on all fours on a slab of
-# rock and roots) cleaned up, rigged and exported for the game, which poses it in code (scripts/bear.gd).
+# rock and roots) cleaned up, rigged and exported for the game, which poses it in code (game/monsters/bear/bear.gd).
 #   blender -b --python tools/blender/act1/rig_bear.py -- <bear_raw.glb> <out.glb> [--blend out.blend] [--debug prefix]
 # The raw model: git show origin/jj-models:exports/forsaken_bear/bear2_meshy_raw.glb > bear_raw.glb
 #

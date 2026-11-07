@@ -1,7 +1,7 @@
 extends SceneTree
 ## Contact sheet of the Hollow Sloth's motion (sloth.gd) from the side: rows of the walk, the run, rising
 ## and looking about, the roar, the sweep, the slam and the pounce.
-##   godot --path . -s tools/sloth_sheet.gd -- out.png [front] [fire|ice|storm]
+##   godot --path . -s game/monsters/hollow_sloth/tools/sloth_sheet.gd -- out.png [front] [fire|ice|storm]
 const CELL := 240
 
 func _initialize():
@@ -44,7 +44,7 @@ func _initialize():
 	var eye := Vector3(0.5, 2.2, -9.0) if front else Vector3(9.0, 2.0, 0.4)
 	cam.transform = Transform3D(Basis(), eye).looking_at(Vector3(0, 1.5, 0))
 	# loaded at run time: a static reference compiles sloth.gd before the Sfx autoload exists
-	var SL = load("res://scripts/sloth.gd")
+	var SL = load("res://game/monsters/hollow_sloth/hollow_sloth.gd")
 	var variant := ""
 	for a in args:
 		if a in ["fire", "ice", "storm"]:

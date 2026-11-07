@@ -24,7 +24,7 @@ const KINDS := {
 ## Blender (tools/blender/grubb_mutant.py) on this joint layout. Positions are the joints in the
 ## model's own space (Godot axes, 2.2 m tall before "scale"); each joint's parent is listed so the
 ## skeleton matches the Blender rig.
-const MUTANT := {"scale": 1.59, "glb": "res://assets/models/grubb_mutant.glb", "eyes": Color(1.0, 0.8, 0.3), "layout": {
+const MUTANT := {"scale": 1.59, "glb": "res://game/monsters/king_grubb/grubb_mutant.glb", "eyes": Color(1.0, 0.8, 0.3), "layout": {
 	"hips": ["", Vector3(0, 0.62, 0)], "torso": ["hips", Vector3(0, 0.8, 0)], "belly": ["torso", Vector3(0, 0.8, -0.3)],
 	"head": ["torso", Vector3(-0.08, 1.48, -0.16)], "crowns": ["head", Vector3(-0.13, 1.84, -0.23)],
 	"sh_r": ["torso", Vector3(0.4, 1.42, -0.08)], "el_r": ["sh_r", Vector3(0.58, 0.98, -0.12)], "hand_r": ["el_r", Vector3(0.69, 0.62, -0.17)],

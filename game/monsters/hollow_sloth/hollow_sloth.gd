@@ -22,7 +22,7 @@ extends RefCounted
 ## skeleton is built. Host-authoritative: every timed move goes through the enemy's atk_t / atk_dur /
 ## atk_style, so co-op partners see it posed by the same `pose` from the synced state.
 
-const GLB := "res://assets/models/monsters/hollow_sloth_%s.glb"
+const GLB := "res://game/monsters/hollow_sloth/hollow_sloth_%s.glb"
 ## per element: its colour (light, aura, effects) and the effect sounds
 const ELEMENTS := {"fire": {"col": Color(1.0, 0.45, 0.1)}, "cold": {"col": Color(0.45, 0.85, 1.0)}, "lightning": {"col": Color(0.72, 0.45, 1.0)}}
 const SCALE := 1.0

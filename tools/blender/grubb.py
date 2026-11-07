@@ -5,7 +5,7 @@
 # exports/ and is copied into the game's assets/models/; keep the .blend in the workspace's
 # sources/, not in this repo (Godot tries to import .blend files it finds by launching Blender).
 #
-# Coordinates: the game's goblin layout (scripts/goblin.gd, native units before the king's 1.5x
+# Coordinates: the game's goblin layout (game/monsters/king_grubb/goblin.gd, native units before the king's 1.5x
 # scale) with Godot (x, y, z) -> Blender (x, -z, y), so the model faces +Y here and -Z in Godot.
 # Bone names match the game's joints, so the game's procedural animation drives the skin.
 import bpy, bmesh, math, os, shutil
